@@ -18,15 +18,17 @@
 
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f6f8;
+      color: #222;
     }
 
     header {
-      background: #222;
+      background: #1565c0;
       color: white;
-      padding: 20px;
+      padding: 18px 15px;
       text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
 
     header h1 {
@@ -36,46 +38,213 @@
 
     header p {
       margin: 6px 0 0;
-      opacity: 0.8;
+      font-size: 14px;
+      opacity: 0.9;
     }
 
-    #locationButton {
-      margin-top: 10px;
-      padding: 12px 18px;
+    #contenedor {
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    #botonUbicacion {
+      display: block;
+      margin: 15px auto;
+      padding: 12px 20px;
       border: none;
       border-radius: 10px;
-      background: white;
-      color: #222;
+      background: #1565c0;
+      color: white;
       font-size: 16px;
+      font-weight: bold;
       cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
 
-    #locationButton:hover {
-      opacity: 0.85;
+    #botonUbicacion:hover {
+      background: #0d47a1;
     }
 
-    #locationButton:disabled {
-      opacity: 0.6;
-      cursor: wait;
+    #estado {
+      text-align: center;
+      padding: 5px 15px 12px;
+      color: #555;
+      font-size: 14px;
     }
 
     #map {
       width: 100%;
-      height: calc(100vh - 145px);
+      height: 65vh;
+      min-height: 450px;
+      border-top: 1px solid #ddd;
+      border-bottom: 1px solid #ddd;
     }
 
-    .bus-popup {
+    /* Panel de información */
+
+    #panelInfo {
+      display: none;
+      background: white;
+      margin: 15px;
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+    }
+
+    #panelInfo h2 {
+      margin: 0 0 5px;
+      font-size: 21px;
+    }
+
+    #nombreParada {
+      color: #666;
       font-size: 14px;
-      line-height: 1.5;
+      margin-bottom: 15px;
     }
 
-    .stop-popup {
-      font-size: 14px;
-      line-height: 1.5;
+    #tituloLineas {
+      font-weight: bold;
+      margin-bottom: 10px;
     }
 
-    .stop-popup strong {
+    #lineas {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .botonLinea {
+      border: none;
+      background: #e3f2fd;
+      color: #1565c0;
+      border: 2px solid #90caf9;
+      border-radius: 10px;
+      padding: 9px 15px;
       font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .botonLinea:hover {
+      background: #bbdefb;
+    }
+
+    .botonLinea.activa {
+      background: #1565c0;
+      color: white;
+      border-color: #1565c0;
+    }
+
+    #panelProximos {
+      margin-top: 18px;
+    }
+
+    #tituloProximos {
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    .bus {
+      background: #f7f9fb;
+      border-left: 5px solid #1565c0;
+      border-radius: 10px;
+      padding: 13px;
+      margin-bottom: 9px;
+    }
+
+    .busPrincipal {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .busLinea {
+      font-size: 22px;
+      font-weight: bold;
+      color: #1565c0;
+    }
+
+    .busTiempo {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .busDestino {
+      margin-top: 5px;
+      font-size: 14px;
+      color: #555;
+    }
+
+    .busEmpresa {
+      margin-top: 3px;
+      font-size: 12px;
+      color: #777;
+    }
+
+    .cargando {
+      color: #666;
+      padding: 10px 0;
+    }
+
+    .error {
+      color: #c62828;
+      background: #ffebee;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    .sinBuses {
+      color: #666;
+      background: #f5f5f5;
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    /* Popup del mapa */
+
+    .popupParada {
+      text-align: center;
+    }
+
+    .popupParada strong {
+      font-size: 16px;
+    }
+
+    .botonPopup {
+      margin-top: 8px;
+      padding: 7px 12px;
+      border: none;
+      border-radius: 7px;
+      background: #1565c0;
+      color: white;
+      cursor: pointer;
+    }
+
+    @media (max-width: 600px) {
+
+      header h1 {
+        font-size: 24px;
+      }
+
+      #map {
+        height: 58vh;
+        min-height: 380px;
+      }
+
+      #panelInfo {
+        margin: 10px;
+        padding: 14px;
+      }
+
+      .busPrincipal {
+        align-items: flex-start;
+      }
+
+      .busTiempo {
+        text-align: right;
+      }
     }
   </style>
 </head>
@@ -84,36 +253,76 @@
 
   <header>
     <h1>🚌 ¿Dónde Viene?</h1>
-    <p>Transporte público en tiempo real</p>
-
-    <button id="locationButton">
-      📍 Usar mi ubicación
-    </button>
+    <p>Encontrá las paradas y mirá cuándo llega tu ómnibus</p>
   </header>
 
-  <div id="map"></div>
+  <div id="contenedor">
+
+    <button id="botonUbicacion">
+      📍 Usar mi ubicación
+    </button>
+
+    <div id="estado">
+      Tocá el botón para encontrar las paradas cercanas.
+    </div>
+
+    <div id="map"></div>
+
+    <div id="panelInfo">
+
+      <h2>🚏 Parada seleccionada</h2>
+
+      <div id="nombreParada"></div>
+
+      <div id="tituloLineas">
+        Líneas disponibles:
+      </div>
+
+      <div id="lineas">
+        <div class="cargando">
+          Cargando líneas...
+        </div>
+      </div>
+
+      <div id="panelProximos">
+
+        <div id="tituloProximos">
+          🚌 Próximos ómnibus
+        </div>
+
+        <div id="proximos">
+          <div class="sinBuses">
+            Seleccioná una línea para ver los próximos ómnibus.
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
 
-    // ==========================================
-    // CONFIGURACIÓN
-    // ==========================================
+    /* =========================================================
+       CONFIGURACIÓN
+    ========================================================= */
 
     const API_BASE =
       'https://donde-viene-api.darriulatmaster.workers.dev';
 
 
-    // ==========================================
-    // MAPA
-    // ==========================================
+    /* =========================================================
+       MAPA
+    ========================================================= */
 
     const map = L.map('map').setView(
       [-34.9011, -56.1645],
-      12
+      13
     );
-
 
     L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
@@ -123,49 +332,135 @@
     ).addTo(map);
 
 
-    // ==========================================
-    // ICONO DE LOS ÓMNIBUS
-    // ==========================================
+    /* =========================================================
+       VARIABLES
+    ========================================================= */
 
-    const busIcon = L.divIcon({
-      className: 'bus-marker',
-      html: '🚌',
-      iconSize: [30, 30],
-      iconAnchor: [15, 15],
-      popupAnchor: [0, -15]
+    let todasLasParadas = [];
+
+    let marcadoresParadas = [];
+
+    let marcadorUbicacion = null;
+
+    let paradaSeleccionada = null;
+
+    let lineaSeleccionada = null;
+
+    let intervaloActualizacion = null;
+
+
+    /* =========================================================
+       ICONO DE PARADA
+    ========================================================= */
+
+    const iconoParada = L.divIcon({
+
+      className: '',
+
+      html: `
+        <div style="
+          background:#1565c0;
+          color:white;
+          width:32px;
+          height:32px;
+          border-radius:50%;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-size:18px;
+          border:3px solid white;
+          box-shadow:0 2px 6px rgba(0,0,0,.35);
+        ">
+          🚏
+        </div>
+      `,
+
+      iconSize: [32, 32],
+
+      iconAnchor: [16, 16]
+
     });
 
 
-    // ==========================================
-    // ICONO DE LAS PARADAS
-    // ==========================================
+    /* =========================================================
+       CARGAR PARADAS
+    ========================================================= */
 
-    const stopIcon = L.divIcon({
-      className: 'stop-marker',
-      html: '🚏',
-      iconSize: [30, 30],
-      iconAnchor: [15, 15],
-      popupAnchor: [0, -15]
-    });
+    async function cargarParadas() {
+
+      try {
+
+        const respuesta = await fetch(
+          API_BASE + '/stops'
+        );
+
+        if (!respuesta.ok) {
+          throw new Error('Error cargando paradas');
+        }
+
+        const datos = await respuesta.json();
+
+        todasLasParadas = Array.isArray(datos)
+          ? datos
+          : [];
+
+        console.log(
+          'Paradas cargadas:',
+          todasLasParadas.length
+        );
+
+      } catch (error) {
+
+        console.error(error);
+
+        document.getElementById('estado').textContent =
+          'No se pudieron cargar las paradas.';
+
+      }
+
+    }
 
 
-    // ==========================================
-    // VARIABLES
-    // ==========================================
+    /* =========================================================
+       CARGAR BUSES EN VIVO
+    ========================================================= */
 
-    const locationButton =
-      document.getElementById("locationButton");
+    async function cargarBuses() {
 
-    let userMarker = null;
+      try {
 
-    let stopMarkers = [];
+        const respuesta = await fetch(
+          API_BASE + '/buses'
+        );
 
-    let todasLasParadas = null;
+        if (!respuesta.ok) {
+          throw new Error('Error cargando buses');
+        }
+
+        const buses = await respuesta.json();
+
+        console.log(
+          'Buses en vivo:',
+          Array.isArray(buses)
+            ? buses.length
+            : 'respuesta no array'
+        );
+
+      } catch (error) {
+
+        console.error(
+          'Error cargando buses:',
+          error
+        );
+
+      }
+
+    }
 
 
-    // ==========================================
-    // DISTANCIA ENTRE DOS PUNTOS
-    // ==========================================
+    /* =========================================================
+       DISTANCIA ENTRE DOS PUNTOS
+    ========================================================= */
 
     function calcularDistancia(
       lat1,
@@ -176,327 +471,383 @@
 
       const R = 6371000;
 
-      const radLat1 =
-        lat1 * Math.PI / 180;
+      const rad = Math.PI / 180;
 
-      const radLat2 =
-        lat2 * Math.PI / 180;
+      const dLat =
+        (lat2 - lat1) * rad;
 
-      const diferenciaLat =
-        (lat2 - lat1) * Math.PI / 180;
-
-      const diferenciaLon =
-        (lon2 - lon1) * Math.PI / 180;
-
+      const dLon =
+        (lon2 - lon1) * rad;
 
       const a =
-        Math.sin(diferenciaLat / 2) *
-        Math.sin(diferenciaLat / 2) +
-
-        Math.cos(radLat1) *
-        Math.cos(radLat2) *
-
-        Math.sin(diferenciaLon / 2) *
-        Math.sin(diferenciaLon / 2);
-
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * rad) *
+        Math.cos(lat2 * rad) *
+        Math.sin(dLon / 2) ** 2;
 
       const c =
-        2 *
-        Math.atan2(
+        2 * Math.atan2(
           Math.sqrt(a),
           Math.sqrt(1 - a)
         );
 
-
       return R * c;
+
     }
 
 
-    // ==========================================
-    // OBTENER TODAS LAS PARADAS
-    // ==========================================
-
-    async function cargarParadas() {
-
-      if (todasLasParadas) {
-        return todasLasParadas;
-      }
-
-
-      console.log(
-        "Descargando paradas..."
-      );
-
-
-      const respuesta =
-        await fetch(
-          API_BASE + '/stops'
-        );
-
-
-      if (!respuesta.ok) {
-
-        throw new Error(
-          "Error obteniendo las paradas: " +
-          respuesta.status
-        );
-
-      }
-
-
-      todasLasParadas =
-        await respuesta.json();
-
-
-      console.log(
-        "Paradas recibidas:",
-        todasLasParadas.length
-      );
-
-
-      return todasLasParadas;
-    }
-
-
-    // ==========================================
-    // MOSTRAR PARADAS CERCANAS
-    // ==========================================
+    /* =========================================================
+       MOSTRAR PARADAS CERCANAS
+    ========================================================= */
 
     async function mostrarParadasCercanas(
-      latUsuario,
-      lonUsuario
+      lat,
+      lon
     ) {
 
-      try {
-
-        const paradas =
-          await cargarParadas();
-
-
-        // Borrar marcadores anteriores
-
-        stopMarkers.forEach(
-          marker => map.removeLayer(marker)
-        );
-
-        stopMarkers = [];
-
-
-        // Calcular distancia de cada parada
-
-        const paradasConDistancia =
-          paradas
-            .filter(parada => {
-
-              return (
-                parada.location &&
-                parada.location.coordinates
-              );
-
-            })
-            .map(parada => {
-
-              const lon =
-                parada.location.coordinates[0];
-
-              const lat =
-                parada.location.coordinates[1];
-
-
-              const distancia =
-                calcularDistancia(
-                  latUsuario,
-                  lonUsuario,
-                  lat,
-                  lon
-                );
-
-
-              return {
-                parada,
-                lat,
-                lon,
-                distancia
-              };
-
-            });
-
-
-        // Ordenar de más cercana a más lejana
-
-        paradasConDistancia.sort(
-          (a, b) =>
-            a.distancia - b.distancia
-        );
-
-
-        // Mostrar las 10 más cercanas
-        // dentro de 800 metros
-
-        const cercanas =
-          paradasConDistancia
-            .filter(
-              item =>
-                item.distancia <= 800
-            )
-            .slice(0, 10);
-
-
-        console.log(
-          "Paradas cercanas:",
-          cercanas
-        );
-
-
-        // Crear marcadores
-
-        cercanas.forEach(item => {
-
-          const parada =
-            item.parada;
-
-
-          const marker =
-            L.marker(
-              [item.lat, item.lon],
-              {
-                icon: stopIcon
-              }
-            ).addTo(map);
-
-
-          const distanciaTexto =
-            item.distancia < 1000
-
-              ? Math.round(item.distancia) +
-                " m"
-
-              : (
-                  item.distancia / 1000
-                ).toFixed(1) +
-                " km";
-
-
-          marker.bindPopup(`
-
-            <div class="stop-popup">
-
-              <strong>
-                🚏 Parada ${parada.busstopId}
-              </strong>
-
-              <br><br>
-
-              <b>Ubicación:</b><br>
-
-              ${parada.street1 || ""}
-
-              ${parada.street2
-                ? " y " + parada.street2
-                : ""
-              }
-
-              <br><br>
-
-              <b>Distancia:</b>
-              ${distanciaTexto}
-
-              <br><br>
-
-              <span>
-                Tocá la parada para ver
-                sus líneas.
-              </span>
-
-            </div>
-
-          `);
-
-
-          // Cuando el usuario toca
-          // una parada, obtenemos sus líneas
-
-          marker.on(
-            "click",
-            function() {
-
-              cargarLineasParada(
-                parada.busstopId,
-                marker,
-                parada
-              );
-
-            }
-          );
-
-
-          stopMarkers.push(marker);
-
-        });
-
-
-        if (cercanas.length === 0) {
-
-          alert(
-            "No encontramos paradas " +
-            "a menos de 800 metros."
-          );
-
-        }
-
-
-      } catch (error) {
-
-        console.error(
-          "Error buscando paradas:",
-          error
-        );
-
-
-        alert(
-          "No pudimos cargar las paradas."
-        );
+      if (
+        !todasLasParadas ||
+        todasLasParadas.length === 0
+      ) {
+
+        await cargarParadas();
 
       }
 
-    }
+
+      /* Eliminar marcadores anteriores */
+
+      marcadoresParadas.forEach(
+        marcador => map.removeLayer(marcador)
+      );
+
+      marcadoresParadas = [];
 
 
-    // ==========================================
-    // OBTENER LÍNEAS DE UNA PARADA
-    // ==========================================
+      /* Buscar paradas */
 
-    async function cargarLineasParada(
-      busstopId,
-      marker,
-      parada
-    ) {
+      const paradasConDistancia =
+        todasLasParadas
 
-      try {
+          .filter(parada => {
 
-        marker.setPopupContent(`
-          <div class="stop-popup">
-            🚏 <strong>Parada ${busstopId}</strong>
-            <br><br>
-            Buscando líneas...
+            return (
+              parada.location &&
+              Array.isArray(
+                parada.location.coordinates
+              )
+            );
+
+          })
+
+          .map(parada => {
+
+            const lonParada =
+              parada.location.coordinates[0];
+
+            const latParada =
+              parada.location.coordinates[1];
+
+            const distancia =
+              calcularDistancia(
+                lat,
+                lon,
+                latParada,
+                lonParada
+              );
+
+            return {
+              ...parada,
+              distancia
+            };
+
+          })
+
+          .filter(
+            parada => parada.distancia <= 800
+          )
+
+          .sort(
+            (a, b) =>
+              a.distancia - b.distancia
+          );
+
+
+      /* Mostrar máximo 10 */
+
+      const paradasMostrar =
+        paradasConDistancia.slice(0, 10);
+
+
+      if (paradasMostrar.length === 0) {
+
+        document.getElementById('estado').textContent =
+          'No encontramos paradas a menos de 800 metros.';
+
+        return;
+
+      }
+
+
+      paradasMostrar.forEach(parada => {
+
+        const lon =
+          parada.location.coordinates[0];
+
+        const latParada =
+          parada.location.coordinates[1];
+
+
+        const marcador =
+          L.marker(
+            [latParada, lon],
+            {
+              icon: iconoParada
+            }
+          ).addTo(map);
+
+
+        const nombre =
+          obtenerNombreParada(parada);
+
+
+        const distancia =
+          Math.round(parada.distancia);
+
+
+        marcador.bindPopup(`
+          <div class="popupParada">
+
+            <strong>🚏 ${nombre}</strong>
+
+            <br>
+
+            <small>
+              A ${distancia} metros
+            </small>
+
+            <br>
+
+            <button
+              class="botonPopup"
+              onclick="seleccionarParadaDesdePopup(${parada.busstopId})"
+            >
+              Ver líneas
+            </button>
+
           </div>
         `);
 
 
-        const respuesta =
-          await fetch(
-            API_BASE +
-            '/stops/' +
-            busstopId +
-            '/lines'
-          );
+        marcador.on(
+          'click',
+          function() {
+
+            seleccionarParada(
+              parada,
+              marcador
+            );
+
+          }
+        );
+
+
+        marcadoresParadas.push(
+          marcador
+        );
+
+      });
+
+
+      document.getElementById('estado').textContent =
+        `Encontramos ${paradasMostrar.length} paradas cercanas.`;
+
+    }
+
+
+    /* =========================================================
+       NOMBRE DE PARADA
+    ========================================================= */
+
+    function obtenerNombreParada(parada) {
+
+      const calle1 =
+        parada.street1 || '';
+
+      const calle2 =
+        parada.street2 || '';
+
+      if (calle1 && calle2) {
+        return calle1 + ' y ' + calle2;
+      }
+
+      if (calle1) {
+        return calle1;
+      }
+
+      if (calle2) {
+        return calle2;
+      }
+
+      return 'Parada ' + parada.busstopId;
+
+    }
+
+
+    /* =========================================================
+       SELECCIONAR PARADA DESDE POPUP
+    ========================================================= */
+
+    function seleccionarParadaDesdePopup(
+      busstopId
+    ) {
+
+      const parada =
+        todasLasParadas.find(
+          p => Number(p.busstopId) ===
+               Number(busstopId)
+        );
+
+      if (!parada) {
+        return;
+      }
+
+
+      const marcador =
+        marcadoresParadas.find(
+          m => {
+
+            const posicion =
+              m.getLatLng();
+
+            const lon =
+              parada.location.coordinates[0];
+
+            const lat =
+              parada.location.coordinates[1];
+
+            return (
+              Math.abs(posicion.lat - lat) < 0.000001 &&
+              Math.abs(posicion.lng - lon) < 0.000001
+            );
+
+          }
+        );
+
+
+      seleccionarParada(
+        parada,
+        marcador || null
+      );
+
+    }
+
+
+    /* =========================================================
+       SELECCIONAR PARADA
+    ========================================================= */
+
+    async function seleccionarParada(
+      parada,
+      marcador
+    ) {
+
+      console.log(
+        'Parada seleccionada:',
+        parada
+      );
+
+
+      paradaSeleccionada = parada;
+
+      lineaSeleccionada = null;
+
+
+      /* Detener actualización anterior */
+
+      detenerActualizacion();
+
+
+      /* Mostrar panel */
+
+      const panel =
+        document.getElementById(
+          'panelInfo'
+        );
+
+      panel.style.display = 'block';
+
+
+      /* Nombre */
+
+      document.getElementById(
+        'nombreParada'
+      ).textContent =
+        obtenerNombreParada(parada);
+
+
+      /* Reset */
+
+      document.getElementById(
+        'lineas'
+      ).innerHTML =
+        '<div class="cargando">Cargando líneas...</div>';
+
+
+      document.getElementById(
+        'proximos'
+      ).innerHTML =
+        '<div class="sinBuses">Seleccioná una línea para ver los próximos ómnibus.</div>';
+
+
+      /* Abrir popup */
+
+      if (marcador) {
+
+        marcador.openPopup();
+
+      }
+
+
+      /* Llevar panel a la pantalla */
+
+      panel.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+
+
+      /* Cargar líneas */
+
+      await cargarLineasParada(
+        parada.busstopId
+      );
+
+    }
+
+
+    /* =========================================================
+       CARGAR LÍNEAS DE LA PARADA
+    ========================================================= */
+
+    async function cargarLineasParada(
+      busstopId
+    ) {
+
+      try {
+
+        const respuesta = await fetch(
+          API_BASE +
+          '/stops/' +
+          busstopId +
+          '/lines'
+        );
 
 
         if (!respuesta.ok) {
 
           throw new Error(
-            "Error HTTP " +
-            respuesta.status
+            'No se pudieron cargar las líneas'
           );
 
         }
@@ -506,292 +857,242 @@
           await respuesta.json();
 
 
-        console.log(
-          "Líneas de parada",
-          busstopId,
-          lineas
-        );
+        const contenedor =
+          document.getElementById(
+            'lineas'
+          );
 
 
-        let html = `
-
-          <div class="stop-popup">
-
-            <strong>
-              🚏 Parada ${busstopId}
-            </strong>
-
-            <br><br>
-
-            <b>
-              ${parada.street1 || ""}
-            </b>
-
-        `;
+        contenedor.innerHTML = '';
 
 
         if (
-          parada.street2
-        ) {
-
-          html += `
-            <br>
-            ${parada.street2}
-          `;
-
-        }
-
-
-        html += `
-          <br><br>
-
-          <b>Líneas:</b>
-          <br>
-        `;
-
-
-        if (
+          !Array.isArray(lineas) ||
           lineas.length === 0
         ) {
 
-          html += `
-            No encontramos líneas.
-          `;
+          contenedor.innerHTML =
+            '<div class="sinBuses">No encontramos líneas en esta parada.</div>';
 
-        } else {
-
-          lineas.forEach(linea => {
-
-            html += `
-              🚌 Línea
-              <strong>
-                ${linea.line}
-              </strong>
-              <br>
-            `;
-
-          });
+          return;
 
         }
 
 
-        html += `
-          </div>
-        `;
+        /* Ordenar numéricamente cuando sea posible */
 
+        lineas.sort(
+          (a, b) => {
 
-        marker.setPopupContent(
-          html
+            const numeroA =
+              parseInt(a.line);
+
+            const numeroB =
+              parseInt(b.line);
+
+            if (
+              !isNaN(numeroA) &&
+              !isNaN(numeroB)
+            ) {
+
+              return numeroA - numeroB;
+
+            }
+
+            return String(a.line)
+              .localeCompare(
+                String(b.line)
+              );
+
+          }
         );
 
-        marker.openPopup();
+
+        /* Crear botones */
+
+        lineas.forEach(linea => {
+
+          const boton =
+            document.createElement(
+              'button'
+            );
+
+
+          boton.className =
+            'botonLinea';
+
+
+          boton.textContent =
+            linea.line;
+
+
+          boton.onclick = function() {
+
+            seleccionarLinea(
+              linea,
+              boton
+            );
+
+          };
+
+
+          contenedor.appendChild(
+            boton
+          );
+
+        });
 
 
       } catch (error) {
 
-        console.error(
-          "Error obteniendo líneas:",
-          error
-        );
+        console.error(error);
 
-
-        marker.setPopupContent(`
-
-          <div class="stop-popup">
-
-            🚏 <strong>
-              Parada ${busstopId}
-            </strong>
-
-            <br><br>
-
-            No pudimos obtener
-            las líneas.
-
-          </div>
-
-        `);
-
-        marker.openPopup();
+        document.getElementById(
+          'lineas'
+        ).innerHTML =
+          '<div class="error">No pudimos cargar las líneas de esta parada.</div>';
 
       }
 
     }
 
 
-    // ==========================================
-    // UBICACIÓN DEL USUARIO
-    // ==========================================
+    /* =========================================================
+       SELECCIONAR LÍNEA
+    ========================================================= */
 
-    locationButton.addEventListener(
-      "click",
-      obtenerUbicacion
-    );
+    async function seleccionarLinea(
+      linea,
+      boton
+    ) {
 
-
-    function obtenerUbicacion() {
-
-      if (!navigator.geolocation) {
-
-        alert(
-          "Tu navegador no permite obtener ubicación."
-        );
-
+      if (!paradaSeleccionada) {
         return;
       }
 
 
-      locationButton.disabled = true;
+      /* Detener intervalo anterior */
 
-      locationButton.textContent =
-        "📍 Buscando ubicación...";
-
-
-      navigator.geolocation.getCurrentPosition(
-
-        async function(position) {
-
-          const lat =
-            position.coords.latitude;
-
-          const lon =
-            position.coords.longitude;
+      detenerActualizacion();
 
 
-          console.log(
-            "Latitud:",
-            lat,
-            "Longitud:",
-            lon,
-            "Precisión:",
-            position.coords.accuracy,
-            "metros"
-          );
+      lineaSeleccionada =
+        linea;
 
 
-          // Crear o mover marcador
+      /* Cambiar botón activo */
 
-          if (userMarker) {
-
-            userMarker.setLatLng(
-              [lat, lon]
-            );
-
-          } else {
-
-            userMarker =
-              L.marker(
-                [lat, lon]
-              ).addTo(map);
-
-          }
+      document
+        .querySelectorAll(
+          '.botonLinea'
+        )
+        .forEach(
+          b => b.classList.remove(
+            'activa'
+          )
+        );
 
 
-          userMarker.bindPopup(
-
-            "📍 <strong>Estás acá</strong><br>" +
-
-            "Precisión aproximada: " +
-
-            Math.round(
-              position.coords.accuracy
-            ) +
-
-            " metros"
-
-          );
-
-
-          userMarker.openPopup();
-
-
-          // Centrar mapa
-
-          map.setView(
-            [lat, lon],
-            16
-          );
-
-
-          // Buscar paradas
-
-          await mostrarParadasCercanas(
-            lat,
-            lon
-          );
-
-
-          locationButton.disabled =
-            false;
-
-          locationButton.textContent =
-            "📍 Actualizar mi ubicación";
-
-        },
-
-
-        function(error) {
-
-          console.error(
-            "Error de ubicación:",
-            error
-          );
-
-
-          alert(
-            "No pudimos obtener tu ubicación. " +
-            "Asegurate de permitir el acceso a la ubicación."
-          );
-
-
-          locationButton.disabled =
-            false;
-
-          locationButton.textContent =
-            "📍 Usar mi ubicación";
-
-        },
-
-
-        {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 0
-        }
-
+      boton.classList.add(
+        'activa'
       );
+
+
+      /* Título */
+
+      document.getElementById(
+        'tituloProximos'
+      ).textContent =
+        `🚌 Próximos ómnibus — Línea ${linea.line}`;
+
+
+      /* Cargar inmediatamente */
+
+      await cargarProximosBuses();
+
+
+      /* Actualizar cada 30 segundos */
+
+      intervaloActualizacion =
+        setInterval(
+          cargarProximosBuses,
+          30000
+        );
 
     }
 
 
-    // ==========================================
-    // BUSES EN TIEMPO REAL
-    // ==========================================
+    /* =========================================================
+       CARGAR PRÓXIMOS BUSES
+    ========================================================= */
 
-    const markers =
-      new Map();
+    async function cargarProximosBuses() {
+
+      if (
+        !paradaSeleccionada ||
+        !lineaSeleccionada
+      ) {
+
+        return;
+
+      }
 
 
-    async function cargarBuses() {
+      const busstopId =
+        paradaSeleccionada.busstopId;
 
-      try {
 
-        console.log(
-          "Consultando buses..."
+      const lineId =
+        lineaSeleccionada.lineId ||
+        lineaSeleccionada.line;
+
+
+      const cantidad = 3;
+
+
+      const url =
+        API_BASE +
+        '/stops/' +
+        busstopId +
+        '/upcomingbuses' +
+        '?lines=' +
+        encodeURIComponent(lineId) +
+        '&amountperline=' +
+        cantidad;
+
+
+      console.log(
+        'Consultando:',
+        url
+      );
+
+
+      const contenedor =
+        document.getElementById(
+          'proximos'
         );
 
 
+      /* Solo mostramos cargando si está vacío */
+
+      if (!contenedor.innerHTML.trim()) {
+
+        contenedor.innerHTML =
+          '<div class="cargando">Buscando próximos ómnibus...</div>';
+
+      }
+
+
+      try {
+
         const respuesta =
-          await fetch(
-            API_BASE + '/buses'
-          );
+          await fetch(url);
 
 
         if (!respuesta.ok) {
 
           throw new Error(
-            "El servidor respondió con error " +
-            respuesta.status
+            'HTTP ' + respuesta.status
           );
 
         }
@@ -802,160 +1103,382 @@
 
 
         console.log(
-          "Buses recibidos:",
-          buses.length
+          'Próximos buses:',
+          buses
         );
 
 
-        buses.forEach(bus => {
-
-          if (
-            !bus.location ||
-            !bus.location.coordinates
-          ) {
-
-            return;
-
-          }
-
-
-          const longitud =
-            bus.location.coordinates[0];
-
-          const latitud =
-            bus.location.coordinates[1];
-
-
-          if (
-            markers.has(bus.busId)
-          ) {
-
-            const marker =
-              markers.get(
-                bus.busId
-              );
-
-
-            marker.setLatLng(
-              [latitud, longitud]
-            );
-
-
-            marker.setPopupContent(`
-
-              <div class="bus-popup">
-
-                <strong>
-                  🚌 Línea ${bus.line}
-                </strong>
-
-                <br>
-
-                <b>Empresa:</b>
-                ${bus.company}
-
-                <br>
-
-                <b>Ómnibus:</b>
-                ${bus.busId}
-
-                <br>
-
-                <b>Desde:</b>
-                ${bus.origin}
-
-                <br>
-
-                <b>Hasta:</b>
-                ${bus.destination}
-
-                <br>
-
-                <b>Velocidad:</b>
-                ${bus.speed} km/h
-
-              </div>
-
-            `);
-
-          }
-
-          else {
-
-            const marker =
-              L.marker(
-                [latitud, longitud],
-                {
-                  icon: busIcon
-                }
-              ).addTo(map);
-
-
-            marker.bindPopup(`
-
-              <div class="bus-popup">
-
-                <strong>
-                  🚌 Línea ${bus.line}
-                </strong>
-
-                <br>
-
-                <b>Empresa:</b>
-                ${bus.company}
-
-                <br>
-
-                <b>Ómnibus:</b>
-                ${bus.busId}
-
-                <br>
-
-                <b>Desde:</b>
-                ${bus.origin}
-
-                <br>
-
-                <b>Hasta:</b>
-                ${bus.destination}
-
-                <br>
-
-                <b>Velocidad:</b>
-                ${bus.speed} km/h
-
-              </div>
-
-            `);
-
-
-            markers.set(
-              bus.busId,
-              marker
-            );
-
-          }
-
-        });
+        mostrarProximosBuses(
+          buses
+        );
 
 
       } catch (error) {
 
         console.error(
-          "Error obteniendo buses:",
+          'Error buscando próximos buses:',
           error
         );
+
+
+        contenedor.innerHTML =
+          '<div class="error">No pudimos obtener los próximos ómnibus. Intentá nuevamente.</div>';
 
       }
 
     }
 
 
-    // ==========================================
-    // INICIO
-    // ==========================================
+    /* =========================================================
+       MOSTRAR PRÓXIMOS BUSES
+    ========================================================= */
+
+    function mostrarProximosBuses(
+      buses
+    ) {
+
+      const contenedor =
+        document.getElementById(
+          'proximos'
+        );
+
+
+      if (
+        !Array.isArray(buses) ||
+        buses.length === 0
+      ) {
+
+        contenedor.innerHTML =
+          '<div class="sinBuses">No hay próximos ómnibus disponibles para esta línea.</div>';
+
+        return;
+
+      }
+
+
+      /* Ordenar por ETA */
+
+      buses.sort(
+        (a, b) =>
+          (a.eta ?? Infinity) -
+          (b.eta ?? Infinity)
+      );
+
+
+      /* Mostrar máximo 3 */
+
+      const busesMostrar =
+        buses.slice(0, 3);
+
+
+      contenedor.innerHTML = '';
+
+
+      busesMostrar.forEach(
+        bus => {
+
+          const tarjeta =
+            document.createElement(
+              'div'
+            );
+
+
+          tarjeta.className =
+            'bus';
+
+
+          const tiempo =
+            formatearETA(
+              bus.eta
+            );
+
+
+          const destino =
+            bus.destination ||
+            'Destino no informado';
+
+
+          const empresa =
+            bus.companyName ||
+            'Empresa no informada';
+
+
+          tarjeta.innerHTML = `
+
+            <div class="busPrincipal">
+
+              <div class="busLinea">
+                🚌 ${bus.line || lineaSeleccionada.line}
+              </div>
+
+              <div class="busTiempo">
+                ${tiempo}
+              </div>
+
+            </div>
+
+            <div class="busDestino">
+              ➡️ ${destino}
+            </div>
+
+            <div class="busEmpresa">
+              ${empresa}
+            </div>
+
+          `;
+
+
+          contenedor.appendChild(
+            tarjeta
+          );
+
+        }
+      );
+
+    }
+
+
+    /* =========================================================
+       FORMATEAR ETA
+    ========================================================= */
+
+    function formatearETA(
+      segundos
+    ) {
+
+      if (
+        segundos === null ||
+        segundos === undefined ||
+        isNaN(segundos)
+      ) {
+
+        return 'Sin información';
+
+      }
+
+
+      const minutos =
+        Math.max(
+          0,
+          Math.ceil(
+            Number(segundos) / 60
+          )
+        );
+
+
+      if (minutos <= 0) {
+
+        return 'Llegando';
+
+      }
+
+
+      if (minutos === 1) {
+
+        return '1 min';
+
+      }
+
+
+      return `${minutos} min`;
+
+    }
+
+
+    /* =========================================================
+       DETENER ACTUALIZACIÓN
+    ========================================================= */
+
+    function detenerActualizacion() {
+
+      if (
+        intervaloActualizacion
+      ) {
+
+        clearInterval(
+          intervaloActualizacion
+        );
+
+        intervaloActualizacion =
+          null;
+
+      }
+
+    }
+
+
+    /* =========================================================
+       BOTÓN DE UBICACIÓN
+    ========================================================= */
+
+    document
+      .getElementById(
+        'botonUbicacion'
+      )
+      .addEventListener(
+        'click',
+        function() {
+
+          const estado =
+            document.getElementById(
+              'estado'
+            );
+
+
+          if (
+            !navigator.geolocation
+          ) {
+
+            estado.textContent =
+              'Tu navegador no permite obtener la ubicación.';
+
+            return;
+
+          }
+
+
+          estado.textContent =
+            '📍 Buscando tu ubicación...';
+
+
+          navigator.geolocation.getCurrentPosition(
+
+            async function(position) {
+
+              const lat =
+                position.coords.latitude;
+
+              const lon =
+                position.coords.longitude;
+
+
+              console.log(
+                'Latitud:',
+                lat
+              );
+
+              console.log(
+                'Longitud:',
+                lon
+              );
+
+              console.log(
+                'Precisión:',
+                position.coords.accuracy,
+                'metros'
+              );
+
+
+              /* Mostrar ubicación */
+
+              if (
+                marcadorUbicacion
+              ) {
+
+                map.removeLayer(
+                  marcadorUbicacion
+                );
+
+              }
+
+
+              marcadorUbicacion =
+                L.marker(
+                  [lat, lon]
+                )
+                .addTo(map)
+                .bindPopup(
+                  '📍 Estás acá'
+                );
+
+
+              marcadorUbicacion.openPopup();
+
+
+              /* Centrar mapa */
+
+              map.setView(
+                [lat, lon],
+                16
+              );
+
+
+              /* Buscar paradas */
+
+              await mostrarParadasCercanas(
+                lat,
+                lon
+              );
+
+            },
+
+            function(error) {
+
+              console.error(
+                error
+              );
+
+
+              let mensaje =
+                'No pudimos obtener tu ubicación.';
+
+
+              if (
+                error.code === 1
+              ) {
+
+                mensaje =
+                  'Permiso de ubicación denegado.';
+
+              }
+
+              else if (
+                error.code === 2
+              ) {
+
+                mensaje =
+                  'No se pudo determinar tu ubicación.';
+
+              }
+
+              else if (
+                error.code === 3
+              ) {
+
+                mensaje =
+                  'La búsqueda de ubicación tardó demasiado.';
+
+              }
+
+
+              document.getElementById(
+                'estado'
+              ).textContent =
+                mensaje;
+
+            },
+
+            {
+              enableHighAccuracy: true,
+              timeout: 15000,
+              maximumAge: 0
+            }
+
+          );
+
+        }
+      );
+
+
+    /* =========================================================
+       INICIO
+    ========================================================= */
+
+    cargarParadas();
 
     cargarBuses();
+
+    /* Actualizar buses generales cada 15 segundos */
 
     setInterval(
       cargarBuses,
