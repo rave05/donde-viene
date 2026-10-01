@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>¿Dónde Viene?</title>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+    }
+
+    header {
+      background: #222;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    header p {
+      margin: 6px 0 0;
+      opacity: 0.8;
+    }
+
+    #locationButton {
+      margin-top: 10px;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 10px;
+      background: white;
+      color: #222;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #locationButton:hover {
+      opacity: 0.85;
+    }
+
+    #locationButton:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    #map {
+      width: 100%;
+      height: calc(100vh - 145px);
+    }
+
+    .bus-popup {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>🚌 ¿Dónde Viene?</h1>
+    <p>Transporte público en tiempo real</p>
+
+    <button id="locationButton">
+      📍 Usar mi ubicación
+    </button>
+  </header>
+
+  <div id="map"></div>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+
+    // ==========================================
+    // MAPA
+    // ==========================================
+
+    const map = L.map('map').setView(
+      [-34.9011, -56.1645],
+      12
+    );
+
+    // Mapa de Esri
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution: 'Tiles &copy; Esri'
+      }
+    ).addTo(map);
+
+
+    // ==========================================
+    // ICONO DE LOS ÓMNIBUS
+    // ==========================================
+
+    const busIcon = L.divIcon({
+      className: 'bus-marker',
+      html: '🚌',
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+      popupAnchor: [0, -15]
+    });
+
+
+    // ==========================================
+    // UBICACIÓN DEL USUARIO
+    // ==========================================
+
+    const locationButton =
+      document.getElementById("locationButton");
+
+    let userMarker = null;
+
+    locationButton.addEventListener(
+      "click",
+      obtenerUbicacion
+    );
+
+
+    function obtenerUbicacion() {
+
+      if (!navigator.geolocation) {
+
+        alert(
+          "Tu navegador no permite obtener ubicación."
+        );
+
+        return;
+      }
+
+      locationButton.disabled = true;
+
+      locationButton.textContent =
+        "📍 Buscando ubicación...";
+
+
+      navigator.geolocation.getCurrentPosition(
+
+        function(position) {
+
+          const lat =
+            position.coords.latitude;
+
+          const lon =
+            position.coords.longitude;
+
+
+          console.log(
+            "Latitud:",
+            lat,
+            "Longitud:",
+            lon,
+            "Precisión:",
+            position.coords.accuracy,
+            "metros"
+          );
+
+
+          // Si ya existe el marcador,
+          // simplemente lo movemos.
+          if (userMarker) {
+
+            userMarker.setLatLng([
+              lat,
+              lon
+            ]);
+
+          } else {
+
+            userMarker =
+              L.marker([
+                lat,
+                lon
+              ]).addTo(map);
+
+          }
+
+
+          // Mostrar precisión
+          userMarker.bindPopup(
+
+            "📍 Estás acá<br>" +
+
+            "Precisión aproximada: " +
+
+            Math.round(
+              position.coords.accuracy
+            ) +
+
+            " metros"
+
+          );
+
+
+          userMarker.openPopup();
+
+
+          // Centrar mapa en el usuario
+          map.setView(
+            [lat, lon],
+            16
+          );
+
+
+          locationButton.disabled = false;
+
+          locationButton.textContent =
+            "📍 Actualizar mi ubicación";
+
+        },
+
+
+        function(error) {
+
+          console.error(
+            "Error de ubicación:",
+            error
+          );
+
+
+          alert(
+            "No pudimos obtener tu ubicación. " +
+            "Asegurate de permitir el acceso a la ubicación."
+          );
+
+
+          locationButton.disabled = false;
+
+          locationButton.textContent =
+            "📍 Usar mi ubicación";
+
+        },
+
+
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        }
+
+      );
+
+    }
+
+
+    // ==========================================
+    // BUSES EN TIEMPO REAL
+    // ==========================================
+
+    const API_URL =
+      'https://donde-viene-api.darriulatmaster.workers.dev/buses';
+
+
+    const markers = new Map();
+
+
+    async function cargarBuses() {
+
+      try {
+
+        console.log(
+          "Consultando buses..."
+        );
+
+
+        const respuesta =
+          await fetch(API_URL);
+
+
+        if (!respuesta.ok) {
+
+          throw new Error(
+            "El servidor respondió con error " +
+            respuesta.status
+          );
+
+        }
+
+
+        const buses =
+          await respuesta.json();
+
+
+        console.log(
+          "Buses recibidos:",
+          buses.length
+        );
+
+
+        buses.forEach(bus => {
+
+          if (
+            !bus.location ||
+            !bus.location.coordinates
+          ) {
+
+            return;
+
+          }
+
+
+          const longitud =
+            bus.location.coordinates[0];
+
+          const latitud =
+            bus.location.coordinates[1];
+
+
+          // Si el bus ya existe,
+          // movemos su marcador.
+          if (markers.has(bus.busId)) {
+
+            const marker =
+              markers.get(bus.busId);
+
+
+            marker.setLatLng([
+              latitud,
+              longitud
+            ]);
+
+
+            marker.setPopupContent(`
+
+              <div class="bus-popup">
+
+                <strong>
+                  🚌 Línea ${bus.line}
+                </strong>
+
+                <br>
+
+                <b>Empresa:</b>
+                ${bus.company}
+
+                <br>
+
+                <b>Ómnibus:</b>
+                ${bus.busId}
+
+                <br>
+
+                <b>Desde:</b>
+                ${bus.origin}
+
+                <br>
+
+                <b>Hasta:</b>
+                ${bus.destination}
+
+                <br>
+
+                <b>Velocidad:</b>
+                ${bus.speed} km/h
+
+              </div>
+
+            `);
+
+          }
+
+          // Si es un bus nuevo,
+          // creamos su marcador.
+          else {
+
+            const marker =
+              L.marker(
+                [latitud, longitud],
+                {
+                  icon: busIcon
+                }
+              ).addTo(map);
+
+
+            marker.bindPopup(`
+
+              <div class="bus-popup">
+
+                <strong>
+                  🚌 Línea ${bus.line}
+                </strong>
+
+                <br>
+
+                <b>Empresa:</b>
+                ${bus.company}
+
+                <br>
+
+                <b>Ómnibus:</b>
+                ${bus.busId}
+
+                <br>
+
+                <b>Desde:</b>
+                ${bus.origin}
+
+                <br>
+
+                <b>Hasta:</b>
+                ${bus.destination}
+
+                <br>
+
+                <b>Velocidad:</b>
+                ${bus.speed} km/h
+
+              </div>
+
+            `);
+
+
+            markers.set(
+              bus.busId,
+              marker
+            );
+
+          }
+
+        });
+
+
+      } catch (error) {
+
+        console.error(
+          "Error obteniendo buses:",
+          error
+        );
+
+      }
+
+    }
+
+
+    // Cargar buses al iniciar
+    cargarBuses();
+
+
+    // Actualizar cada 15 segundos
+    setInterval(
+      cargarBuses,
+      15000
+    );
+
+
+  </script>
+
+</body>
+</html>
