@@ -6,7 +6,6 @@
 
   <title>¿Dónde Viene?</title>
 
-  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -69,6 +68,15 @@
       font-size: 14px;
       line-height: 1.5;
     }
+
+    .stop-popup {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .stop-popup strong {
+      font-size: 16px;
+    }
   </style>
 </head>
 
@@ -85,10 +93,17 @@
 
   <div id="map"></div>
 
-  <!-- Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
+
+    // ==========================================
+    // CONFIGURACIÓN
+    // ==========================================
+
+    const API_BASE =
+      'https://donde-viene-api.darriulatmaster.workers.dev';
+
 
     // ==========================================
     // MAPA
@@ -99,7 +114,7 @@
       12
     );
 
-    // Mapa de Esri
+
     L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
       {
@@ -122,13 +137,491 @@
 
 
     // ==========================================
-    // UBICACIÓN DEL USUARIO
+    // ICONO DE LAS PARADAS
+    // ==========================================
+
+    const stopIcon = L.divIcon({
+      className: 'stop-marker',
+      html: '🚏',
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+      popupAnchor: [0, -15]
+    });
+
+
+    // ==========================================
+    // VARIABLES
     // ==========================================
 
     const locationButton =
       document.getElementById("locationButton");
 
     let userMarker = null;
+
+    let stopMarkers = [];
+
+    let todasLasParadas = null;
+
+
+    // ==========================================
+    // DISTANCIA ENTRE DOS PUNTOS
+    // ==========================================
+
+    function calcularDistancia(
+      lat1,
+      lon1,
+      lat2,
+      lon2
+    ) {
+
+      const R = 6371000;
+
+      const radLat1 =
+        lat1 * Math.PI / 180;
+
+      const radLat2 =
+        lat2 * Math.PI / 180;
+
+      const diferenciaLat =
+        (lat2 - lat1) * Math.PI / 180;
+
+      const diferenciaLon =
+        (lon2 - lon1) * Math.PI / 180;
+
+
+      const a =
+        Math.sin(diferenciaLat / 2) *
+        Math.sin(diferenciaLat / 2) +
+
+        Math.cos(radLat1) *
+        Math.cos(radLat2) *
+
+        Math.sin(diferenciaLon / 2) *
+        Math.sin(diferenciaLon / 2);
+
+
+      const c =
+        2 *
+        Math.atan2(
+          Math.sqrt(a),
+          Math.sqrt(1 - a)
+        );
+
+
+      return R * c;
+    }
+
+
+    // ==========================================
+    // OBTENER TODAS LAS PARADAS
+    // ==========================================
+
+    async function cargarParadas() {
+
+      if (todasLasParadas) {
+        return todasLasParadas;
+      }
+
+
+      console.log(
+        "Descargando paradas..."
+      );
+
+
+      const respuesta =
+        await fetch(
+          API_BASE + '/stops'
+        );
+
+
+      if (!respuesta.ok) {
+
+        throw new Error(
+          "Error obteniendo las paradas: " +
+          respuesta.status
+        );
+
+      }
+
+
+      todasLasParadas =
+        await respuesta.json();
+
+
+      console.log(
+        "Paradas recibidas:",
+        todasLasParadas.length
+      );
+
+
+      return todasLasParadas;
+    }
+
+
+    // ==========================================
+    // MOSTRAR PARADAS CERCANAS
+    // ==========================================
+
+    async function mostrarParadasCercanas(
+      latUsuario,
+      lonUsuario
+    ) {
+
+      try {
+
+        const paradas =
+          await cargarParadas();
+
+
+        // Borrar marcadores anteriores
+
+        stopMarkers.forEach(
+          marker => map.removeLayer(marker)
+        );
+
+        stopMarkers = [];
+
+
+        // Calcular distancia de cada parada
+
+        const paradasConDistancia =
+          paradas
+            .filter(parada => {
+
+              return (
+                parada.location &&
+                parada.location.coordinates
+              );
+
+            })
+            .map(parada => {
+
+              const lon =
+                parada.location.coordinates[0];
+
+              const lat =
+                parada.location.coordinates[1];
+
+
+              const distancia =
+                calcularDistancia(
+                  latUsuario,
+                  lonUsuario,
+                  lat,
+                  lon
+                );
+
+
+              return {
+                parada,
+                lat,
+                lon,
+                distancia
+              };
+
+            });
+
+
+        // Ordenar de más cercana a más lejana
+
+        paradasConDistancia.sort(
+          (a, b) =>
+            a.distancia - b.distancia
+        );
+
+
+        // Mostrar las 10 más cercanas
+        // dentro de 800 metros
+
+        const cercanas =
+          paradasConDistancia
+            .filter(
+              item =>
+                item.distancia <= 800
+            )
+            .slice(0, 10);
+
+
+        console.log(
+          "Paradas cercanas:",
+          cercanas
+        );
+
+
+        // Crear marcadores
+
+        cercanas.forEach(item => {
+
+          const parada =
+            item.parada;
+
+
+          const marker =
+            L.marker(
+              [item.lat, item.lon],
+              {
+                icon: stopIcon
+              }
+            ).addTo(map);
+
+
+          const distanciaTexto =
+            item.distancia < 1000
+
+              ? Math.round(item.distancia) +
+                " m"
+
+              : (
+                  item.distancia / 1000
+                ).toFixed(1) +
+                " km";
+
+
+          marker.bindPopup(`
+
+            <div class="stop-popup">
+
+              <strong>
+                🚏 Parada ${parada.busstopId}
+              </strong>
+
+              <br><br>
+
+              <b>Ubicación:</b><br>
+
+              ${parada.street1 || ""}
+
+              ${parada.street2
+                ? " y " + parada.street2
+                : ""
+              }
+
+              <br><br>
+
+              <b>Distancia:</b>
+              ${distanciaTexto}
+
+              <br><br>
+
+              <span>
+                Tocá la parada para ver
+                sus líneas.
+              </span>
+
+            </div>
+
+          `);
+
+
+          // Cuando el usuario toca
+          // una parada, obtenemos sus líneas
+
+          marker.on(
+            "click",
+            function() {
+
+              cargarLineasParada(
+                parada.busstopId,
+                marker,
+                parada
+              );
+
+            }
+          );
+
+
+          stopMarkers.push(marker);
+
+        });
+
+
+        if (cercanas.length === 0) {
+
+          alert(
+            "No encontramos paradas " +
+            "a menos de 800 metros."
+          );
+
+        }
+
+
+      } catch (error) {
+
+        console.error(
+          "Error buscando paradas:",
+          error
+        );
+
+
+        alert(
+          "No pudimos cargar las paradas."
+        );
+
+      }
+
+    }
+
+
+    // ==========================================
+    // OBTENER LÍNEAS DE UNA PARADA
+    // ==========================================
+
+    async function cargarLineasParada(
+      busstopId,
+      marker,
+      parada
+    ) {
+
+      try {
+
+        marker.setPopupContent(`
+          <div class="stop-popup">
+            🚏 <strong>Parada ${busstopId}</strong>
+            <br><br>
+            Buscando líneas...
+          </div>
+        `);
+
+
+        const respuesta =
+          await fetch(
+            API_BASE +
+            '/stops/' +
+            busstopId +
+            '/lines'
+          );
+
+
+        if (!respuesta.ok) {
+
+          throw new Error(
+            "Error HTTP " +
+            respuesta.status
+          );
+
+        }
+
+
+        const lineas =
+          await respuesta.json();
+
+
+        console.log(
+          "Líneas de parada",
+          busstopId,
+          lineas
+        );
+
+
+        let html = `
+
+          <div class="stop-popup">
+
+            <strong>
+              🚏 Parada ${busstopId}
+            </strong>
+
+            <br><br>
+
+            <b>
+              ${parada.street1 || ""}
+            </b>
+
+        `;
+
+
+        if (
+          parada.street2
+        ) {
+
+          html += `
+            <br>
+            ${parada.street2}
+          `;
+
+        }
+
+
+        html += `
+          <br><br>
+
+          <b>Líneas:</b>
+          <br>
+        `;
+
+
+        if (
+          lineas.length === 0
+        ) {
+
+          html += `
+            No encontramos líneas.
+          `;
+
+        } else {
+
+          lineas.forEach(linea => {
+
+            html += `
+              🚌 Línea
+              <strong>
+                ${linea.line}
+              </strong>
+              <br>
+            `;
+
+          });
+
+        }
+
+
+        html += `
+          </div>
+        `;
+
+
+        marker.setPopupContent(
+          html
+        );
+
+        marker.openPopup();
+
+
+      } catch (error) {
+
+        console.error(
+          "Error obteniendo líneas:",
+          error
+        );
+
+
+        marker.setPopupContent(`
+
+          <div class="stop-popup">
+
+            🚏 <strong>
+              Parada ${busstopId}
+            </strong>
+
+            <br><br>
+
+            No pudimos obtener
+            las líneas.
+
+          </div>
+
+        `);
+
+        marker.openPopup();
+
+      }
+
+    }
+
+
+    // ==========================================
+    // UBICACIÓN DEL USUARIO
+    // ==========================================
 
     locationButton.addEventListener(
       "click",
@@ -147,6 +640,7 @@
         return;
       }
 
+
       locationButton.disabled = true;
 
       locationButton.textContent =
@@ -155,7 +649,7 @@
 
       navigator.geolocation.getCurrentPosition(
 
-        function(position) {
+        async function(position) {
 
           const lat =
             position.coords.latitude;
@@ -175,30 +669,27 @@
           );
 
 
-          // Si ya existe el marcador,
-          // simplemente lo movemos.
+          // Crear o mover marcador
+
           if (userMarker) {
 
-            userMarker.setLatLng([
-              lat,
-              lon
-            ]);
+            userMarker.setLatLng(
+              [lat, lon]
+            );
 
           } else {
 
             userMarker =
-              L.marker([
-                lat,
-                lon
-              ]).addTo(map);
+              L.marker(
+                [lat, lon]
+              ).addTo(map);
 
           }
 
 
-          // Mostrar precisión
           userMarker.bindPopup(
 
-            "📍 Estás acá<br>" +
+            "📍 <strong>Estás acá</strong><br>" +
 
             "Precisión aproximada: " +
 
@@ -214,14 +705,24 @@
           userMarker.openPopup();
 
 
-          // Centrar mapa en el usuario
+          // Centrar mapa
+
           map.setView(
             [lat, lon],
             16
           );
 
 
-          locationButton.disabled = false;
+          // Buscar paradas
+
+          await mostrarParadasCercanas(
+            lat,
+            lon
+          );
+
+
+          locationButton.disabled =
+            false;
 
           locationButton.textContent =
             "📍 Actualizar mi ubicación";
@@ -243,7 +744,8 @@
           );
 
 
-          locationButton.disabled = false;
+          locationButton.disabled =
+            false;
 
           locationButton.textContent =
             "📍 Usar mi ubicación";
@@ -266,11 +768,8 @@
     // BUSES EN TIEMPO REAL
     // ==========================================
 
-    const API_URL =
-      'https://donde-viene-api.darriulatmaster.workers.dev/buses';
-
-
-    const markers = new Map();
+    const markers =
+      new Map();
 
 
     async function cargarBuses() {
@@ -283,7 +782,9 @@
 
 
         const respuesta =
-          await fetch(API_URL);
+          await fetch(
+            API_BASE + '/buses'
+          );
 
 
         if (!respuesta.ok) {
@@ -325,18 +826,19 @@
             bus.location.coordinates[1];
 
 
-          // Si el bus ya existe,
-          // movemos su marcador.
-          if (markers.has(bus.busId)) {
+          if (
+            markers.has(bus.busId)
+          ) {
 
             const marker =
-              markers.get(bus.busId);
+              markers.get(
+                bus.busId
+              );
 
 
-            marker.setLatLng([
-              latitud,
-              longitud
-            ]);
+            marker.setLatLng(
+              [latitud, longitud]
+            );
 
 
             marker.setPopupContent(`
@@ -378,8 +880,6 @@
 
           }
 
-          // Si es un bus nuevo,
-          // creamos su marcador.
           else {
 
             const marker =
@@ -451,16 +951,16 @@
     }
 
 
-    // Cargar buses al iniciar
+    // ==========================================
+    // INICIO
+    // ==========================================
+
     cargarBuses();
 
-
-    // Actualizar cada 15 segundos
     setInterval(
       cargarBuses,
       15000
     );
-
 
   </script>
 
