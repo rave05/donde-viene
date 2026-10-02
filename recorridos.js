@@ -890,11 +890,206 @@
         }
       }
 
-      return resultados
-        .sort((a, b) =>
-          a.puntaje - b.puntaje
-        )
-        .slice(0, 6);
+      let ordenados =
+        resultados
+          .sort((a, b) =>
+            a.puntaje - b.puntaje
+          )
+          .slice(0, 6);
+
+      // Fallback geográfico: si no encontramos una intersección por IDs
+      // de parada, buscamos dos recorridos cuyos shapes se acerquen entre
+      // sí. Esto cubre casos reales donde las paradas de combinación están
+      // enfrentadas o usan identificadores distintos.
+      if (!ordenados.length) {
+        const origenLineas =
+          [...new Set(
+            origenEntradas
+              .map(item =>
+                red.patterns[item.patronIndex]?.l
+              )
+              .filter(Boolean)
+          )]
+          .slice(0, 18);
+
+        const destinoLineas =
+          [...new Set(
+            destinoEntradas
+              .map(item =>
+                red.patterns[item.patronIndex]?.l
+              )
+              .filter(Boolean)
+          )]
+          .slice(0, 18);
+
+        const datosLineas = new Map();
+
+        await Promise.all(
+          [...new Set([
+            ...origenLineas,
+            ...destinoLineas
+          ])].map(async linea => {
+            const datos =
+              await cargarRecorridoLinea(linea);
+
+            if (datos) {
+              datosLineas.set(
+                String(linea),
+                datos
+              );
+            }
+          })
+        );
+
+        const candidatosGeo = [];
+
+        for (const linea1 of origenLineas) {
+          const patrones1 =
+            datosLineas.get(String(linea1))?.patterns || [];
+
+          for (const linea2 of destinoLineas) {
+            if (String(linea1) === String(linea2)) {
+              continue;
+            }
+
+            const patrones2 =
+              datosLineas.get(String(linea2))?.patterns || [];
+
+            for (const p1 of patrones1.slice(0, 10)) {
+              for (const p2 of patrones2.slice(0, 10)) {
+                if (
+                  !Array.isArray(p1.shape) ||
+                  !Array.isArray(p2.shape)
+                ) {
+                  continue;
+                }
+
+                let mejor = null;
+
+                // Muestreo para mantener el cálculo liviano.
+                const paso1 =
+                  Math.max(1, Math.floor(p1.shape.length / 120));
+
+                const paso2 =
+                  Math.max(1, Math.floor(p2.shape.length / 120));
+
+                for (let i = 0; i < p1.shape.length; i += paso1) {
+                  const a = p1.shape[i];
+
+                  for (let j = 0; j < p2.shape.length; j += paso2) {
+                    const b = p2.shape[j];
+
+                    const d =
+                      Math.sqrt(
+                        distanciaSimple(
+                          a[0], a[1],
+                          b[0], b[1]
+                        )
+                      ) * 111000;
+
+                    if (
+                      d <= 500 &&
+                      (!mejor || d < mejor.d)
+                    ) {
+                      mejor = {
+                        d,
+                        punto1: a,
+                        punto2: b
+                      };
+                    }
+                  }
+                }
+
+                if (!mejor) {
+                  continue;
+                }
+
+                const parada1 =
+                  Array.isArray(window.todasLasParadas)
+                    ? window.todasLasParadas
+                        .map(parada => {
+                          const coords =
+                            parada.location?.coordinates;
+
+                          if (!Array.isArray(coords)) {
+                            return null;
+                          }
+
+                          return {
+                            parada,
+                            d:
+                              distanciaSimple(
+                                Number(coords[1]),
+                                Number(coords[0]),
+                                mejor.punto1[0],
+                                mejor.punto1[1]
+                              )
+                          };
+                        })
+                        .filter(Boolean)
+                        .sort((a, b) => a.d - b.d)[0]?.parada
+                    : null;
+
+                const parada2 =
+                  Array.isArray(window.todasLasParadas)
+                    ? window.todasLasParadas
+                        .map(parada => {
+                          const coords =
+                            parada.location?.coordinates;
+
+                          if (!Array.isArray(coords)) {
+                            return null;
+                          }
+
+                          return {
+                            parada,
+                            d:
+                              distanciaSimple(
+                                Number(coords[1]),
+                                Number(coords[0]),
+                                mejor.punto2[0],
+                                mejor.punto2[1]
+                              )
+                          };
+                        })
+                        .filter(Boolean)
+                        .sort((a, b) => a.d - b.d)[0]?.parada
+                    : null;
+
+                if (!parada1 || !parada2) {
+                  continue;
+                }
+
+                candidatosGeo.push({
+                  tipo: 'combinacion',
+                  line1: String(linea1),
+                  destination1: String(p1.destination || ''),
+                  line2: String(linea2),
+                  destination2: String(p2.destination || ''),
+                  origen: paradasOrigen[0],
+                  combinacion: parada1,
+                  combinacion2: parada2,
+                  caminataCombinacion: mejor.d,
+                  destino: paradasDestino[0],
+                  puntaje:
+                    Number(paradasOrigen[0]?.distanciaRuta || 0) +
+                    Number(paradasDestino[0]?.distanciaRuta || 0) +
+                    mejor.d * 2.5
+                });
+              }
+            }
+          }
+        }
+
+        ordenados =
+          candidatosGeo
+            .sort((a, b) =>
+              a.puntaje - b.puntaje
+            )
+            .slice(0, 6);
+      }
+
+      return ordenados;
 
     } catch (error) {
       console.warn(
