@@ -343,22 +343,32 @@
           );
 
         tarjeta.innerHTML =
-          '<strong>🕒 Próximo servicio programado: ' +
-          datos.time +
-          '</strong><br>' +
-          (espera ? espera + '. ' : '') +
+          '<div class="horario-cabecera">' +
+            '<span class="horario-etiqueta">🕒 PROGRAMADO</span>' +
+            '<span class="horario-no-vivo">No es ETA en vivo</span>' +
+          '</div>' +
+          '<div class="horario-principal">' +
+            '<span class="horario-hora">' + datos.time + '</span>' +
+            (espera ? '<span class="horario-espera">' + espera + '</span>' : '') +
+          '</div>' +
           (
             datos.destination
-              ? 'Destino: ' + datos.destination + '. '
+              ? '<div class="horario-destino">→ ' + datos.destination + '</div>'
               : ''
           ) +
           '<span class="horario-aclaracion">' +
-          'Es un horario planificado y puede sufrir modificaciones.' +
+            'Horario planificado según GTFS. Puede sufrir modificaciones.' +
           '</span>';
       } else {
         tarjeta.innerHTML =
-          '<strong>🕒 Sin horario programado disponible.</strong><br>' +
-          'Todavía no tenemos un horario estático para esta línea y parada.';
+          '<div class="horario-cabecera">' +
+            '<span class="horario-etiqueta">🕒 PROGRAMADO</span>' +
+            '<span class="horario-no-vivo">Sin datos</span>' +
+          '</div>' +
+          '<div class="horario-destino">Sin horario programado disponible.</div>' +
+          '<span class="horario-aclaracion">' +
+            'Todavía no tenemos un horario estático para esta línea y parada.' +
+          '</span>';
       }
 
       proximos.appendChild(tarjeta);
