@@ -1991,14 +1991,9 @@
         return;
       }
 
-      if (
-        typeof dibujarCombinacionRuta === 'function'
-      ) {
-        await dibujarCombinacionRuta(
-          candidato
-        );
-      }
-
+      // Primero seleccionamos la parada y la primera línea.
+      // seleccionarLinea() limpia cualquier recorrido anterior, por eso
+      // la combinación debe dibujarse DESPUÉS y no antes.
       await seleccionarParada(
         candidato.origen
       );
@@ -2012,8 +2007,22 @@
             String(candidato.line1)
         );
 
-      if (botonPrimeraLinea) {
-        botonPrimeraLinea.click();
+      if (
+        botonPrimeraLinea &&
+        botonPrimeraLinea._lineaData
+      ) {
+        await seleccionarLinea(
+          botonPrimeraLinea._lineaData,
+          botonPrimeraLinea
+        );
+      }
+
+      if (
+        typeof dibujarCombinacionRuta === 'function'
+      ) {
+        await dibujarCombinacionRuta(
+          candidato
+        );
       }
     }
 
