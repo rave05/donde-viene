@@ -2212,8 +2212,7 @@
 
           const construir =
             exigirMismoDestino => {
-              const encontrados = [];
-              const vistos = new Set();
+              const mejores = new Map();
 
               for (const origenItem of origenConLineas) {
                 for (const lineaOrigen of origenItem.lineas) {
@@ -2252,13 +2251,11 @@
                         );
                       });
 
-                    if (!coincide || vistos.has(claveVista)) {
+                    if (!coincide) {
                       continue;
                     }
 
-                    vistos.add(claveVista);
-
-                    encontrados.push({
+                    const candidato = {
                       line: lineaOrigen.line,
                       destination:
                         lineaOrigen.destination ||
@@ -2271,10 +2268,26 @@
                       puntaje:
                         origenItem.parada.distanciaRuta +
                         destinoItem.parada.distanciaRuta
-                    });
+                    };
+
+                    const anterior =
+                      mejores.get(claveVista);
+
+                    if (
+                      !anterior ||
+                      candidato.puntaje < anterior.puntaje
+                    ) {
+                      mejores.set(
+                        claveVista,
+                        candidato
+                      );
+                    }
                   }
                 }
               }
+
+              const encontrados =
+                [...mejores.values()];
 
               encontrados.sort((a, b) =>
                 a.puntaje - b.puntaje
