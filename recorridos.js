@@ -808,11 +808,31 @@ window.buscarCombinacionesRuta = async function(
         paradasOrigenEntrada:
           Array.isArray(paradasOrigen)
             ? paradasOrigen.length
-            : 0,
+            : -1,
         paradasDestinoEntrada:
           Array.isArray(paradasDestino)
             ? paradasDestino.length
-            : 0,
+            : -1,
+        tipoOrigenEntrada:
+          Array.isArray(paradasOrigen)
+            ? 'array'
+            : typeof paradasOrigen,
+        tipoDestinoEntrada:
+          Array.isArray(paradasDestino)
+            ? 'array'
+            : typeof paradasDestino,
+        origenLat:
+          Number(origenPunto?.lat),
+        origenLon:
+          Number(origenPunto?.lon),
+        destinoLat:
+          Number(destinoPunto?.lat),
+        destinoLon:
+          Number(destinoPunto?.lon),
+        redCargada: false,
+        patronesRed: 0,
+        coordsRed: 0,
+        paradasIndexadasRed: 0,
         paradasGTFSOrigen: 0,
         paradasGTFSDestino: 0,
         entradasOrigen: 0,
@@ -824,6 +844,24 @@ window.buscarCombinacionesRuta = async function(
 
       const red =
         await cargarRedRecorridos();
+
+      window.ultimoDiagnosticoCombinacion.redCargada =
+        !!red;
+
+      window.ultimoDiagnosticoCombinacion.patronesRed =
+        Array.isArray(red?.patterns)
+          ? red.patterns.length
+          : 0;
+
+      window.ultimoDiagnosticoCombinacion.coordsRed =
+        red?.coords
+          ? Object.keys(red.coords).length
+          : 0;
+
+      window.ultimoDiagnosticoCombinacion.paradasIndexadasRed =
+        red?.byStop
+          ? Object.keys(red.byStop).length
+          : 0;
 
       if (
         !red ||
