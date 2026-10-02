@@ -8,6 +8,7 @@
   let marcadorInicioRecorrido = null;
   let marcadorFinRecorrido = null;
   let capasCombinacion = [];
+  let versionDibujoRecorrido = 0;
 
   async function cargarManifiestoRecorridos() {
     if (manifiestoRecorridos) {
@@ -180,6 +181,11 @@
   }
 
   window.limpiarRecorridoSeleccionado = function() {
+    // Invalida cualquier dibujo asíncrono anterior que todavía
+    // esté esperando archivos GTFS. Así una ruta vieja no puede
+    // reaparecer encima de una selección nueva.
+    versionDibujoRecorrido++;
+
     if (lineaRecorridoMapa) {
       mapa.removeLayer(lineaRecorridoMapa);
       lineaRecorridoMapa = null;
@@ -210,7 +216,15 @@
   window.dibujarRecorridoSeleccionado = async function(candidato) {
     try {
       window.limpiarRecorridoSeleccionado();
+
+      const sesionDibujo =
+        versionDibujoRecorrido;
+
       await cargarAliasesRecorridos();
+
+      if (sesionDibujo !== versionDibujoRecorrido) {
+        return false;
+      }
 
       if (
         !candidato?.line ||
@@ -222,6 +236,10 @@
 
       const datos =
         await cargarRecorridoLinea(candidato.line);
+
+      if (sesionDibujo !== versionDibujoRecorrido) {
+        return false;
+      }
 
       const patrones =
         Array.isArray(datos?.patterns)
@@ -1516,6 +1534,13 @@ window.buscarCombinacionesRuta = async function(
     destinoRuta = null
   ) {
     try {
+      // La nueva selección reemplaza inmediatamente cualquier shape
+      // anterior, incluso mientras cargamos el GTFS de esta línea.
+      window.limpiarRecorridoSeleccionado();
+
+      const sesionDibujo =
+        versionDibujoRecorrido;
+
       if (
         !linea ||
         !parada?.busstopId ||
@@ -1526,8 +1551,16 @@ window.buscarCombinacionesRuta = async function(
 
       await cargarAliasesRecorridos();
 
+      if (sesionDibujo !== versionDibujoRecorrido) {
+        return false;
+      }
+
       const datos =
         await cargarRecorridoLinea(linea);
+
+      if (sesionDibujo !== versionDibujoRecorrido) {
+        return false;
+      }
 
       const patrones =
         Array.isArray(datos?.patterns)
@@ -1670,7 +1703,9 @@ window.buscarCombinacionesRuta = async function(
         return false;
       }
 
-      window.limpiarRecorridoSeleccionado();
+      if (sesionDibujo !== versionDibujoRecorrido) {
+        return false;
+      }
 
       haloRecorridoMapa =
         L.polyline(tramo, {
@@ -1771,6 +1806,9 @@ window.buscarCombinacionesRuta = async function(
     try {
       window.limpiarRecorridoSeleccionado();
 
+      const sesionDibujo =
+        versionDibujoRecorrido;
+
       const [tramo1, tramo2] =
         await Promise.all([
           tramoParaLinea(
@@ -1787,6 +1825,10 @@ window.buscarCombinacionesRuta = async function(
             candidato.destino
           )
         ]);
+
+      if (sesionDibujo !== versionDibujoRecorrido) {
+        return false;
+      }
 
       if (!tramo1 || !tramo2) {
         return false;
