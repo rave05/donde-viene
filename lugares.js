@@ -35,7 +35,8 @@
 
     { nombre: 'Terminal Río Branco', categoria: 'terminal', consulta: 'Terminal Río Branco', aliases: ['Terminal Rio Branco', 'Rio Branco'] },
     { nombre: 'Terminal Colón', categoria: 'terminal', consulta: 'Terminal Colón Montevideo', aliases: ['Terminal Colon'] },
-    { nombre: 'Terminal Paso de la Arena', categoria: 'terminal', consulta: 'Terminal Paso de la Arena', aliases: ['Paso de la Arena Terminal'] },
+    // Ubicación contrastada con OSM way/270104521 y la parada STM 4135.
+    { nombre: 'Terminal Paso de la Arena', categoria: 'terminal', lat: -34.83496, lon: -56.27568, consulta: 'Terminal de Ómnibus Paso de la Arena', aliases: ['Paso de la Arena Terminal', 'Terminal de Paso de la Arena', 'Terminal de Ómnibus Paso de la Arena'] },
 
     { nombre: 'Intendencia de Montevideo', categoria: 'edificio-publico', consulta: 'Intendencia de Montevideo', aliases: ['IMM', 'Intendencia'] },
     { nombre: 'Palacio Legislativo', categoria: 'edificio-publico', consulta: 'Palacio Legislativo de Uruguay', aliases: ['Parlamento'] },
