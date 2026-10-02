@@ -511,31 +511,51 @@
     );
   }
 
-  async function opcionesLineasPorParadas(paradas, maxLineas = 18) {
+  async function opcionesLineasPorParadas(paradas, maxOpciones = 60) {
     const opciones = [];
     const vistas = new Set();
 
-    for (const parada of paradas.slice(0, 30)) {
+    for (const parada of paradas.slice(0, 40)) {
       const lineas =
         typeof window.obtenerLineasProgramadas === 'function'
           ? await window.obtenerLineasProgramadas(parada.busstopId)
           : [];
 
       for (const linea of lineas || []) {
-        const numero = String(linea?.line || '');
+        const numero =
+          String(linea?.line || '');
 
-        if (!numero || vistas.has(numero)) {
+        const destino =
+          String(linea?.destination || '');
+
+        const stopId =
+          String(parada?.busstopId || '');
+
+        // No deduplicamos solo por número de línea: una misma línea puede
+        // aparecer en varias paradas cercanas y en sentidos distintos.
+        // Para combinaciones necesitamos conservar esas alternativas.
+        const clave =
+          numero + '|' +
+          destino + '|' +
+          stopId;
+
+        if (
+          !numero ||
+          !stopId ||
+          vistas.has(clave)
+        ) {
           continue;
         }
 
-        vistas.add(numero);
+        vistas.add(clave);
+
         opciones.push({
           line: numero,
-          destination: linea?.destination || '',
+          destination: destino,
           parada
         });
 
-        if (opciones.length >= maxLineas) {
+        if (opciones.length >= maxOpciones) {
           return opciones;
         }
       }
@@ -553,8 +573,8 @@
 
       const [opcionesOrigen, opcionesDestino] =
         await Promise.all([
-          opcionesLineasPorParadas(paradasOrigen, 24),
-          opcionesLineasPorParadas(paradasDestino, 24)
+          opcionesLineasPorParadas(paradasOrigen, 60),
+          opcionesLineasPorParadas(paradasDestino, 60)
         ]);
 
       if (!opcionesOrigen.length || !opcionesDestino.length) {
