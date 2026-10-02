@@ -201,6 +201,30 @@ def main():
     recorridos_out = out.parent / "recorridos"
     recorridos_out.mkdir(parents=True, exist_ok=True)
 
+    # Relación entre stop_id y stop_code. La API en vivo y el GTFS
+    # no siempre usan el mismo identificador para una misma parada.
+    aliases_payload = {
+        "toAlias": {
+            sid: alias
+            for sid, alias in stop_alias.items()
+            if sid and alias
+        },
+        "toId": {}
+    }
+
+    for sid, alias in stop_alias.items():
+        if sid and alias and alias not in aliases_payload["toId"]:
+            aliases_payload["toId"][alias] = sid
+
+    (recorridos_out / "aliases.json").write_text(
+        json.dumps(
+            aliases_payload,
+            ensure_ascii=False,
+            separators=(",", ":")
+        ),
+        encoding="utf-8"
+    )
+
     recorridos_manifest = {"generated": True, "lines": {}}
     patterns_by_line = defaultdict(list)
     seen_patterns = set()
