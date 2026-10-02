@@ -1078,42 +1078,38 @@
       }
     }
 
-    .collapsible-section {
+    details.panel-details {
       margin-top: 14px;
     }
 
-    .collapsible-toggle {
-      width: 100%;
+    details.panel-details > summary {
+      cursor: pointer;
+      list-style: none;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      border: 0;
-      background: transparent;
       padding: 8px 0;
-      cursor: pointer;
-      text-align: left;
-      color: inherit;
-      font: inherit;
+      user-select: none;
     }
 
-    .collapsible-toggle .section-label {
-      margin: 0;
-      pointer-events: none;
+    details.panel-details > summary::-webkit-details-marker {
+      display: none;
     }
 
-    .collapsible-arrow {
+    details.panel-details > summary::after {
+      content: '▼';
       font-size: 14px;
-      transition: transform .18s ease;
       opacity: .72;
+      transition: transform .18s ease;
     }
 
-    .collapsible-section.is-collapsed .collapsible-arrow {
+    details.panel-details:not([open]) > summary::after {
       transform: rotate(-90deg);
     }
 
-    .collapsible-section.is-collapsed .collapsible-content {
-      display: none;
+    details.panel-details > summary .section-label {
+      margin: 0;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1225,35 +1221,26 @@
         Seleccioná una parada
       </div>
 
-      <div class="collapsible-section" id="seccionParadas">
-        <button class="collapsible-toggle" type="button" aria-expanded="true">
+      <details class="panel-details" id="seccionParadas" open>
+        <summary>
           <span class="section-label">Paradas cercanas</span>
-          <span class="collapsible-arrow">▼</span>
-        </button>
-        <div class="collapsible-content">
-          <div id="listaParadas"></div>
-        </div>
-      </div>
+        </summary>
+        <div id="listaParadas"></div>
+      </details>
 
-      <div class="collapsible-section" id="seccionLineas">
-        <button class="collapsible-toggle" type="button" aria-expanded="true">
+      <details class="panel-details" id="seccionLineas" open>
+        <summary>
           <span class="section-label">Líneas</span>
-          <span class="collapsible-arrow">▼</span>
-        </button>
-        <div class="collapsible-content">
-          <div id="listaLineas"></div>
-        </div>
-      </div>
+        </summary>
+        <div id="listaLineas"></div>
+      </details>
 
-      <div class="collapsible-section" id="seccionProximos">
-        <button class="collapsible-toggle" type="button" aria-expanded="true">
+      <details class="panel-details" id="seccionProximos" open>
+        <summary>
           <span class="section-label">Próximos buses</span>
-          <span class="collapsible-arrow">▼</span>
-        </button>
-        <div class="collapsible-content">
-          <div id="proximos"></div>
-        </div>
-      </div>
+        </summary>
+        <div id="proximos"></div>
+      </details>
 
     </section>
 
@@ -1338,25 +1325,12 @@
 
 
     function setSeccionColapsada(seccion, colapsada) {
-      if (!seccion) return;
-
-      seccion.classList.toggle('is-collapsed', colapsada);
-
-      const boton = seccion.querySelector('.collapsible-toggle');
-      if (boton) {
-        boton.setAttribute('aria-expanded', String(!colapsada));
+      if (!seccion) {
+        return;
       }
-    }
 
-    document.querySelectorAll('.collapsible-toggle').forEach(boton => {
-      boton.addEventListener('click', () => {
-        const seccion = boton.closest('.collapsible-section');
-        setSeccionColapsada(
-          seccion,
-          !seccion.classList.contains('is-collapsed')
-        );
-      });
-    });
+      seccion.open = !colapsada;
+    }
 
     // =========================================================
     // ICONOS PERSONALIZADOS
