@@ -1232,6 +1232,8 @@
 
     const RADIO_RUTA_EXTENDIDO = 1500;
 
+    const RADIO_RUTA_AMPLIO = 4000;
+
     const MAX_PARADAS_RUTA = 20;
 
     const CACHE_LINEAS_MS =
@@ -1597,6 +1599,40 @@
     }
 
 
+    function obtenerParadasRutaMasCercanas(
+      lat,
+      lon,
+      limite = MAX_PARADAS_RUTA
+    ) {
+      return todasLasParadas
+        .filter(parada =>
+          parada.location &&
+          Array.isArray(parada.location.coordinates)
+        )
+        .map(parada => {
+          const [paradaLon, paradaLat] =
+            parada.location.coordinates;
+
+          return {
+            ...parada,
+            distanciaRuta: distanciaMetros(
+              lat,
+              lon,
+              Number(paradaLat),
+              Number(paradaLon)
+            )
+          };
+        })
+        .filter(parada =>
+          parada.distanciaRuta <= RADIO_RUTA_AMPLIO
+        )
+        .sort((a, b) =>
+          a.distanciaRuta - b.distanciaRuta
+        )
+        .slice(0, limite);
+    }
+
+
     async function geocodificarRuta(texto) {
       const limpio = texto.trim();
 
@@ -1639,12 +1675,48 @@
           await respuesta.json();
 
         if (Array.isArray(datos) && datos.length) {
-          const elegido = datos[0];
+          const candidatos =
+            datos
+              .map(item => ({
+                item,
+                lat: Number(item.lat),
+                lon: Number(item.lon)
+              }))
+              .filter(item =>
+                Number.isFinite(item.lat) &&
+                Number.isFinite(item.lon)
+              );
+
+          if (!candidatos.length) {
+            continue;
+          }
+
+          // Para búsquedas amplias como "Paso de la Arena", usamos
+          // la ubicación del usuario como desempate entre resultados
+          // posibles. Así evitamos elegir un lugar homónimo lejano.
+          if (ultimaUbicacionUsuario) {
+            candidatos.sort((a, b) =>
+              distanciaMetros(
+                ultimaUbicacionUsuario.lat,
+                ultimaUbicacionUsuario.lon,
+                a.lat,
+                a.lon
+              ) -
+              distanciaMetros(
+                ultimaUbicacionUsuario.lat,
+                ultimaUbicacionUsuario.lon,
+                b.lat,
+                b.lon
+              )
+            );
+          }
+
+          const elegido = candidatos[0];
 
           return {
-            lat: Number(elegido.lat),
-            lon: Number(elegido.lon),
-            nombre: elegido.display_name || texto
+            lat: elegido.lat,
+            lon: elegido.lon,
+            nombre: elegido.item.display_name || texto
           };
         }
 
@@ -1878,11 +1950,34 @@
             usoRadioExtendido || paradasDestino.length > 0;
         }
 
+        // En barrios o zonas amplias el geocodificador suele devolver
+        // el centro aproximado del área, no una esquina exacta. Si aun
+        // así no hay paradas en 1,5 km, tomamos SOLO las más cercanas
+        // al punto de referencia (máximo 20 y hasta 4 km).
+        if (!paradasOrigen.length) {
+          paradasOrigen =
+            obtenerParadasRutaMasCercanas(
+              origen.lat,
+              origen.lon
+            );
+          usoRadioExtendido = paradasOrigen.length > 0;
+        }
+
+        if (!paradasDestino.length) {
+          paradasDestino =
+            obtenerParadasRutaMasCercanas(
+              destino.lat,
+              destino.lon
+            );
+          usoRadioExtendido =
+            usoRadioExtendido || paradasDestino.length > 0;
+        }
+
         if (!paradasOrigen.length || !paradasDestino.length) {
           resultadoRuta.innerHTML =
             '<div class="route-empty">' +
               '<strong>No encontramos paradas cercanas a uno de los puntos.</strong><br>' +
-              'Probamos primero a 800 m y después hasta 1,5 km.' +
+              'Probamos el área inmediata y después las paradas más cercanas dentro de 4 km.' +
             '</div>';
           return;
         }
@@ -1954,7 +2049,7 @@
             '<div class="route-empty">' +
               '<strong>No encontramos una línea directa.</strong><br>' +
               (usoRadioExtendido
-                ? 'Ampliamos la búsqueda de paradas hasta 1,5 km, pero no encontramos una línea directa.'
+                ? 'Usamos las paradas más cercanas al área buscada, pero no encontramos una línea directa.'
                 : 'Buscamos coincidencias entre paradas a menos de 800 m del origen y del destino.') +
             '</div>';
           return;
