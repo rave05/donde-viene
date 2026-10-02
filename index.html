@@ -565,6 +565,18 @@
     const CACHE_BUSES_EN_VIVO_MS =
       15 * 1000;
 
+    // Historial de distancia por parada + variante + coche.
+    // Solo usamos buses GPS sin ETA cuando podemos confirmar
+    // que se están acercando a la parada seleccionada.
+    const historialMovimientoBuses =
+      new Map();
+
+    const UMBRAL_ACERCAMIENTO_METROS =
+      40;
+
+    const HISTORIAL_MOVIMIENTO_MAX_MS =
+      3 * 60 * 1000;
+
 
 
     // =========================================================
@@ -1866,6 +1878,7 @@
       }
 
       const {
+        stopId,
         variantId,
         linea,
         destination,
@@ -1875,7 +1888,7 @@
 
       proximos.innerHTML =
         `<div class="cargando">
-          Buscando vehículos de esta línea en circulación...
+          Verificando qué vehículos vienen hacia esta parada...
         </div>`;
 
       try {
@@ -1887,6 +1900,24 @@
             sesionProximos
         ) {
           return;
+        }
+
+        const ahora =
+          Date.now();
+
+        // Limpiar observaciones demasiado antiguas.
+        for (
+          const [clave, observacion] of
+            historialMovimientoBuses.entries()
+        ) {
+          if (
+            ahora - observacion.timestamp >
+              HISTORIAL_MOVIMIENTO_MAX_MS
+          ) {
+            historialMovimientoBuses.delete(
+              clave
+            );
+          }
         }
 
         const busesMismaVariante =
@@ -1917,17 +1948,107 @@
                 distanciaAParada: distancia
               };
             })
-            .sort((a, b) =>
-              Number(a.distanciaAParada ?? Infinity) -
-              Number(b.distanciaAParada ?? Infinity)
+            .filter(bus =>
+              Number.isFinite(
+                Number(bus.distanciaAParada)
+              )
             );
+
+        const busesAcercandose = [];
+        let busesSinConfirmar = 0;
+        let busesAlejandose = 0;
+
+        for (
+          const bus of
+            busesMismaVariante
+        ) {
+          const identificadorBus =
+            bus.busId != null
+              ? String(bus.busId)
+              : `${bus.location.coordinates[0]}|${bus.location.coordinates[1]}`;
+
+          const claveMovimiento =
+            `${stopId}|${variantId}|${identificadorBus}`;
+
+          const anterior =
+            historialMovimientoBuses.get(
+              claveMovimiento
+            );
+
+          const distanciaActual =
+            Number(bus.distanciaAParada);
+
+          let estadoMovimiento =
+            'sin-confirmar';
+
+          if (
+            anterior &&
+            Number.isFinite(
+              Number(anterior.distancia)
+            )
+          ) {
+            const diferencia =
+              Number(anterior.distancia) -
+              distanciaActual;
+
+            if (
+              diferencia >=
+                UMBRAL_ACERCAMIENTO_METROS
+            ) {
+              estadoMovimiento =
+                'acercandose';
+            } else if (
+              diferencia <=
+                -UMBRAL_ACERCAMIENTO_METROS
+            ) {
+              estadoMovimiento =
+                'alejandose';
+            }
+          }
+
+          historialMovimientoBuses.set(
+            claveMovimiento,
+            {
+              distancia:
+                distanciaActual,
+
+              timestamp:
+                ahora
+            }
+          );
+
+          if (
+            estadoMovimiento ===
+              'acercandose'
+          ) {
+            busesAcercandose.push({
+              ...bus,
+              estadoMovimiento
+            });
+          } else if (
+            estadoMovimiento ===
+              'alejandose'
+          ) {
+            busesAlejandose++;
+          } else {
+            busesSinConfirmar++;
+          }
+        }
+
+        busesAcercandose.sort(
+          (a, b) =>
+            Number(a.distanciaAParada) -
+            Number(b.distanciaAParada)
+        );
 
         const destinoTexto =
           destination
             ? ` → ${destination}`
             : '';
 
-        if (!busesMismaVariante.length) {
+        if (
+          !busesMismaVariante.length
+        ) {
           limpiarMarcadoresBusesVivos();
 
           proximos.innerHTML = `
@@ -1940,21 +2061,43 @@
           return;
         }
 
+        if (
+          !busesAcercandose.length
+        ) {
+          limpiarMarcadoresBusesVivos();
+
+          proximos.innerHTML = `
+            <h3>${linea}${destinoTexto}</h3>
+            <div class="aviso-info">
+              <strong>Sin llegada estimada por ahora.</strong><br>
+              ${
+                busesSinConfirmar > 0
+                  ? `Detectamos ${busesSinConfirmar} vehículo${busesSinConfirmar === 1 ? '' : 's'} de esta variante, pero todavía estamos verificando si viene${busesSinConfirmar === 1 ? '' : 'n'} hacia esta parada. La próxima actualización confirmará la dirección.`
+                  : `Los vehículos detectados de esta variante parecen haberse alejado de esta parada, por lo que no los mostramos como próximos.`
+              }
+            </div>
+          `;
+          return;
+        }
+
         mostrarMarcadoresBusesVivos(
-          busesMismaVariante,
+          busesAcercandose,
           seleccion
         );
 
         proximos.innerHTML = `
           <h3>${linea}${destinoTexto}</h3>
           <div class="aviso-info">
-            <strong>Sin llegada estimada por ahora.</strong><br>
-            Hay ${busesMismaVariante.length} vehículo${busesMismaVariante.length === 1 ? '' : 's'} de esta variante reportando ubicación.
-            La distancia mostrada es aproximada y en línea recta hasta la parada.
+            <strong>Sin ETA oficial por ahora.</strong><br>
+            Mostramos únicamente vehículos cuya posición indica que se están acercando a esta parada.
+            La distancia es aproximada y en línea recta.
           </div>
         `;
 
-        for (const bus of busesMismaVariante.slice(0, 3)) {
+        for (
+          const bus of
+            busesAcercandose.slice(0, 3)
+        ) {
           const elemento =
             document.createElement('div');
 
@@ -1973,11 +2116,7 @@
                 </div>
               </div>
               <div class="bus-eta">
-                ${
-                  bus.distanciaAParada != null
-                    ? formatearDistancia(bus.distanciaAParada)
-                    : 'Ubicación disponible'
-                }
+                ${formatearDistancia(bus.distanciaAParada)}
               </div>
             </div>
             <div class="bus-detalles">
@@ -1986,7 +2125,7 @@
               ${bus.destination || destination || ''}
             </div>
             <div class="bus-distancia">
-              Distancia aproximada a la parada
+              Acercándose · distancia aproximada a la parada
             </div>
           `;
 
