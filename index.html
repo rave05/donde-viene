@@ -242,6 +242,36 @@
     }
 
 
+
+    .linea-contenido {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+    }
+
+    .linea-destino {
+      font-size: 12px;
+      font-weight: normal;
+      opacity: 0.9;
+    }
+
+    .aviso-info {
+      color: #555;
+      background: #f5f5f5;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      line-height: 1.45;
+    }
+
+    .bus-distancia {
+      margin-top: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #444;
+    }
+
     @media (max-width: 600px) {
 
       header {
@@ -472,11 +502,13 @@
     // Conserva brevemente el último resultado NO vacío de cada
     // parada/variante. La API oficial puede devolver [] de forma
     // puntual entre dos respuestas válidas.
-    const ultimoResultadoProximos =
-      new Map();
+    let cacheBusesEnVivo = {
+      timestamp: 0,
+      data: []
+    };
 
-    const TOLERANCIA_RESULTADO_VACIO_MS =
-      90 * 1000;
+    const CACHE_BUSES_EN_VIVO_MS =
+      15 * 1000;
 
 
 
@@ -944,6 +976,59 @@
         }
 
 
+        // Intentamos enriquecer cada variante con su destino actual.
+        // Si esta consulta falla, las líneas igual se muestran normalmente.
+        try {
+          const respuestaBuses =
+            await fetch(
+              `${API_BASE}/buses?busstopId=${encodeURIComponent(parada.busstopId)}`
+            );
+
+          if (respuestaBuses.ok) {
+            const busesParada =
+              await respuestaBuses.json();
+
+            if (Array.isArray(busesParada)) {
+              const infoPorVariante =
+                new Map();
+
+              for (const bus of busesParada) {
+                if (bus.lineVariantId != null) {
+                  infoPorVariante.set(
+                    String(bus.lineVariantId),
+                    bus
+                  );
+                }
+              }
+
+              lineas = lineas.map(linea => {
+                const info =
+                  infoPorVariante.get(
+                    String(linea.lineVariantId)
+                  );
+
+                return {
+                  ...linea,
+                  destination:
+                    linea.destination ||
+                    info?.destination ||
+                    '',
+                  origin:
+                    linea.origin ||
+                    info?.origin ||
+                    ''
+                };
+              });
+            }
+          }
+        } catch (error) {
+          console.warn(
+            'No se pudo enriquecer el destino de las líneas:',
+            error
+          );
+        }
+
+
         if (
           consultaId !==
           consultaLineasActual
@@ -1052,8 +1137,16 @@
           'linea';
 
 
-        boton.textContent =
-          linea.line;
+        boton.innerHTML = `
+          <span class="linea-contenido">
+            <span>${linea.line}</span>
+            ${
+              linea.destination
+                ? `<span class="linea-destino">→ ${linea.destination}</span>`
+                : ''
+            }
+          </span>
+        `;
 
 
         boton.addEventListener(
@@ -1131,7 +1224,16 @@
         variantId,
 
         linea:
-          linea.line
+          linea.line,
+
+        destination:
+          linea.destination || '',
+
+        stopLon:
+          paradaActual.location?.coordinates?.[0],
+
+        stopLat:
+          paradaActual.location?.coordinates?.[1]
       };
 
 
@@ -1380,97 +1482,18 @@
           datos.length > 0
         ) {
 
-          ultimoResultadoProximos.set(
-            claveResultado,
-            {
-              timestamp:
-                Date.now(),
-
-              data:
-                datos
-            }
-          );
-
-
           mostrarProximos(
             datos,
             linea,
-            false
+            seleccion.destination
           );
 
         } else {
 
-          const anterior =
-            ultimoResultadoProximos.get(
-              claveResultado
-            );
-
-
-          const sigueVigente =
-            anterior &&
-            Date.now() -
-              anterior.timestamp <=
-              TOLERANCIA_RESULTADO_VACIO_MS;
-
-
-          if (
-            sigueVigente
-          ) {
-
-            const segundosPasados =
-              Math.floor(
-                (Date.now() - anterior.timestamp) / 1000
-              );
-
-
-            const busesAjustados =
-              anterior.data
-                .map(
-                  bus => ({
-                    ...bus,
-                    eta:
-                      Math.max(
-                        0,
-                        Number(bus.eta || 0) -
-                          segundosPasados
-                      )
-                  })
-                )
-                .filter(
-                  bus =>
-                    Number(bus.eta) > 0
-                );
-
-
-            if (
-              busesAjustados.length > 0
-            ) {
-
-              mostrarProximos(
-                busesAjustados,
-                linea,
-                true
-              );
-
-            } else {
-
-              mostrarProximos(
-                [],
-                linea,
-                false
-              );
-            }
-
-          } else {
-
-            mostrarProximos(
-              datos,
-              linea,
-              false
-            );
-          }
+          await mostrarBusesLejanos(
+            seleccion
+          );
         }
-
 
       } catch (error) {
 
@@ -1518,6 +1541,219 @@
       }
     }
 
+
+
+    async function obtenerBusesEnVivo() {
+
+      if (
+        Date.now() -
+          cacheBusesEnVivo.timestamp <
+          CACHE_BUSES_EN_VIVO_MS &&
+        Array.isArray(cacheBusesEnVivo.data)
+      ) {
+        return cacheBusesEnVivo.data;
+      }
+
+      const respuesta =
+        await fetch(
+          `${API_BASE}/buses`
+        );
+
+      if (!respuesta.ok) {
+        throw new Error(
+          `HTTP ${respuesta.status}`
+        );
+      }
+
+      const datos =
+        await respuesta.json();
+
+      if (!Array.isArray(datos)) {
+        return [];
+      }
+
+      cacheBusesEnVivo = {
+        timestamp: Date.now(),
+        data: datos
+      };
+
+      return datos;
+    }
+
+
+    function formatearDistancia(
+      metros
+    ) {
+
+      const numero =
+        Number(metros);
+
+      if (!Number.isFinite(numero)) {
+        return 'Sin distancia';
+      }
+
+      if (numero < 1000) {
+        return `${Math.round(numero)} m`;
+      }
+
+      return `${(numero / 1000).toFixed(1).replace('.', ',')} km`;
+    }
+
+
+    async function mostrarBusesLejanos(
+      seleccion
+    ) {
+
+      if (
+        seleccion.sesionId !==
+          sesionProximos
+      ) {
+        return;
+      }
+
+      const {
+        variantId,
+        linea,
+        destination,
+        stopLat,
+        stopLon
+      } = seleccion;
+
+      proximos.innerHTML =
+        `<div class="cargando">
+          Buscando vehículos de esta línea en circulación...
+        </div>`;
+
+      try {
+        const buses =
+          await obtenerBusesEnVivo();
+
+        if (
+          seleccion.sesionId !==
+            sesionProximos
+        ) {
+          return;
+        }
+
+        const busesMismaVariante =
+          buses
+            .filter(bus =>
+              String(bus.lineVariantId) ===
+                String(variantId) &&
+              bus.location &&
+              Array.isArray(bus.location.coordinates)
+            )
+            .map(bus => {
+              const [lon, lat] =
+                bus.location.coordinates;
+
+              const distancia =
+                Number.isFinite(Number(stopLat)) &&
+                Number.isFinite(Number(stopLon))
+                  ? distanciaMetros(
+                      Number(stopLat),
+                      Number(stopLon),
+                      Number(lat),
+                      Number(lon)
+                    )
+                  : null;
+
+              return {
+                ...bus,
+                distanciaAParada: distancia
+              };
+            })
+            .sort((a, b) =>
+              Number(a.distanciaAParada ?? Infinity) -
+              Number(b.distanciaAParada ?? Infinity)
+            );
+
+        const destinoTexto =
+          destination
+            ? ` → ${destination}`
+            : '';
+
+        if (!busesMismaVariante.length) {
+          proximos.innerHTML = `
+            <h3>${linea}${destinoTexto}</h3>
+            <div class="aviso-info">
+              <strong>Sin llegada estimada por ahora.</strong><br>
+              No hay vehículos de esta variante reportando posición en este momento.
+            </div>
+          `;
+          return;
+        }
+
+        proximos.innerHTML = `
+          <h3>${linea}${destinoTexto}</h3>
+          <div class="aviso-info">
+            <strong>Sin llegada estimada por ahora.</strong><br>
+            Hay ${busesMismaVariante.length} vehículo${busesMismaVariante.length === 1 ? '' : 's'} de esta variante reportando ubicación.
+            La distancia mostrada es aproximada y en línea recta hasta la parada.
+          </div>
+        `;
+
+        for (const bus of busesMismaVariante.slice(0, 3)) {
+          const elemento =
+            document.createElement('div');
+
+          elemento.className =
+            'bus';
+
+          elemento.innerHTML = `
+            <div class="bus-principal">
+              <div>
+                <div class="bus-linea">
+                  🚌 ${bus.line || linea}
+                </div>
+                <div class="bus-detalles">
+                  ${bus.company || bus.companyName || ''}
+                  ${bus.busId ? ' · Coche ' + bus.busId : ''}
+                </div>
+              </div>
+              <div class="bus-eta">
+                ${
+                  bus.distanciaAParada != null
+                    ? formatearDistancia(bus.distanciaAParada)
+                    : 'Ubicación disponible'
+                }
+              </div>
+            </div>
+            <div class="bus-detalles">
+              ${bus.origin || ''}
+              ${bus.origin || bus.destination ? ' → ' : ''}
+              ${bus.destination || destination || ''}
+            </div>
+            <div class="bus-distancia">
+              Distancia aproximada a la parada
+            </div>
+          `;
+
+          proximos.appendChild(
+            elemento
+          );
+        }
+
+      } catch (error) {
+        console.error(
+          'Error buscando buses en circulación:',
+          error
+        );
+
+        if (
+          seleccion.sesionId ===
+            sesionProximos
+        ) {
+          proximos.innerHTML = `
+            <h3>${linea}${destination ? ` → ${destination}` : ''}</h3>
+            <div class="aviso-info">
+              <strong>Sin llegada estimada por ahora.</strong><br>
+              No pudimos consultar la ubicación de los vehículos en circulación.
+            </div>
+          `;
+        }
+      }
+    }
 
 
     // =========================================================
@@ -1577,7 +1813,7 @@
     function mostrarProximos(
       buses,
       lineaMostrada,
-      usandoUltimoResultado = false
+      destinoMostrado = ''
     ) {
 
       if (
@@ -1589,7 +1825,7 @@
 
         proximos.innerHTML =
           `<div class="sin-buses">
-            No hay próximos buses disponibles para esta línea en este momento.
+            Sin llegada estimada por ahora.
           </div>`;
 
         return;
@@ -1610,15 +1846,8 @@
 
       proximos.innerHTML =
         `<h3>
-          Próximos ${lineaMostrada}
-        </h3>
-        ${
-          usandoUltimoResultado
-            ? `<div class="cargando">
-                Última actualización válida conservada mientras se reintenta.
-              </div>`
-            : ''
-        }`;
+          Próximos ${lineaMostrada}${destinoMostrado ? ` → ${destinoMostrado}` : ''}
+        </h3>`;
 
 
       for (
@@ -1679,6 +1908,14 @@
             ·
             ${bus.thermalConfort || 'Sin datos'}
           </div>
+
+          ${
+            Number.isFinite(Number(bus.distance))
+              ? `<div class="bus-distancia">
+                  Distancia informada: ${formatearDistancia(bus.distance)}
+                </div>`
+              : ''
+          }
         `;
 
 
