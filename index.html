@@ -2011,9 +2011,17 @@
         botonPrimeraLinea &&
         botonPrimeraLinea._lineaData
       ) {
-        await seleccionarLinea(
+        // seleccionarLinea limpia el recorrido al arrancar, pero luego puede
+        // tardar varios segundos esperando la API de próximos buses.
+        // La iniciamos sin bloquear el dibujo de la combinación.
+        seleccionarLinea(
           botonPrimeraLinea._lineaData,
           botonPrimeraLinea
+        ).catch(error =>
+          console.warn(
+            'No se pudo abrir la primera línea de la combinación:',
+            error
+          )
         );
       }
 
