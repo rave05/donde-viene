@@ -618,15 +618,78 @@
         const resultado = [];
         const vistos = new Set();
 
+        const clavesCoords =
+          Object.entries(red.coords || {});
+
+        function claveGTFSmasCercana(parada) {
+          const coords =
+            parada?.location?.coordinates;
+
+          if (!Array.isArray(coords)) {
+            return null;
+          }
+
+          const lat =
+            Number(coords[1]);
+
+          const lon =
+            Number(coords[0]);
+
+          if (
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lon)
+          ) {
+            return null;
+          }
+
+          let mejor = null;
+
+          for (const [clave, punto] of clavesCoords) {
+            if (!Array.isArray(punto)) {
+              continue;
+            }
+
+            const dLat =
+              (Number(punto[0]) - lat);
+
+            const dLon =
+              (Number(punto[1]) - lon);
+
+            const metros =
+              Math.sqrt(
+                dLat * dLat +
+                dLon * dLon
+              ) * 111000;
+
+            if (
+              metros <= 300 &&
+              (!mejor || metros < mejor.metros)
+            ) {
+              mejor = {
+                clave,
+                metros
+              };
+            }
+          }
+
+          return mejor?.clave || null;
+        }
+
         for (const parada of paradas.slice(0, 35)) {
           const claves =
             clavesCompatiblesParada(
               parada.busstopId
             );
 
+          let encontroEntradas = false;
+
           for (const clave of claves) {
             const entradas =
               red.byStop[String(clave)] || [];
+
+            if (entradas.length) {
+              encontroEntradas = true;
+            }
 
             for (const entrada of entradas) {
               const patronIndex =
@@ -645,6 +708,55 @@
               const key =
                 patronIndex + '|' +
                 secuencia + '|' +
+                String(parada.busstopId);
+
+              if (vistos.has(key)) {
+                continue;
+              }
+
+              vistos.add(key);
+
+              resultado.push({
+                patronIndex,
+                secuencia,
+                parada
+              });
+
+              if (resultado.length >= limite) {
+                return resultado;
+              }
+            }
+          }
+
+          // Último fallback: si los IDs de API y GTFS no coinciden,
+          // asociamos la parada a la parada GTFS más cercana (máx. 300 m).
+          // Esto equivale a "caminar hasta la parada más cercana".
+          if (!encontroEntradas) {
+            const claveCercana =
+              claveGTFSmasCercana(parada);
+
+            const entradas =
+              claveCercana
+                ? red.byStop[String(claveCercana)] || []
+                : [];
+
+            for (const entrada of entradas) {
+              const patronIndex =
+                Number(entrada?.[0]);
+
+              const secuencia =
+                Number(entrada?.[1]);
+
+              if (
+                !Number.isInteger(patronIndex) ||
+                !Number.isInteger(secuencia)
+              ) {
+                continue;
+              }
+
+              const key =
+                patronIndex + '|' +
+                secuencia + '|geo|' +
                 String(parada.busstopId);
 
               if (vistos.has(key)) {
