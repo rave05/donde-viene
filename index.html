@@ -195,7 +195,55 @@
       border-radius: 8px;
     }
 
+    /* =========================================
+       MARCADOR DE PARADA
+       ========================================= */
+
+    .icono-parada {
+      width: 34px;
+      height: 34px;
+
+      background: #1565c0;
+
+      border: 3px solid white;
+
+      border-radius: 50%;
+
+      box-shadow:
+        0 2px 7px rgba(0, 0, 0, 0.45);
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      font-size: 17px;
+
+      color: white;
+    }
+
+
+    /* =========================================
+       MARCADOR DEL USUARIO
+       ========================================= */
+
+    .icono-usuario {
+      width: 22px;
+      height: 22px;
+
+      background: #1976d2;
+
+      border: 4px solid white;
+
+      border-radius: 50%;
+
+      box-shadow:
+        0 0 0 3px rgba(25, 118, 210, 0.35),
+        0 2px 7px rgba(0, 0, 0, 0.45);
+    }
+
+
     @media (max-width: 600px) {
+
       header {
         flex-direction: column;
         align-items: stretch;
@@ -231,14 +279,20 @@
 <body>
 
   <header>
-    <h1>🚌 ¿Dónde Viene?</h1>
+
+    <h1>
+      🚌 ¿Dónde Viene?
+    </h1>
 
     <button id="btnUbicacion">
       📍 Usar mi ubicación
     </button>
+
   </header>
 
+
   <div id="mapa"></div>
+
 
   <section id="panel">
 
@@ -260,6 +314,7 @@
 
 
   <!-- Leaflet -->
+
   <script
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
   </script>
@@ -310,6 +365,61 @@
 
 
     // =========================================================
+    // ICONOS PERSONALIZADOS
+    // =========================================================
+
+    const iconoParada =
+      L.divIcon({
+
+        className: '',
+
+        html: `
+          <div class="icono-parada">
+            🚌
+          </div>
+        `,
+
+        iconSize: [
+          34,
+          34
+        ],
+
+        iconAnchor: [
+          17,
+          17
+        ],
+
+        popupAnchor: [
+          0,
+          -18
+        ]
+
+      });
+
+
+    const iconoUsuario =
+      L.divIcon({
+
+        className: '',
+
+        html: `
+          <div class="icono-usuario"></div>
+        `,
+
+        iconSize: [
+          22,
+          22
+        ],
+
+        iconAnchor: [
+          11,
+          11
+        ]
+
+      });
+
+
+    // =========================================================
     // MAPA
     // =========================================================
 
@@ -318,6 +428,7 @@
         [-34.9011, -56.1645],
         13
       );
+
 
     L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
@@ -353,8 +464,6 @@
     let abortControllerProximos = null;
 
     let consultaLineasActual = 0;
-
-    let consultaLineasEnCurso = false;
 
     const cacheLineas =
       new Map();
@@ -394,7 +503,8 @@
           );
         }
 
-        todasLasParadas = datos;
+        todasLasParadas =
+          datos;
 
         estado.textContent =
           `Se cargaron ${datos.length} paradas.`;
@@ -415,7 +525,7 @@
 
 
     // =========================================================
-    // DISTANCIA ENTRE COORDENADAS
+    // DISTANCIA
     // =========================================================
 
     function distanciaMetros(
@@ -453,7 +563,7 @@
 
 
     // =========================================================
-    // BUSCAR PARADAS CERCANAS
+    // PARADAS CERCANAS
     // =========================================================
 
     function obtenerParadasCercanas(
@@ -463,7 +573,9 @@
 
       const resultado = [];
 
-      for (const parada of todasLasParadas) {
+      for (
+        const parada of todasLasParadas
+      ) {
 
         if (
           !parada.location ||
@@ -477,7 +589,8 @@
         const [
           paradaLon,
           paradaLat
-        ] = parada.location.coordinates;
+        ] =
+          parada.location.coordinates;
 
         const distancia =
           distanciaMetros(
@@ -488,7 +601,8 @@
           );
 
         if (
-          distancia <= RADIO_PARADAS
+          distancia <=
+          RADIO_PARADAS
         ) {
 
           resultado.push({
@@ -500,24 +614,31 @@
 
       resultado.sort(
         (a, b) =>
-          a.distancia - b.distancia
+          a.distancia -
+          b.distancia
       );
 
-      return resultado.slice(0, 15);
+      return resultado.slice(
+        0,
+        15
+      );
     }
 
 
     // =========================================================
-    // MOSTRAR PARADAS
+    // MOSTRAR PARADAS EN LISTA
     // =========================================================
 
     function mostrarParadas(
       paradas
     ) {
 
-      listaParadas.innerHTML = '';
+      listaParadas.innerHTML =
+        '';
 
-      if (!paradas.length) {
+      if (
+        !paradas.length
+      ) {
 
         listaParadas.innerHTML =
           `<div class="sin-buses">
@@ -527,38 +648,48 @@
         return;
       }
 
-      for (const parada of paradas) {
+
+      for (
+        const parada of paradas
+      ) {
 
         const boton =
-          document.createElement('button');
+          document.createElement(
+            'button'
+          );
 
         boton.className =
           'parada';
 
-        const calle1 =
-          parada.street1 || '';
-
-        const calle2 =
-          parada.street2 || '';
 
         const nombre =
-          [calle1, calle2]
-            .filter(Boolean)
-            .join(' y ');
+          [
+            parada.street1,
+            parada.street2
+          ]
+          .filter(Boolean)
+          .join(' y ');
+
 
         boton.innerHTML = `
           <strong>
             🚌 ${nombre || 'Parada ' + parada.busstopId}
           </strong>
+
           <span>
             ${Math.round(parada.distancia)} m
           </span>
         `;
 
+
         boton.addEventListener(
           'click',
-          () => seleccionarParada(parada)
+          () =>
+            seleccionarParada(
+              parada
+            )
         );
+
 
         listaParadas.appendChild(
           boton
@@ -575,17 +706,28 @@
       paradas
     ) {
 
+      // Borrar marcadores anteriores
+
       for (
-        const marcador of marcadoresParadas
+        const marcador of
+        marcadoresParadas
       ) {
+
         mapa.removeLayer(
           marcador
         );
       }
 
-      marcadoresParadas = [];
 
-      for (const parada of paradas) {
+      marcadoresParadas =
+        [];
+
+
+      // Crear nuevos
+
+      for (
+        const parada of paradas
+      ) {
 
         if (
           !parada.location ||
@@ -596,30 +738,59 @@
           continue;
         }
 
+
         const [
           lon,
           lat
-        ] = parada.location.coordinates;
+        ] =
+          parada.location.coordinates;
+
 
         const marcador =
-          L.marker([
-            lat,
-            lon
-          ]).addTo(mapa);
+          L.marker(
+            [
+              lat,
+              lon
+            ],
+            {
+              icon:
+                iconoParada
+            }
+          )
+          .addTo(mapa);
+
+
+        const nombre =
+          [
+            parada.street1,
+            parada.street2
+          ]
+          .filter(Boolean)
+          .join(' y ');
+
 
         marcador.bindPopup(`
           <strong>
-            ${parada.street1 || ''}
+            🚌 PARADA
           </strong>
-          <br>
-          ${parada.street2 || ''}
+
           <br><br>
+
+          ${nombre || 'Parada ' + parada.busstopId}
+
+          <br><br>
+
           <button
-            onclick="seleccionarParadaPorId(${parada.busstopId})"
+            onclick="
+              seleccionarParadaPorId(
+                ${parada.busstopId}
+              )
+            "
           >
             Ver líneas
           </button>
         `);
+
 
         marcadoresParadas.push(
           marcador
@@ -638,12 +809,20 @@
         const parada =
           todasLasParadas.find(
             p =>
-              String(p.busstopId) ===
+              String(
+                p.busstopId
+              ) ===
               String(id)
           );
 
-        if (parada) {
-          seleccionarParada(parada);
+
+        if (
+          parada
+        ) {
+
+          seleccionarParada(
+            parada
+          );
         }
       };
 
@@ -659,21 +838,26 @@
       paradaActual =
         parada;
 
-      // ---------------------------------------------
-      // Cancelar cualquier consulta de próximos
-      // ---------------------------------------------
 
       cancelarActualizacionProximos();
 
-      lineaActual = null;
-      variantActual = null;
 
-      proximos.innerHTML = '';
+      lineaActual =
+        null;
+
+      variantActual =
+        null;
+
+
+      proximos.innerHTML =
+        '';
+
 
       listaLineas.innerHTML =
         `<div class="cargando">
           Cargando líneas...
         </div>`;
+
 
       const nombre =
         [
@@ -683,30 +867,32 @@
         .filter(Boolean)
         .join(' y ');
 
+
       paradaSeleccionada.textContent =
         `🚌 ${nombre || 'Parada ' + parada.busstopId}`;
 
-      // ---------------------------------------------
-      // Evitar consultas simultáneas
-      // ---------------------------------------------
 
       const consultaId =
         ++consultaLineasActual;
 
-      consultaLineasEnCurso = true;
 
       try {
 
         const cache =
           cacheLineas.get(
-            String(parada.busstopId)
+            String(
+              parada.busstopId
+            )
           );
+
 
         let lineas;
 
+
         if (
           cache &&
-          Date.now() - cache.timestamp <
+          Date.now() -
+          cache.timestamp <
           CACHE_LINEAS_MS
         ) {
 
@@ -720,42 +906,56 @@
               `${API_BASE}/stops/${encodeURIComponent(parada.busstopId)}/lines`
             );
 
-          if (!respuesta.ok) {
+
+          if (
+            !respuesta.ok
+          ) {
 
             throw new Error(
               `HTTP ${respuesta.status}`
             );
           }
 
+
           lineas =
             await respuesta.json();
 
+
           cacheLineas.set(
-            String(parada.busstopId),
+            String(
+              parada.busstopId
+            ),
             {
-              timestamp: Date.now(),
-              data: lineas
+              timestamp:
+                Date.now(),
+
+              data:
+                lineas
             }
           );
         }
 
-        // Si entretanto se seleccionó
-        // otra parada, ignoramos esta respuesta.
+
         if (
           consultaId !==
           consultaLineasActual
         ) {
+
           return;
         }
 
-        mostrarLineas(lineas);
+
+        mostrarLineas(
+          lineas
+        );
+
 
       } catch (error) {
 
         console.error(
-          'Error cargando líneas:',
           error
         );
+
 
         if (
           consultaId ===
@@ -766,15 +966,6 @@
             `<div class="error">
               No se pudieron cargar las líneas.
             </div>`;
-        }
-
-      } finally {
-
-        if (
-          consultaId ===
-          consultaLineasActual
-        ) {
-          consultaLineasEnCurso = false;
         }
       }
     }
@@ -788,7 +979,9 @@
       lineas
     ) {
 
-      listaLineas.innerHTML = '';
+      listaLineas.innerHTML =
+        '';
+
 
       if (
         !Array.isArray(lineas) ||
@@ -803,31 +996,31 @@
         return;
       }
 
-      // Evitar duplicados
+
       const lineasUnicas =
         [];
 
       const vistos =
         new Set();
 
+
       for (
         const linea of lineas
       ) {
 
-        const variantId =
-          linea.lineVariantId;
-
-        const nombre =
-          linea.line;
-
         const clave =
-          `${nombre}-${variantId}`;
+          `${linea.line}-${linea.lineVariantId || ''}`;
+
 
         if (
-          !vistos.has(clave)
+          !vistos.has(
+            clave
+          )
         ) {
 
-          vistos.add(clave);
+          vistos.add(
+            clave
+          );
 
           lineasUnicas.push(
             linea
@@ -837,28 +1030,33 @@
 
 
       for (
-        const linea of lineasUnicas
+        const linea of
+        lineasUnicas
       ) {
 
         const boton =
-          document.createElement('button');
+          document.createElement(
+            'button'
+          );
+
 
         boton.className =
           'linea';
 
+
         boton.textContent =
           linea.line;
 
-        boton.dataset.variantId =
-          linea.lineVariantId || '';
 
         boton.addEventListener(
           'click',
-          () => seleccionarLinea(
-            linea,
-            boton
-          )
+          () =>
+            seleccionarLinea(
+              linea,
+              boton
+            )
         );
+
 
         listaLineas.appendChild(
           boton
@@ -876,14 +1074,20 @@
       boton
     ) {
 
-      if (!paradaActual) {
+      if (
+        !paradaActual
+      ) {
         return;
       }
+
 
       const variantId =
         linea.lineVariantId;
 
-      if (!variantId) {
+
+      if (
+        !variantId
+      ) {
 
         proximos.innerHTML =
           `<div class="error">
@@ -894,57 +1098,44 @@
       }
 
 
-      // ---------------------------------------------
-      // Evitar doble clic mientras carga
-      // ---------------------------------------------
-
       if (
         boton.disabled
       ) {
         return;
       }
 
-      boton.disabled = true;
 
+      boton.disabled =
+        true;
 
-      // ---------------------------------------------
-      // Cancelar completamente la consulta anterior
-      // ---------------------------------------------
 
       cancelarActualizacionProximos();
 
 
-      // ---------------------------------------------
-      // Nueva línea actual
-      // ---------------------------------------------
-
       lineaActual =
         linea.line;
+
 
       variantActual =
         variantId;
 
 
-      // ---------------------------------------------
-      // Marcar botón seleccionado
-      // ---------------------------------------------
-
       document
-        .querySelectorAll('.linea')
+        .querySelectorAll(
+          '.linea'
+        )
         .forEach(
-          b => b.classList.remove(
-            'seleccionada'
-          )
+          b =>
+            b.classList.remove(
+              'seleccionada'
+            )
         );
+
 
       boton.classList.add(
         'seleccionada'
       );
 
-
-      // ---------------------------------------------
-      // Cargar inmediatamente
-      // ---------------------------------------------
 
       proximos.innerHTML =
         `<div class="cargando">
@@ -958,17 +1149,16 @@
 
       } finally {
 
-        boton.disabled = false;
+        boton.disabled =
+          false;
       }
 
 
-      // ---------------------------------------------
-      // Crear UN SOLO intervalo
-      // ---------------------------------------------
-
       if (
-        lineaActual === linea.line &&
-        variantActual === variantId &&
+        lineaActual ===
+          linea.line &&
+        variantActual ===
+          variantId &&
         paradaActual
       ) {
 
@@ -978,8 +1168,10 @@
 
               if (
                 paradaActual &&
-                lineaActual === linea.line &&
-                variantActual === variantId
+                lineaActual ===
+                  linea.line &&
+                variantActual ===
+                  variantId
               ) {
 
                 cargarProximos();
@@ -993,7 +1185,7 @@
 
 
     // =========================================================
-    // CANCELAR REFRESCO
+    // CANCELAR ACTUALIZACIÓN
     // =========================================================
 
     function cancelarActualizacionProximos() {
@@ -1021,13 +1213,13 @@
           null;
       }
 
-      // Invalidar consultas anteriores
+
       consultaProximosActual++;
     }
 
 
     // =========================================================
-    // CARGAR PRÓXIMOS BUSES
+    // CARGAR PRÓXIMOS
     // =========================================================
 
     async function cargarProximos() {
@@ -1036,12 +1228,14 @@
         !paradaActual ||
         !variantActual
       ) {
+
         return;
       }
 
 
       const stopId =
         paradaActual.busstopId;
+
 
       const variantId =
         variantActual;
@@ -1051,10 +1245,6 @@
         ++consultaProximosActual;
 
 
-      // ---------------------------------------------
-      // Cancelar petición anterior
-      // ---------------------------------------------
-
       if (
         abortControllerProximos
       ) {
@@ -1062,13 +1252,10 @@
         abortControllerProximos.abort();
       }
 
+
       abortControllerProximos =
         new AbortController();
 
-
-      // ---------------------------------------------
-      // Caché local
-      // ---------------------------------------------
 
       const cacheKey =
         `${stopId}|${variantId}`;
@@ -1082,8 +1269,9 @@
 
       if (
         cache &&
-        Date.now() - cache.timestamp <
-        CACHE_PROXIMOS_MS
+        Date.now() -
+          cache.timestamp <
+          CACHE_PROXIMOS_MS
       ) {
 
         if (
@@ -1118,16 +1306,20 @@
           );
 
 
-        if (!respuesta.ok) {
+        if (
+          !respuesta.ok
+        ) {
 
           if (
-            respuesta.status === 429
+            respuesta.status ===
+            429
           ) {
 
             throw new Error(
-              'La API recibió demasiadas consultas. Esperá unos segundos.'
+              'Demasiadas consultas. Esperá unos segundos.'
             );
           }
+
 
           throw new Error(
             `HTTP ${respuesta.status}`
@@ -1139,27 +1331,23 @@
           await respuesta.json();
 
 
-        // -------------------------------------------
-        // Ignorar respuesta vieja
-        // -------------------------------------------
-
         if (
           consultaId !==
           consultaProximosActual
         ) {
+
           return;
         }
 
 
-        // -------------------------------------------
-        // Guardar caché
-        // -------------------------------------------
-
         cacheProximos.set(
           cacheKey,
           {
-            timestamp: Date.now(),
-            data: datos
+            timestamp:
+              Date.now(),
+
+            data:
+              datos
           }
         );
 
@@ -1168,19 +1356,19 @@
           datos
         );
 
+
       } catch (error) {
 
-        // AbortError es normal cuando
-        // cambiamos de línea/parada.
         if (
           error.name ===
           'AbortError'
         ) {
+
           return;
         }
 
+
         console.error(
-          'Error cargando próximos:',
           error
         );
 
@@ -1192,8 +1380,11 @@
 
           proximos.innerHTML =
             `<div class="error">
-              No se pudieron consultar los próximos buses.<br>
-              <small>${error.message}</small>
+              No se pudieron consultar los próximos buses.
+              <br>
+              <small>
+                ${error.message}
+              </small>
             </div>`;
         }
 
@@ -1212,7 +1403,7 @@
 
 
     // =========================================================
-    // FORMATEAR ETA
+    // ETA
     // =========================================================
 
     function formatearETA(
@@ -1220,11 +1411,17 @@
     ) {
 
       const numero =
-        Number(segundos);
+        Number(
+          segundos
+        );
+
 
       if (
-        !Number.isFinite(numero)
+        !Number.isFinite(
+          numero
+        )
       ) {
+
         return 'Sin información';
       }
 
@@ -1232,6 +1429,7 @@
       if (
         numero <= 30
       ) {
+
         return 'Llegando';
       }
 
@@ -1245,6 +1443,7 @@
       if (
         minutos <= 1
       ) {
+
         return '1 min';
       }
 
@@ -1262,7 +1461,9 @@
     ) {
 
       if (
-        !Array.isArray(buses) ||
+        !Array.isArray(
+          buses
+        ) ||
         !buses.length
       ) {
 
@@ -1275,12 +1476,15 @@
       }
 
 
-      // Ordenar por ETA
       const ordenados =
         [...buses].sort(
           (a, b) =>
-            Number(a.eta || 999999) -
-            Number(b.eta || 999999)
+            Number(
+              a.eta || 999999
+            ) -
+            Number(
+              b.eta || 999999
+            )
         );
 
 
@@ -1291,11 +1495,15 @@
 
 
       for (
-        const bus of ordenados
+        const bus of
+        ordenados
       ) {
 
         const elemento =
-          document.createElement('div');
+          document.createElement(
+            'div'
+          );
+
 
         elemento.className =
           'bus';
@@ -1307,20 +1515,11 @@
           );
 
 
-        const accesibilidad =
-          bus.access ||
-          'Sin datos';
-
-
-        const confort =
-          bus.thermalConfort ||
-          'Sin datos';
-
-
         elemento.innerHTML = `
           <div class="bus-principal">
 
             <div>
+
               <div class="bus-linea">
                 🚌 ${bus.line || lineaActual}
               </div>
@@ -1329,6 +1528,7 @@
                 ${bus.companyName || ''}
                 ${bus.busId ? ' · Coche ' + bus.busId : ''}
               </div>
+
             </div>
 
             <div class="bus-eta">
@@ -1348,9 +1548,9 @@
           </div>
 
           <div class="bus-detalles">
-            ${accesibilidad}
+            ${bus.access || 'Sin datos'}
             ·
-            ${confort}
+            ${bus.thermalConfort || 'Sin datos'}
           </div>
         `;
 
@@ -1384,6 +1584,7 @@
       btnUbicacion.disabled =
         true;
 
+
       btnUbicacion.textContent =
         '📍 Buscando...';
 
@@ -1399,69 +1600,107 @@
           const lat =
             position.coords.latitude;
 
+
           const lon =
             position.coords.longitude;
 
 
-          // -----------------------------------------
-          // Marcador usuario
-          // -----------------------------------------
+          // ==========================================
+          // MARCADOR DEL USUARIO
+          // ==========================================
 
           if (
             marcadorUsuario
           ) {
+
             mapa.removeLayer(
               marcadorUsuario
             );
           }
 
+
           marcadorUsuario =
-            L.marker([
-              lat,
-              lon
-            ])
-            .addTo(mapa)
-            .bindPopup(
-              '📍 Estás aquí'
-            );
+            L.marker(
+              [
+                lat,
+                lon
+              ],
+              {
+                icon:
+                  iconoUsuario,
+
+                zIndexOffset:
+                  1000
+              }
+            )
+            .addTo(mapa);
 
 
-          // -----------------------------------------
-          // Círculo
-          // -----------------------------------------
+          marcadorUsuario.bindPopup(
+            `
+              <strong>
+                📍 TU UBICACIÓN
+              </strong>
+            `
+          );
+
+
+          // ==========================================
+          // CÍRCULO DE RADIO
+          // ==========================================
 
           if (
             circuloUsuario
           ) {
+
             mapa.removeLayer(
               circuloUsuario
             );
           }
 
+
           circuloUsuario =
-            L.circle([
-              lat,
-              lon
-            ], {
-              radius:
-                RADIO_PARADAS
-            })
+            L.circle(
+              [
+                lat,
+                lon
+              ],
+              {
+                radius:
+                  RADIO_PARADAS,
+
+                color:
+                  '#1976d2',
+
+                fillColor:
+                  '#1976d2',
+
+                fillOpacity:
+                  0.05,
+
+                weight:
+                  1
+              }
+            )
             .addTo(mapa);
 
 
-          // -----------------------------------------
-          // Centrar mapa
-          // -----------------------------------------
+          // ==========================================
+          // CENTRAR MAPA
+          // ==========================================
 
           mapa.setView(
-            [lat, lon],
+            [
+              lat,
+              lon
+            ],
             15
           );
 
 
-          // -----------------------------------------
-          // Buscar paradas
-          // -----------------------------------------
+          // ==========================================
+          // BUSCAR PARADAS
+          // ==========================================
 
           const cercanas =
             obtenerParadasCercanas(
@@ -1474,6 +1713,7 @@
             cercanas
           );
 
+
           mostrarMarcadores(
             cercanas
           );
@@ -1485,6 +1725,7 @@
 
           btnUbicacion.disabled =
             false;
+
 
           btnUbicacion.textContent =
             '📍 Actualizar ubicación';
@@ -1504,24 +1745,21 @@
 
 
           if (
-            error.code ===
-            1
+            error.code === 1
           ) {
 
             mensaje =
               'Permiso de ubicación denegado.';
 
           } else if (
-            error.code ===
-            2
+            error.code === 2
           ) {
 
             mensaje =
               'No se pudo determinar tu ubicación.';
 
           } else if (
-            error.code ===
-            3
+            error.code === 3
           ) {
 
             mensaje =
@@ -1538,14 +1776,20 @@
           btnUbicacion.disabled =
             false;
 
+
           btnUbicacion.textContent =
             '📍 Intentar nuevamente';
         },
 
         {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 30000
+          enableHighAccuracy:
+            true,
+
+          timeout:
+            15000,
+
+          maximumAge:
+            30000
         }
       );
     }
@@ -1569,8 +1813,6 @@
 
       await cargarParadas();
 
-      // Intentamos obtener ubicación
-      // automáticamente.
       obtenerUbicacion();
     }
 
