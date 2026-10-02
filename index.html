@@ -1499,7 +1499,7 @@
 
 
   <!-- Catálogo local de lugares conocidos -->
-  <script src="./lugares.js?v=20261002-2"></script>
+  <script src="./lugares.js?v=20261002-3"></script>
 
   <!-- Leaflet -->
 
@@ -1847,7 +1847,7 @@
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
       {
         attribution:
-          'Tiles &copy; Esri'
+          'Tiles &copy; Esri | Lugares &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
       }
     ).addTo(mapa);
 
@@ -2249,6 +2249,7 @@
           nombre: lugarPredefinido.nombre,
           tipo: lugarPredefinido.categoria,
           lugarPredefinido: true,
+          geocodificacionLocal: true,
           boundingBox: null
         };
       }
@@ -2700,7 +2701,7 @@
 
         // Respetamos el intervalo del geocodificador público solo
         // cuando el origen también necesitó una búsqueda externa.
-        if (!usarMiUbicacion) {
+        if (!usarMiUbicacion && !origen.geocodificacionLocal) {
           await esperar(1100);
         }
 
