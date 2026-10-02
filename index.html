@@ -2410,8 +2410,14 @@
                 'Probamos una combinación de hasta dos ómnibus usando los recorridos GTFS disponibles.' +
                 '<div style="margin-top:10px;padding:10px;border-radius:10px;background:#f5f7fa;font-size:12px;line-height:1.5;text-align:left">' +
                   '<strong>Diagnóstico temporal</strong><br>' +
-                  'Paradas entrada origen: ' + (diag.paradasOrigenEntrada ?? 0) + '<br>' +
-                  'Paradas entrada destino: ' + (diag.paradasDestinoEntrada ?? 0) + '<br>' +
+                  'Paradas entrada origen: ' + (diag.paradasOrigenEntrada ?? 0) + ' (' + (diag.tipoOrigenEntrada || '?') + ')<br>' +
+                  'Paradas entrada destino: ' + (diag.paradasDestinoEntrada ?? 0) + ' (' + (diag.tipoDestinoEntrada || '?') + ')<br>' +
+                  'Origen coords: ' + (Number.isFinite(diag.origenLat) ? diag.origenLat.toFixed(5) : 'NaN') + ', ' + (Number.isFinite(diag.origenLon) ? diag.origenLon.toFixed(5) : 'NaN') + '<br>' +
+                  'Destino coords: ' + (Number.isFinite(diag.destinoLat) ? diag.destinoLat.toFixed(5) : 'NaN') + ', ' + (Number.isFinite(diag.destinoLon) ? diag.destinoLon.toFixed(5) : 'NaN') + '<br>' +
+                  'Red GTFS cargada: ' + (diag.redCargada ? 'sí' : 'no') + '<br>' +
+                  'Patrones en red: ' + (diag.patronesRed ?? 0) + '<br>' +
+                  'Coordenadas en red: ' + (diag.coordsRed ?? 0) + '<br>' +
+                  'Paradas indexadas en red: ' + (diag.paradasIndexadasRed ?? 0) + '<br>' +
                   'Paradas GTFS origen: ' + (diag.paradasGTFSOrigen ?? 0) + '<br>' +
                   'Paradas GTFS destino: ' + (diag.paradasGTFSDestino ?? 0) + '<br>' +
                   'Patrones desde origen: ' + (diag.entradasOrigen ?? 0) + '<br>' +
@@ -4721,7 +4727,7 @@
   </script>
 
   <script src="./horarios.js"></script>
-  <script src="./recorridos.js?v=20261002-1"></script>
+  <script src="./recorridos.js?v=20261002-2"></script>
   <h1>Beta V0.5</h1>
 </body>
 </html>
