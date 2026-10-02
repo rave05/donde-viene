@@ -2396,10 +2396,29 @@
               : [];
 
           if (!combinaciones.length) {
+            const diag =
+              window.ultimoDiagnosticoCombinacion || {};
+
             resultadoRuta.innerHTML =
               '<div class="route-empty">' +
                 '<strong>No encontramos una ruta directa ni una combinación simple.</strong><br>' +
                 'Probamos una combinación de hasta dos ómnibus usando los recorridos GTFS disponibles.' +
+                '<div style="margin-top:10px;padding:10px;border-radius:10px;background:#f5f7fa;font-size:12px;line-height:1.5;text-align:left">' +
+                  '<strong>Diagnóstico temporal</strong><br>' +
+                  'Paradas entrada origen: ' + (diag.paradasOrigenEntrada ?? 0) + '<br>' +
+                  'Paradas entrada destino: ' + (diag.paradasDestinoEntrada ?? 0) + '<br>' +
+                  'Paradas GTFS origen: ' + (diag.paradasGTFSOrigen ?? 0) + '<br>' +
+                  'Paradas GTFS destino: ' + (diag.paradasGTFSDestino ?? 0) + '<br>' +
+                  'Patrones desde origen: ' + (diag.entradasOrigen ?? 0) + '<br>' +
+                  'Patrones hacia destino: ' + (diag.entradasDestino ?? 0) + '<br>' +
+                  'Posibles combinaciones detectadas: ' + (diag.candidatosCombinacion ?? 0) + '<br>' +
+                  'Resultados finales: ' + (diag.resultadoFinal ?? 0) +
+                  (
+                    diag.error
+                      ? '<br><strong>Error:</strong> ' + escaparHTML(diag.error)
+                      : ''
+                  ) +
+                '</div>' +
               '</div>';
             return;
           }
