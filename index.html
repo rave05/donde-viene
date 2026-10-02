@@ -1982,75 +1982,138 @@
           return;
         }
 
-        const origenConLineas =
-          await Promise.all(
-            paradasOrigen.map(async parada => ({
-              parada,
-              lineas:
-                typeof obtenerLineasProgramadas === 'function'
-                  ? await obtenerLineasProgramadas(parada.busstopId)
-                  : []
-            }))
-          );
+        async function buscarCoincidenciasDirectas(
+          paradasOrigenBusqueda,
+          paradasDestinoBusqueda
+        ) {
+          const origenConLineas =
+            await Promise.all(
+              paradasOrigenBusqueda.map(async parada => ({
+                parada,
+                lineas:
+                  typeof obtenerLineasProgramadas === 'function'
+                    ? await obtenerLineasProgramadas(parada.busstopId)
+                    : []
+              }))
+            );
 
-        const destinoConLineas =
-          await Promise.all(
-            paradasDestino.map(async parada => ({
-              parada,
-              lineas:
-                typeof obtenerLineasProgramadas === 'function'
-                  ? await obtenerLineasProgramadas(parada.busstopId)
-                  : []
-            }))
-          );
+          const destinoConLineas =
+            await Promise.all(
+              paradasDestinoBusqueda.map(async parada => ({
+                parada,
+                lineas:
+                  typeof obtenerLineasProgramadas === 'function'
+                    ? await obtenerLineasProgramadas(parada.busstopId)
+                    : []
+              }))
+            );
 
-        const candidatos = [];
-        const vistos = new Set();
+          const encontrados = [];
+          const vistos = new Set();
 
-        for (const origenItem of origenConLineas) {
-          for (const lineaOrigen of origenItem.lineas) {
-            const claveOrigen =
-              String(lineaOrigen.line || '') + '|' +
-              String(lineaOrigen.destination || '');
+          for (const origenItem of origenConLineas) {
+            for (const lineaOrigen of origenItem.lineas) {
+              const claveOrigen =
+                String(lineaOrigen.line || '') + '|' +
+                String(lineaOrigen.destination || '');
 
-            for (const destinoItem of destinoConLineas) {
-              const coincide =
-                destinoItem.lineas.find(lineaDestino =>
-                  String(lineaDestino.line || '') + '|' +
-                  String(lineaDestino.destination || '') ===
-                    claveOrigen
-                );
+              for (const destinoItem of destinoConLineas) {
+                const coincide =
+                  destinoItem.lineas.find(lineaDestino =>
+                    String(lineaDestino.line || '') + '|' +
+                    String(lineaDestino.destination || '') ===
+                      claveOrigen
+                  );
 
-              if (!coincide || vistos.has(claveOrigen)) {
-                continue;
+                if (!coincide || vistos.has(claveOrigen)) {
+                  continue;
+                }
+
+                vistos.add(claveOrigen);
+
+                encontrados.push({
+                  line: lineaOrigen.line,
+                  destination: lineaOrigen.destination || '',
+                  origen: origenItem.parada,
+                  destino: destinoItem.parada,
+                  puntaje:
+                    origenItem.parada.distanciaRuta +
+                    destinoItem.parada.distanciaRuta
+                });
               }
-
-              vistos.add(claveOrigen);
-
-              candidatos.push({
-                line: lineaOrigen.line,
-                destination: lineaOrigen.destination || '',
-                origen: origenItem.parada,
-                destino: destinoItem.parada,
-                puntaje:
-                  origenItem.parada.distanciaRuta +
-                  destinoItem.parada.distanciaRuta
-              });
             }
+          }
+
+          encontrados.sort((a, b) =>
+            a.puntaje - b.puntaje
+          );
+
+          return encontrados;
+        }
+
+        let candidatos =
+          await buscarCoincidenciasDirectas(
+            paradasOrigen,
+            paradasDestino
+          );
+
+        // Si hay paradas cerca pero ninguna comparte una línea directa,
+        // ampliamos progresivamente el área de búsqueda.
+        if (!candidatos.length) {
+          const origen1500 =
+            obtenerParadasRutaCercanas(
+              origen.lat,
+              origen.lon,
+              RADIO_RUTA_EXTENDIDO
+            );
+
+          const destino1500 =
+            obtenerParadasRutaCercanas(
+              destino.lat,
+              destino.lon,
+              RADIO_RUTA_EXTENDIDO
+            );
+
+          candidatos =
+            await buscarCoincidenciasDirectas(
+              origen1500.length ? origen1500 : paradasOrigen,
+              destino1500.length ? destino1500 : paradasDestino
+            );
+
+          if (candidatos.length) {
+            usoRadioExtendido = true;
           }
         }
 
-        candidatos.sort((a, b) =>
-          a.puntaje - b.puntaje
-        );
+        if (!candidatos.length) {
+          const origenAmplio =
+            obtenerParadasRutaMasCercanas(
+              origen.lat,
+              origen.lon
+            );
+
+          const destinoAmplio =
+            obtenerParadasRutaMasCercanas(
+              destino.lat,
+              destino.lon
+            );
+
+          candidatos =
+            await buscarCoincidenciasDirectas(
+              origenAmplio.length ? origenAmplio : paradasOrigen,
+              destinoAmplio.length ? destinoAmplio : paradasDestino
+            );
+
+          if (candidatos.length) {
+            usoRadioExtendido = true;
+          }
+        }
 
         if (!candidatos.length) {
           resultadoRuta.innerHTML =
             '<div class="route-empty">' +
               '<strong>No encontramos una línea directa.</strong><br>' +
-              (usoRadioExtendido
-                ? 'Usamos las paradas más cercanas al área buscada, pero no encontramos una línea directa.'
-                : 'Buscamos coincidencias entre paradas a menos de 800 m del origen y del destino.') +
+              'Probamos primero las paradas cercanas y después ampliamos la búsqueda alrededor de ambos puntos.' +
             '</div>';
           return;
         }
