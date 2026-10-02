@@ -531,6 +531,7 @@
       );
       return false;
     }
+  };
 
   function buscarParadaGlobal(stopId) {
     const claves =
@@ -1645,7 +1646,5 @@ window.buscarCombinacionesRuta = async function(
       );
       return false;
     }
-  };
-
   };
 })();
