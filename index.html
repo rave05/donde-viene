@@ -2871,6 +2871,62 @@
               .map(item => item.candidato);
         }
 
+        // La coincidencia por índice de paradas puede perder líneas
+        // válidas cuando origen/destino son zonas amplias o cuando el
+        // stop_code difiere entre datasets. Como segunda fuente usamos
+        // la continuidad real del patrón GTFS: una línea es directa si,
+        // después de la parada de subida, tiene una parada a <=800 m de B.
+        if (
+          typeof buscarDirectasPorRed === 'function'
+        ) {
+          const directasRed =
+            await buscarDirectasPorRed(
+              paradasOrigen,
+              destino,
+              800
+            );
+
+          if (directasRed.length) {
+            const unificadas =
+              new Map();
+
+            for (const candidato of [
+              ...candidatos,
+              ...directasRed
+            ]) {
+              const clave =
+                String(candidato.line || '') +
+                '|' +
+                String(
+                  candidato.destination || ''
+                )
+                  .trim()
+                  .toUpperCase();
+
+              const anterior =
+                unificadas.get(clave);
+
+              if (
+                !anterior ||
+                Number(candidato.puntaje || Infinity) <
+                  Number(anterior.puntaje || Infinity)
+              ) {
+                unificadas.set(
+                  clave,
+                  candidato
+                );
+              }
+            }
+
+            candidatos =
+              [...unificadas.values()]
+                .sort((a, b) =>
+                  Number(a.puntaje || 0) -
+                  Number(b.puntaje || 0)
+                );
+          }
+        }
+
         if (!candidatos.length) {
           resultadoRuta.innerHTML =
             '<div class="route-status">No hay una línea directa razonable. Buscando una combinación...</div>';
@@ -5375,7 +5431,7 @@
   </script>
 
   <script src="./horarios.js"></script>
-  <script src="./recorridos.js?v=20261002-8"></script>
+  <script src="./recorridos.js?v=20261002-9"></script>
   <h1>Beta V0.5</h1>
 </body>
 </html>
