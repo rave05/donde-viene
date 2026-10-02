@@ -2372,8 +2372,8 @@
         // buscar una combinación de dos ómnibus.
         candidatos =
           candidatos.filter(candidato =>
-            Number(candidato.origen?.distanciaRuta || 0) <= 1500 &&
-            Number(candidato.destino?.distanciaRuta || 0) <= 1500
+            Number(candidato.origen?.distanciaRuta || 0) <= 800 &&
+            Number(candidato.destino?.distanciaRuta || 0) <= 800
           );
 
         if (!candidatos.length) {
