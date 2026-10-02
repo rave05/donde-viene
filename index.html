@@ -65,9 +65,15 @@
 
     #panel {
       background: white;
-      padding: 20px;
+      padding: 20px 20px clamp(180px, 32vh, 320px);
       max-width: 900px;
       margin: 0 auto;
+    }
+
+    #paradaSeleccionada,
+    #listaLineas,
+    #proximos {
+      scroll-margin-top: 18px;
     }
 
     #estado {
@@ -292,7 +298,7 @@
       }
 
       #panel {
-        padding: 15px;
+        padding: 15px 15px 180px;
       }
 
       .bus-principal {
@@ -883,21 +889,27 @@
       }
 
 
-      const posicion =
-        elemento.getBoundingClientRect().top +
-        window.scrollY -
-        margen;
-
-
-      window.scrollTo({
-        top:
-          Math.max(
-            0,
-            posicion
-          ),
-        behavior:
-          'smooth'
+      // scrollIntoView funciona de forma consistente tanto
+      // en escritorio como en celular.
+      elemento.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
       });
+
+
+      // Pequeño ajuste para que el contenido no quede
+      // pegado al borde superior de la pantalla.
+      setTimeout(() => {
+        const top =
+          elemento.getBoundingClientRect().top;
+
+        if (Math.abs(top) < margen + 30) {
+          window.scrollBy({
+            top: -margen,
+            behavior: 'smooth'
+          });
+        }
+      }, 350);
     }
 
 
