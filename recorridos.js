@@ -148,6 +148,24 @@
     return dLat * dLat + dLon * dLon;
   }
 
+  function distanciaMetrosCoords(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const rad = Math.PI / 180;
+    const dLat = (Number(lat2) - Number(lat1)) * rad;
+    const dLon = (Number(lon2) - Number(lon1)) * rad;
+
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(Number(lat1) * rad) *
+      Math.cos(Number(lat2) * rad) *
+      Math.sin(dLon / 2) ** 2;
+
+    return R * 2 * Math.atan2(
+      Math.sqrt(a),
+      Math.sqrt(1 - a)
+    );
+  }
+
   function indiceShapeMasCercano(shape, lat, lon) {
     let mejorIndice = -1;
     let mejorDistancia = Infinity;
@@ -1526,6 +1544,151 @@ window.buscarCombinacionesRuta = async function(
       iconAnchor: [ancho / 2, 14]
     });
   }
+
+  window.lineaLlegaADestinoRuta = async function(
+    linea,
+    destinoTexto,
+    parada,
+    destinoRuta,
+    radioDestino = 800
+  ) {
+    try {
+      if (
+        !linea ||
+        !parada?.busstopId ||
+        !Array.isArray(parada?.location?.coordinates)
+      ) {
+        return false;
+      }
+
+      const latDestino =
+        Number(destinoRuta?.lat);
+
+      const lonDestino =
+        Number(destinoRuta?.lon);
+
+      if (
+        !Number.isFinite(latDestino) ||
+        !Number.isFinite(lonDestino)
+      ) {
+        return true;
+      }
+
+      await cargarAliasesRecorridos();
+
+      const datos =
+        await cargarRecorridoLinea(linea);
+
+      const patrones =
+        Array.isArray(datos?.patterns)
+          ? datos.patterns
+          : [];
+
+      const paradaId =
+        String(
+          parada.gtfsStopId ||
+          parada.busstopId
+        );
+
+      const coordsParada =
+        parada.location.coordinates;
+
+      const destinoObjetivo =
+        normalizar(destinoTexto || '');
+
+      for (const patron of patrones) {
+        if (
+          !Array.isArray(patron.shape) ||
+          patron.shape.length < 2
+        ) {
+          continue;
+        }
+
+        const stops =
+          Array.isArray(patron.stops)
+            ? patron.stops.map(String)
+            : [];
+
+        const idxStop =
+          indiceParadaCompatible(
+            stops,
+            paradaId
+          );
+
+        if (idxStop < 0) {
+          continue;
+        }
+
+        const idxShapeInicio =
+          indiceShapeMasCercano(
+            patron.shape,
+            Number(coordsParada[1]),
+            Number(coordsParada[0])
+          );
+
+        if (
+          idxShapeInicio < 0 ||
+          idxShapeInicio >= patron.shape.length - 1
+        ) {
+          continue;
+        }
+
+        let mejorDistanciaDestino =
+          Infinity;
+
+        for (
+          let i = idxShapeInicio + 1;
+          i < patron.shape.length;
+          i++
+        ) {
+          const punto =
+            patron.shape[i];
+
+          const distancia =
+            distanciaMetrosCoords(
+              punto[0],
+              punto[1],
+              latDestino,
+              lonDestino
+            );
+
+          if (distancia < mejorDistanciaDestino) {
+            mejorDistanciaDestino =
+              distancia;
+          }
+        }
+
+        if (
+          mejorDistanciaDestino <=
+            Number(radioDestino)
+        ) {
+          // Si el headsign coincide, excelente; si no coincide igual
+          // aceptamos la línea porque el shape demuestra que pasa
+          // por el destino en el sentido correcto.
+          return true;
+        }
+
+        if (
+          destinoObjetivo &&
+          normalizar(patron.destination) ===
+            destinoObjetivo &&
+          mejorDistanciaDestino <= 1200
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.warn(
+        'No se pudo validar si la línea llega al destino:',
+        error
+      );
+
+      return false;
+    }
+  };
+
 
   window.dibujarLineaDesdeParada = async function(
     linea,
