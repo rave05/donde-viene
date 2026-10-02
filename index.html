@@ -1633,6 +1633,103 @@
     }
 
 
+    function esUbicacionAmplia(punto) {
+      const tipo =
+        String(punto?.tipo || '').toLowerCase();
+
+      return [
+        'neighbourhood',
+        'neighborhood',
+        'suburb',
+        'quarter',
+        'city_district',
+        'administrative',
+        'village',
+        'town'
+      ].includes(tipo);
+    }
+
+
+    function obtenerParadasDentroArea(
+      punto,
+      referencia,
+      limite = 80
+    ) {
+      const bounds =
+        punto?.boundingBox;
+
+      if (
+        !Array.isArray(bounds) ||
+        bounds.length !== 4
+      ) {
+        return [];
+      }
+
+      const sur = Number(bounds[0]);
+      const norte = Number(bounds[1]);
+      const oeste = Number(bounds[2]);
+      const este = Number(bounds[3]);
+
+      if (
+        ![sur, norte, oeste, este]
+          .every(Number.isFinite)
+      ) {
+        return [];
+      }
+
+      return todasLasParadas
+        .filter(parada => {
+          const coords =
+            parada.location?.coordinates;
+
+          if (!Array.isArray(coords)) {
+            return false;
+          }
+
+          const lon = Number(coords[0]);
+          const lat = Number(coords[1]);
+
+          return (
+            Number.isFinite(lat) &&
+            Number.isFinite(lon) &&
+            lat >= Math.min(sur, norte) &&
+            lat <= Math.max(sur, norte) &&
+            lon >= Math.min(oeste, este) &&
+            lon <= Math.max(oeste, este)
+          );
+        })
+        .map(parada => {
+          const lon =
+            Number(parada.location.coordinates[0]);
+
+          const lat =
+            Number(parada.location.coordinates[1]);
+
+          const refLat =
+            Number(referencia?.lat ?? punto.lat);
+
+          const refLon =
+            Number(referencia?.lon ?? punto.lon);
+
+          return {
+            ...parada,
+            distanciaRuta:
+              distanciaMetros(
+                refLat,
+                refLon,
+                lat,
+                lon
+              )
+          };
+        })
+        .sort((a, b) =>
+          a.distanciaRuta -
+          b.distanciaRuta
+        )
+        .slice(0, limite);
+    }
+
+
     async function geocodificarRuta(texto) {
       const limpio = texto.trim();
 
@@ -1716,7 +1813,15 @@
           return {
             lat: elegido.lat,
             lon: elegido.lon,
-            nombre: elegido.item.display_name || texto
+            nombre: elegido.item.display_name || texto,
+            tipo:
+              elegido.item.type ||
+              elegido.item.addresstype ||
+              '',
+            boundingBox:
+              Array.isArray(elegido.item.boundingbox)
+                ? elegido.item.boundingbox.map(Number)
+                : null
           };
         }
 
@@ -1926,6 +2031,46 @@
           );
 
         let usoRadioExtendido = false;
+
+        // Un barrio no es un punto exacto. Si el geocodificador devuelve
+        // un área (ej. Paso de la Arena), usamos paradas dentro de esa zona
+        // en vez de quedarnos únicamente con el centro geométrico.
+        if (esUbicacionAmplia(destino)) {
+          const paradasAreaDestino =
+            obtenerParadasDentroArea(
+              destino,
+              origen,
+              80
+            );
+
+          if (paradasAreaDestino.length) {
+            paradasDestino =
+              paradasAreaDestino;
+
+            usoRadioExtendido =
+              true;
+          }
+        }
+
+        if (
+          !usarMiUbicacion &&
+          esUbicacionAmplia(origen)
+        ) {
+          const paradasAreaOrigen =
+            obtenerParadasDentroArea(
+              origen,
+              destino,
+              80
+            );
+
+          if (paradasAreaOrigen.length) {
+            paradasOrigen =
+              paradasAreaOrigen;
+
+            usoRadioExtendido =
+              true;
+          }
+        }
 
         // Si un punto quedó en una zona con pocas paradas, ampliamos
         // solamente la búsqueda de ruta. La lista principal sigue en 800 m.
@@ -2156,7 +2301,7 @@
           resultadoRuta.innerHTML =
             '<div class="route-empty">' +
               '<strong>No encontramos una línea directa.</strong><br>' +
-              'Probamos primero las paradas cercanas y después ampliamos la búsqueda alrededor de ambos puntos.' +
+              'Probamos las paradas cercanas y, cuando el destino es un barrio, también las paradas dentro de esa zona.' +
             '</div>';
           return;
         }
