@@ -1317,6 +1317,8 @@
 
     const RADIO_PARADAS = 800;
 
+    const MAX_PRECISION_UBICACION_METROS = 5000;
+
     const RADIO_RUTA = 800;
 
     const RADIO_RUTA_EXTENDIDO = 1500;
@@ -4691,9 +4693,42 @@
           const lon =
             position.coords.longitude;
 
+          const accuracy =
+            Number(
+              position.coords.accuracy
+            );
+
+          if (
+            !Number.isFinite(accuracy) ||
+            accuracy > MAX_PRECISION_UBICACION_METROS
+          ) {
+            console.warn(
+              'Ubicación descartada por baja precisión:',
+              { lat, lon, accuracy }
+            );
+
+            estado.innerHTML =
+              '<div class="error">' +
+                '<strong>La ubicación obtenida es demasiado imprecisa.</strong><br>' +
+                'El navegador informó un margen aproximado de ' +
+                (
+                  Number.isFinite(accuracy)
+                    ? formatearDistancia(accuracy)
+                    : 'varios kilómetros'
+                ) +
+                '.<br>' +
+                'Activá la ubicación de Windows/navegador o intentá nuevamente.' +
+              '</div>';
+
+            btnUbicacion.disabled = false;
+            btnUbicacion.textContent = '📍 Intentar nuevamente';
+            return;
+          }
+
           ultimaUbicacionUsuario = {
             lat,
-            lon
+            lon,
+            accuracy
           };
 
           // El buscador de rutas usa la ubicación real directamente,
