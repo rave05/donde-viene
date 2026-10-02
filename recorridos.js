@@ -1171,6 +1171,17 @@ window.buscarCombinacionesRuta = async function(
                   continue;
                 }
 
+                const patron2 =
+                  red.patterns?.[patron2Index];
+
+                if (
+                  !patron2 ||
+                  String(patron2.l || '') ===
+                    String(patron1.l || '')
+                ) {
+                  continue;
+                }
+
                 const llegada =
                   llegadaPorPatron.get(
                     patron2Index
@@ -1180,13 +1191,6 @@ window.buscarCombinacionesRuta = async function(
                   !llegada ||
                   llegada.secuencia <= seqTransfer
                 ) {
-                  continue;
-                }
-
-                const patron2 =
-                  red.patterns?.[patron2Index];
-
-                if (!patron2) {
                   continue;
                 }
 
@@ -1276,8 +1280,42 @@ window.buscarCombinacionesRuta = async function(
       window.ultimoDiagnosticoCombinacion.candidatosCombinacion =
         candidatos.length;
 
+      const mejoresPorOpcion =
+        new Map();
+
+      for (
+        const candidato of
+        candidatos.sort((a, b) =>
+          a.puntaje - b.puntaje
+        )
+      ) {
+        const claveVisible =
+          [
+            String(candidato.line1 || ''),
+            normalizar(candidato.destination1 || ''),
+            String(candidato.line2 || ''),
+            normalizar(candidato.destination2 || '')
+          ].join('|');
+
+        const anterior =
+          mejoresPorOpcion.get(
+            claveVisible
+          );
+
+        if (
+          !anterior ||
+          candidato.puntaje <
+            anterior.puntaje
+        ) {
+          mejoresPorOpcion.set(
+            claveVisible,
+            candidato
+          );
+        }
+      }
+
       const resultado =
-        candidatos
+        [...mejoresPorOpcion.values()]
           .sort((a, b) =>
             a.puntaje - b.puntaje
           )
@@ -1449,7 +1487,8 @@ window.buscarCombinacionesRuta = async function(
   window.dibujarLineaDesdeParada = async function(
     linea,
     destinoTexto,
-    parada
+    parada,
+    destinoRuta = null
   ) {
     try {
       if (
@@ -1486,6 +1525,16 @@ window.buscarCombinacionesRuta = async function(
       const destinoObjetivo =
         normalizar(destinoTexto || '');
 
+      const latDestinoRuta =
+        Number(destinoRuta?.lat);
+
+      const lonDestinoRuta =
+        Number(destinoRuta?.lon);
+
+      const limitarADestino =
+        Number.isFinite(latDestinoRuta) &&
+        Number.isFinite(lonDestinoRuta);
+
       const candidatos =
         patrones
           .filter(p =>
@@ -1515,13 +1564,43 @@ window.buscarCombinacionesRuta = async function(
               return null;
             }
 
+            let idxDestinoShape =
+              p.shape.length - 1;
+
+            let distanciaDestino =
+              0;
+
+            if (limitarADestino) {
+              idxDestinoShape =
+                indiceShapeMasCercano(
+                  p.shape,
+                  latDestinoRuta,
+                  lonDestinoRuta
+                );
+
+              if (
+                idxDestinoShape <= idxShape
+              ) {
+                return null;
+              }
+
+              distanciaDestino =
+                distanciaSimple(
+                  p.shape[idxDestinoShape][0],
+                  p.shape[idxDestinoShape][1],
+                  latDestinoRuta,
+                  lonDestinoRuta
+                );
+            }
+
             let puntaje =
               distanciaSimple(
                 p.shape[idxShape][0],
                 p.shape[idxShape][1],
                 Number(coords[1]),
                 Number(coords[0])
-              );
+              ) +
+              distanciaDestino * 4;
 
             if (idxStop >= 0) {
               puntaje *= 0.2;
@@ -1538,6 +1617,7 @@ window.buscarCombinacionesRuta = async function(
             return {
               patron: p,
               idxShape,
+              idxDestinoShape,
               puntaje
             };
           })
@@ -1555,7 +1635,10 @@ window.buscarCombinacionesRuta = async function(
 
       const tramo =
         elegido.patron.shape.slice(
-          elegido.idxShape
+          elegido.idxShape,
+          limitarADestino
+            ? elegido.idxDestinoShape + 1
+            : undefined
         );
 
       if (tramo.length < 2) {
@@ -1608,6 +1691,35 @@ window.buscarCombinacionesRuta = async function(
             zIndexOffset: 2200
           }
         ).addTo(mapa);
+
+      if (limitarADestino) {
+        const iconoBajar =
+          L.divIcon({
+            className: '',
+            html:
+              '<div style="' +
+                'background:#e54b4b;' +
+                'color:#fff;' +
+                'border:3px solid #fff;' +
+                'box-shadow:0 3px 10px rgba(0,0,0,.28);' +
+                'border-radius:999px;' +
+                'padding:5px 9px;' +
+                'font:700 11px/1.1 system-ui,sans-serif;' +
+                'white-space:nowrap;' +
+              '">BAJAR</div>',
+            iconSize: [62, 28],
+            iconAnchor: [31, 14]
+          });
+
+        marcadorFinRecorrido =
+          L.marker(
+            tramo[tramo.length - 1],
+            {
+              icon: iconoBajar,
+              zIndexOffset: 2200
+            }
+          ).addTo(mapa);
+      }
 
       mapa.fitBounds(
         lineaRecorridoMapa.getBounds(),
