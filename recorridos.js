@@ -967,6 +967,221 @@
     return resultado;
   }
 
+window.buscarDirectasPorRed = async function(
+    paradasOrigen,
+    destinoPunto,
+    radioDestino = 800
+  ) {
+    try {
+      await cargarAliasesRecorridos();
+
+      const red =
+        await cargarRedRecorridos();
+
+      if (
+        !red ||
+        !Array.isArray(red.patterns) ||
+        !red.byStop ||
+        !red.coords
+      ) {
+        return [];
+      }
+
+      const latDestino =
+        Number(destinoPunto?.lat);
+
+      const lonDestino =
+        Number(destinoPunto?.lon);
+
+      if (
+        !Number.isFinite(latDestino) ||
+        !Number.isFinite(lonDestino)
+      ) {
+        return [];
+      }
+
+      const mejores =
+        new Map();
+
+      for (const paradaOrigen of paradasOrigen || []) {
+        const stopIdBase =
+          String(
+            paradaOrigen?.gtfsStopId ||
+            paradaOrigen?.busstopId ||
+            ''
+          );
+
+        if (!stopIdBase) {
+          continue;
+        }
+
+        const clavesOrigen =
+          clavesCompatiblesParada(
+            stopIdBase
+          );
+
+        const entradas = [];
+
+        for (const clave of clavesOrigen) {
+          for (
+            const entrada of
+            red.byStop?.[String(clave)] || []
+          ) {
+            entradas.push(entrada);
+          }
+        }
+
+        for (const entrada of entradas) {
+          const patronIndex =
+            Number(entrada?.[0]);
+
+          const secuenciaOrigen =
+            Number(entrada?.[1]);
+
+          if (
+            !Number.isInteger(patronIndex) ||
+            !Number.isInteger(secuenciaOrigen)
+          ) {
+            continue;
+          }
+
+          const patron =
+            red.patterns?.[patronIndex];
+
+          if (
+            !patron ||
+            !Array.isArray(patron.s)
+          ) {
+            continue;
+          }
+
+          let mejorDestino = null;
+
+          for (
+            let i = secuenciaOrigen + 1;
+            i < patron.s.length;
+            i++
+          ) {
+            const stopIdDestino =
+              String(patron.s[i]);
+
+            const coordsDestino =
+              red.coords?.[stopIdDestino];
+
+            if (
+              !Array.isArray(coordsDestino) ||
+              coordsDestino.length < 2
+            ) {
+              continue;
+            }
+
+            const distanciaDestino =
+              distanciaMetrosCoords(
+                Number(coordsDestino[0]),
+                Number(coordsDestino[1]),
+                latDestino,
+                lonDestino
+              );
+
+            if (
+              !mejorDestino ||
+              distanciaDestino <
+                mejorDestino.distancia
+            ) {
+              mejorDestino = {
+                stopId:
+                  stopIdDestino,
+                secuencia:
+                  i,
+                distancia:
+                  distanciaDestino
+              };
+            }
+          }
+
+          if (
+            !mejorDestino ||
+            mejorDestino.distancia >
+              Number(radioDestino)
+          ) {
+            continue;
+          }
+
+          const paradaDestino =
+            buscarParadaGlobal(
+              mejorDestino.stopId
+            );
+
+          if (!paradaDestino) {
+            continue;
+          }
+
+          paradaDestino.distanciaRuta =
+            mejorDestino.distancia;
+
+          const candidato = {
+            tipo: 'directa',
+            line:
+              String(patron.l || ''),
+            destination:
+              String(patron.d || ''),
+            origen:
+              paradaOrigen,
+            destino:
+              paradaDestino,
+            coincidenciaAproximada:
+              false,
+            detectadaPorRed:
+              true,
+            puntaje:
+              Number(
+                paradaOrigen?.distanciaRuta ||
+                0
+              ) +
+              mejorDestino.distancia
+          };
+
+          if (!candidato.line) {
+            continue;
+          }
+
+          const claveVista =
+            candidato.line + '|' +
+            normalizar(
+              candidato.destination
+            );
+
+          const anterior =
+            mejores.get(claveVista);
+
+          if (
+            !anterior ||
+            candidato.puntaje <
+              anterior.puntaje
+          ) {
+            mejores.set(
+              claveVista,
+              candidato
+            );
+          }
+        }
+      }
+
+      return [...mejores.values()]
+        .sort((a, b) =>
+          a.puntaje - b.puntaje
+        );
+    } catch (error) {
+      console.warn(
+        'No se pudieron buscar directas por red GTFS:',
+        error
+      );
+
+      return [];
+    }
+  };
+
+
 window.buscarCombinacionesRuta = async function(
     paradasOrigen,
     paradasDestino,
