@@ -641,6 +641,23 @@
       cursor: pointer;
     }
 
+    .horario-programado {
+      margin-top: 10px;
+      background: #fffaf0;
+      border-color: #f1dfb9;
+      color: #6f5424;
+    }
+
+    .horario-programado strong {
+      color: #5d4316;
+      font-size: 14px;
+    }
+
+    .horario-aclaracion {
+      color: #806b46;
+      font-size: 12px;
+    }
+
     @media (max-width: 760px) {
       body {
         background:
@@ -2379,6 +2396,130 @@
     }
 
 
+    function formatearEsperaProgramada(
+      minutos
+    ) {
+
+      const total =
+        Number(minutos);
+
+      if (!Number.isFinite(total)) {
+        return '';
+      }
+
+      if (total < 60) {
+        return `en ${Math.max(1, Math.round(total))} min`;
+      }
+
+      const horas =
+        Math.floor(total / 60);
+
+      const resto =
+        Math.round(total % 60);
+
+      if (!resto) {
+        return `en ${horas} h`;
+      }
+
+      return `en ${horas} h ${resto} min`;
+    }
+
+
+    async function agregarProximoProgramado(
+      seleccion
+    ) {
+
+      if (
+        !seleccion ||
+        seleccion.sesionId !==
+          sesionProximos
+      ) {
+        return;
+      }
+
+      try {
+        const params =
+          new URLSearchParams({
+            line:
+              seleccion.linea
+          });
+
+        if (seleccion.destination) {
+          params.set(
+            'destination',
+            seleccion.destination
+          );
+        }
+
+        const respuesta =
+          await fetch(
+            `${API_BASE}/stops/${encodeURIComponent(seleccion.stopId)}/next-scheduled?${params.toString()}`
+          );
+
+        if (
+          !respuesta.ok ||
+          seleccion.sesionId !==
+            sesionProximos
+        ) {
+          return;
+        }
+
+        const datos =
+          await respuesta.json();
+
+        if (
+          seleccion.sesionId !==
+            sesionProximos
+        ) {
+          return;
+        }
+
+        const tarjeta =
+          document.createElement(
+            'div'
+          );
+
+        tarjeta.className =
+          'aviso-info horario-programado';
+
+        if (
+          datos &&
+          datos.found &&
+          datos.time
+        ) {
+          const espera =
+            formatearEsperaProgramada(
+              datos.minutesUntil
+            );
+
+          tarjeta.innerHTML = `
+            <strong>🕒 Próximo servicio programado: ${datos.time}</strong><br>
+            ${espera ? `${espera}. ` : ''}
+            ${datos.destination ? `Destino: ${datos.destination}. ` : ''}
+            <span class="horario-aclaracion">
+              Es un horario planificado y puede sufrir modificaciones.
+            </span>
+          `;
+        } else {
+          tarjeta.innerHTML = `
+            <strong>🕒 Sin horario programado cercano.</strong><br>
+            No encontramos otro servicio planificado para esta línea en los próximos días.
+          `;
+        }
+
+        proximos.appendChild(
+          tarjeta
+        );
+
+      } catch (error) {
+        console.warn(
+          'No se pudo consultar el próximo horario programado:',
+          error
+        );
+      }
+    }
+
+
     async function mostrarBusesLejanos(
       seleccion
     ) {
@@ -2571,6 +2712,11 @@
               No hay vehículos de esta variante reportando posición en este momento.
             </div>
           `;
+
+          await agregarProximoProgramado(
+            seleccion
+          );
+
           return;
         }
 
@@ -2590,6 +2736,11 @@
               }
             </div>
           `;
+
+          await agregarProximoProgramado(
+            seleccion
+          );
+
           return;
         }
 
@@ -2666,6 +2817,10 @@
               No pudimos consultar la ubicación de los vehículos en circulación.
             </div>
           `;
+
+          await agregarProximoProgramado(
+            seleccion
+          );
         }
       }
     }
