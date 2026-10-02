@@ -747,6 +747,26 @@
       background: #e4effd;
     }
 
+
+    .linea.linea-no-va-destino {
+      opacity: .42;
+      filter: grayscale(.25);
+      cursor: not-allowed;
+    }
+
+    .linea.linea-no-va-destino:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .linea-estado-ruta {
+      display: block;
+      margin-top: 3px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #8a4b13;
+    }
+
     .linea:hover {
       transform: translateY(-1px);
       background: #eaf2ff;
@@ -2349,7 +2369,8 @@
         // Al abrir una combinación actualizamos parada, línea y mapa,
         // pero mantenemos la posición actual de la página.
         await seleccionarParada(
-          candidato.origen
+          candidato.origen,
+          true
         );
 
         const botones =
@@ -3731,6 +3752,10 @@
         boton.addEventListener(
           'click',
           () => {
+            if (boton.disabled) {
+              return;
+            }
+
             seleccionarLinea(
               linea,
               boton
@@ -3758,6 +3783,76 @@
         listaLineas.appendChild(
           boton
         );
+
+        if (
+          destinoRutaActivo &&
+          typeof lineaLlegaADestinoRuta === 'function'
+        ) {
+          const paradaValidacion =
+            paradaActual;
+
+          const destinoValidacion = {
+            ...destinoRutaActivo
+          };
+
+          const stopIdValidacion =
+            String(
+              paradaValidacion?.busstopId || ''
+            );
+
+          boton.disabled = true;
+
+          lineaLlegaADestinoRuta(
+            linea.line,
+            linea.destination || '',
+            paradaValidacion,
+            destinoValidacion,
+            800
+          )
+            .then(llega => {
+              if (
+                String(paradaActual?.busstopId || '') !==
+                  stopIdValidacion ||
+                !destinoRutaActivo ||
+                Number(destinoRutaActivo.lat) !==
+                  Number(destinoValidacion.lat) ||
+                Number(destinoRutaActivo.lon) !==
+                  Number(destinoValidacion.lon)
+              ) {
+                return;
+              }
+
+              boton.disabled = !llega;
+
+              boton.classList.toggle(
+                'linea-no-va-destino',
+                !llega
+              );
+
+              if (!llega) {
+                const aviso =
+                  document.createElement(
+                    'span'
+                  );
+
+                aviso.className =
+                  'linea-estado-ruta';
+
+                aviso.textContent =
+                  'No llega al destino elegido';
+
+                boton
+                  .querySelector('.linea-contenido')
+                  ?.appendChild(aviso);
+              }
+            })
+            .catch(error =>
+              console.warn(
+                'No se pudo validar la línea para el destino:',
+                error
+              )
+            );
+        }
       }
     }
 
@@ -5232,7 +5327,7 @@
   </script>
 
   <script src="./horarios.js"></script>
-  <script src="./recorridos.js?v=20261002-6"></script>
+  <script src="./recorridos.js?v=20261002-7"></script>
   <h1>Beta V0.5</h1>
 </body>
 </html>
