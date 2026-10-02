@@ -1507,6 +1507,8 @@
 
     let marcadorDestinoRuta = null;
 
+    let destinoRutaActivo = null;
+
     let ultimaUbicacionUsuario = null;
 
     let paradaActual = null;
@@ -2030,7 +2032,10 @@
 
       // Reutilizamos exactamente el flujo normal de la app:
       // primero seleccionamos la parada de subida y después la línea.
-      await seleccionarParada(candidato.origen);
+      await seleccionarParada(
+        candidato.origen,
+        true
+      );
 
       const botones =
         [...listaLineas.querySelectorAll('.linea')];
@@ -2201,6 +2206,12 @@
         if (!destino) {
           throw new Error('No encontramos el destino. Probá escribiéndolo de otra forma.');
         }
+
+        destinoRutaActivo = {
+          lat: Number(destino.lat),
+          lon: Number(destino.lon),
+          nombre: destino.nombre || destinoTexto
+        };
 
         mostrarPuntosRuta(origen, destino);
 
@@ -3105,8 +3116,13 @@
     // =========================================================
 
     async function seleccionarParada(
-      parada
+      parada,
+      conservarRuta = false
     ) {
+
+      if (!conservarRuta) {
+        destinoRutaActivo = null;
+      }
 
       paradaActual =
         parada;
@@ -3487,7 +3503,8 @@
               dibujarLineaDesdeParada(
                 linea.line,
                 linea.destination || '',
-                paradaActual
+                paradaActual,
+                destinoRutaActivo
               );
             }
           }
@@ -4971,7 +4988,7 @@
   </script>
 
   <script src="./horarios.js"></script>
-  <script src="./recorridos.js?v=20261002-3"></script>
+  <script src="./recorridos.js?v=20261002-4"></script>
   <h1>Beta V0.5</h1>
 </body>
 </html>
