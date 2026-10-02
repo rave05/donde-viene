@@ -5,6 +5,7 @@
   let haloRecorridoMapa = null;
   let marcadorInicioRecorrido = null;
   let marcadorFinRecorrido = null;
+  let capasCombinacion = [];
 
   async function cargarManifiestoRecorridos() {
     if (manifiestoRecorridos) {
@@ -111,6 +112,12 @@
       mapa.removeLayer(marcadorFinRecorrido);
       marcadorFinRecorrido = null;
     }
+
+    for (const capa of capasCombinacion) {
+      mapa.removeLayer(capa);
+    }
+
+    capasCombinacion = [];
   };
 
   window.dibujarRecorridoSeleccionado = async function(candidato) {
@@ -430,5 +437,501 @@
       );
       return false;
     }
+
+  function buscarParadaGlobal(stopId) {
+    const clave = String(stopId);
+
+    return (
+      Array.isArray(window.todasLasParadas)
+        ? window.todasLasParadas.find(
+            parada =>
+              String(parada?.busstopId) === clave
+          )
+        : null
+    );
+  }
+
+  async function opcionesLineasPorParadas(paradas, maxLineas = 18) {
+    const opciones = [];
+    const vistas = new Set();
+
+    for (const parada of paradas.slice(0, 30)) {
+      const lineas =
+        typeof window.obtenerLineasProgramadas === 'function'
+          ? await window.obtenerLineasProgramadas(parada.busstopId)
+          : [];
+
+      for (const linea of lineas || []) {
+        const numero = String(linea?.line || '');
+
+        if (!numero || vistas.has(numero)) {
+          continue;
+        }
+
+        vistas.add(numero);
+        opciones.push({
+          line: numero,
+          destination: linea?.destination || '',
+          parada
+        });
+
+        if (opciones.length >= maxLineas) {
+          return opciones;
+        }
+      }
+    }
+
+    return opciones;
+  }
+
+  window.buscarCombinacionesRuta = async function(
+    paradasOrigen,
+    paradasDestino
+  ) {
+    try {
+      const [opcionesOrigen, opcionesDestino] =
+        await Promise.all([
+          opcionesLineasPorParadas(paradasOrigen),
+          opcionesLineasPorParadas(paradasDestino)
+        ]);
+
+      if (!opcionesOrigen.length || !opcionesDestino.length) {
+        return [];
+      }
+
+      const lineasNecesarias =
+        [...new Set([
+          ...opcionesOrigen.map(item => item.line),
+          ...opcionesDestino.map(item => item.line)
+        ])];
+
+      const datosPorLinea = new Map();
+
+      await Promise.all(
+        lineasNecesarias.map(async linea => {
+          const datos = await cargarRecorridoLinea(linea);
+          if (datos) {
+            datosPorLinea.set(linea, datos);
+          }
+        })
+      );
+
+      const resultados = [];
+      const vistos = new Set();
+
+      for (const primera of opcionesOrigen) {
+        const patrones1 =
+          datosPorLinea.get(primera.line)?.patterns || [];
+
+        for (const segunda of opcionesDestino) {
+          if (primera.line === segunda.line) {
+            continue;
+          }
+
+          const patrones2 =
+            datosPorLinea.get(segunda.line)?.patterns || [];
+
+          for (const p1 of patrones1) {
+            const stops1 =
+              Array.isArray(p1.stops)
+                ? p1.stops.map(String)
+                : [];
+
+            const iOrigen =
+              stops1.indexOf(
+                String(primera.parada.busstopId)
+              );
+
+            if (
+              iOrigen < 0 ||
+              iOrigen >= stops1.length - 1
+            ) {
+              continue;
+            }
+
+            const posteriores =
+              new Map();
+
+            for (
+              let i = iOrigen + 1;
+              i < stops1.length;
+              i++
+            ) {
+              if (!posteriores.has(stops1[i])) {
+                posteriores.set(stops1[i], i);
+              }
+            }
+
+            for (const p2 of patrones2) {
+              const stops2 =
+                Array.isArray(p2.stops)
+                  ? p2.stops.map(String)
+                  : [];
+
+              const iDestino =
+                stops2.indexOf(
+                  String(segunda.parada.busstopId)
+                );
+
+              if (iDestino <= 0) {
+                continue;
+              }
+
+              let mejorTransfer = null;
+
+              for (let j = 0; j < iDestino; j++) {
+                const stopTransfer = stops2[j];
+                const iPrimero = posteriores.get(stopTransfer);
+
+                if (iPrimero == null) {
+                  continue;
+                }
+
+                const scoreTramo =
+                  (iPrimero - iOrigen) +
+                  (iDestino - j);
+
+                if (
+                  !mejorTransfer ||
+                  scoreTramo < mejorTransfer.score
+                ) {
+                  mejorTransfer = {
+                    stopId: stopTransfer,
+                    score: scoreTramo
+                  };
+                }
+              }
+
+              if (!mejorTransfer) {
+                continue;
+              }
+
+              const paradaCombinacion =
+                buscarParadaGlobal(
+                  mejorTransfer.stopId
+                );
+
+              if (!paradaCombinacion) {
+                continue;
+              }
+
+              const clave =
+                primera.line + '|' +
+                segunda.line + '|' +
+                mejorTransfer.stopId;
+
+              if (vistos.has(clave)) {
+                continue;
+              }
+
+              vistos.add(clave);
+
+              resultados.push({
+                tipo: 'combinacion',
+                line1: primera.line,
+                destination1:
+                  p1.destination ||
+                  primera.destination ||
+                  '',
+                line2: segunda.line,
+                destination2:
+                  p2.destination ||
+                  segunda.destination ||
+                  '',
+                origen: primera.parada,
+                combinacion: paradaCombinacion,
+                destino: segunda.parada,
+                puntaje:
+                  Number(
+                    primera.parada.distanciaRuta || 0
+                  ) +
+                  Number(
+                    segunda.parada.distanciaRuta || 0
+                  ) +
+                  mejorTransfer.score * 35
+              });
+            }
+          }
+        }
+      }
+
+      return resultados
+        .sort((a, b) => a.puntaje - b.puntaje)
+        .slice(0, 6);
+
+    } catch (error) {
+      console.warn(
+        'No se pudieron buscar combinaciones:',
+        error
+      );
+      return [];
+    }
+  };
+
+  async function tramoParaLinea(
+    linea,
+    destinoTexto,
+    paradaDesde,
+    paradaHasta
+  ) {
+    const datos =
+      await cargarRecorridoLinea(linea);
+
+    const patrones =
+      Array.isArray(datos?.patterns)
+        ? datos.patterns
+        : [];
+
+    const desdeId =
+      String(paradaDesde?.busstopId || '');
+
+    const hastaId =
+      String(paradaHasta?.busstopId || '');
+
+    let compatibles =
+      patrones.filter(patron => {
+        const stops =
+          Array.isArray(patron.stops)
+            ? patron.stops.map(String)
+            : [];
+
+        const iDesde = stops.indexOf(desdeId);
+        const iHasta = stops.indexOf(hastaId);
+
+        return (
+          iDesde >= 0 &&
+          iHasta >= 0 &&
+          iDesde < iHasta &&
+          Array.isArray(patron.shape) &&
+          patron.shape.length >= 2
+        );
+      });
+
+    const destinoObjetivo =
+      normalizar(destinoTexto);
+
+    if (destinoObjetivo && compatibles.length) {
+      const porDestino =
+        compatibles.filter(p => {
+          const d = normalizar(p.destination);
+          return (
+            d === destinoObjetivo ||
+            d.includes(destinoObjetivo) ||
+            destinoObjetivo.includes(d)
+          );
+        });
+
+      if (porDestino.length) {
+        compatibles = porDestino;
+      }
+    }
+
+    const patron = compatibles[0];
+
+    if (!patron) {
+      return null;
+    }
+
+    const coordsDesde =
+      paradaDesde.location?.coordinates;
+
+    const coordsHasta =
+      paradaHasta.location?.coordinates;
+
+    if (
+      !Array.isArray(coordsDesde) ||
+      !Array.isArray(coordsHasta)
+    ) {
+      return null;
+    }
+
+    const iShapeDesde =
+      indiceShapeMasCercano(
+        patron.shape,
+        Number(coordsDesde[1]),
+        Number(coordsDesde[0])
+      );
+
+    const iShapeHasta =
+      indiceShapeMasCercano(
+        patron.shape,
+        Number(coordsHasta[1]),
+        Number(coordsHasta[0])
+      );
+
+    if (
+      iShapeDesde < 0 ||
+      iShapeHasta < 0 ||
+      iShapeDesde === iShapeHasta
+    ) {
+      return null;
+    }
+
+    if (iShapeDesde < iShapeHasta) {
+      return patron.shape.slice(
+        iShapeDesde,
+        iShapeHasta + 1
+      );
+    }
+
+    return patron.shape
+      .slice(
+        iShapeHasta,
+        iShapeDesde + 1
+      )
+      .reverse();
+  }
+
+  function iconoEtiqueta(texto, fondo, ancho) {
+    return L.divIcon({
+      className: '',
+      html:
+        '<div style="' +
+          'background:' + fondo + ';' +
+          'color:#fff;' +
+          'border:3px solid #fff;' +
+          'box-shadow:0 3px 10px rgba(0,0,0,.28);' +
+          'border-radius:999px;' +
+          'padding:5px 9px;' +
+          'font:700 11px/1.1 system-ui,sans-serif;' +
+          'white-space:nowrap;' +
+        '">' + texto + '</div>',
+      iconSize: [ancho, 28],
+      iconAnchor: [ancho / 2, 14]
+    });
+  }
+
+  window.dibujarCombinacionRuta = async function(candidato) {
+    try {
+      window.limpiarRecorridoSeleccionado();
+
+      const [tramo1, tramo2] =
+        await Promise.all([
+          tramoParaLinea(
+            candidato.line1,
+            candidato.destination1,
+            candidato.origen,
+            candidato.combinacion
+          ),
+          tramoParaLinea(
+            candidato.line2,
+            candidato.destination2,
+            candidato.combinacion,
+            candidato.destino
+          )
+        ]);
+
+      if (!tramo1 || !tramo2) {
+        return false;
+      }
+
+      const halo1 =
+        L.polyline(tramo1, {
+          color: '#ffffff',
+          weight: 11,
+          opacity: 0.92,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(mapa);
+
+      const linea1 =
+        L.polyline(tramo1, {
+          color: '#1769e0',
+          weight: 7,
+          opacity: 0.96,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(mapa);
+
+      const halo2 =
+        L.polyline(tramo2, {
+          color: '#ffffff',
+          weight: 11,
+          opacity: 0.92,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(mapa);
+
+      const linea2 =
+        L.polyline(tramo2, {
+          color: '#7c3aed',
+          weight: 7,
+          opacity: 0.96,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(mapa);
+
+      const marcadorSubir =
+        L.marker(
+          tramo1[0],
+          {
+            icon: iconoEtiqueta(
+              'SUBIR',
+              '#18a66a',
+              58
+            ),
+            zIndexOffset: 2300
+          }
+        ).addTo(mapa);
+
+      const marcadorCombinar =
+        L.marker(
+          tramo1[tramo1.length - 1],
+          {
+            icon: iconoEtiqueta(
+              'COMBINAR',
+              '#d79b00',
+              78
+            ),
+            zIndexOffset: 2350
+          }
+        ).addTo(mapa);
+
+      const marcadorBajar =
+        L.marker(
+          tramo2[tramo2.length - 1],
+          {
+            icon: iconoEtiqueta(
+              'BAJAR',
+              '#e54b4b',
+              62
+            ),
+            zIndexOffset: 2300
+          }
+        ).addTo(mapa);
+
+      capasCombinacion.push(
+        halo1,
+        linea1,
+        halo2,
+        linea2,
+        marcadorSubir,
+        marcadorCombinar,
+        marcadorBajar
+      );
+
+      const bounds =
+        L.latLngBounds([
+          ...tramo1,
+          ...tramo2
+        ]);
+
+      mapa.fitBounds(bounds, {
+        paddingTopLeft: [45, 55],
+        paddingBottomRight: [45, 55],
+        maxZoom: 15,
+        animate: true
+      });
+
+      return true;
+    } catch (error) {
+      console.warn(
+        'No se pudo dibujar la combinación:',
+        error
+      );
+      return false;
+    }
+  };
+
   };
 })();
