@@ -248,6 +248,26 @@
     }
 
 
+    /* =========================================
+       MARCADOR DE BUS EN VIVO
+       ========================================= */
+
+    .icono-bus-vivo {
+      width: 38px;
+      height: 38px;
+      background: #ef6c00;
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow:
+        0 0 0 3px rgba(239, 108, 0, 0.22),
+        0 2px 8px rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+    }
+
+
 
     .linea-contenido {
       display: flex;
@@ -452,6 +472,33 @@
       });
 
 
+    const iconoBusVivo =
+      L.divIcon({
+
+        className: '',
+
+        html: `
+          <div class="icono-bus-vivo">🚌</div>
+        `,
+
+        iconSize: [
+          38,
+          38
+        ],
+
+        iconAnchor: [
+          19,
+          19
+        ],
+
+        popupAnchor: [
+          0,
+          -21
+        ]
+
+      });
+
+
     // =========================================================
     // MAPA
     // =========================================================
@@ -484,6 +531,8 @@
     let circuloUsuario = null;
 
     let marcadoresParadas = [];
+
+    let marcadoresBusesVivos = [];
 
     let paradaActual = null;
 
@@ -1223,6 +1272,93 @@
 
 
     // =========================================================
+    // BUSES EN VIVO EN EL MAPA
+    // =========================================================
+
+    function limpiarMarcadoresBusesVivos() {
+
+      for (
+        const marcador of
+        marcadoresBusesVivos
+      ) {
+
+        mapa.removeLayer(
+          marcador
+        );
+      }
+
+      marcadoresBusesVivos = [];
+    }
+
+
+    function mostrarMarcadoresBusesVivos(
+      buses,
+      seleccion
+    ) {
+
+      limpiarMarcadoresBusesVivos();
+
+      if (!Array.isArray(buses)) {
+        return;
+      }
+
+      for (const bus of buses) {
+
+        if (
+          !bus.location ||
+          !Array.isArray(bus.location.coordinates)
+        ) {
+          continue;
+        }
+
+        const [lon, lat] =
+          bus.location.coordinates;
+
+        if (
+          !Number.isFinite(Number(lat)) ||
+          !Number.isFinite(Number(lon))
+        ) {
+          continue;
+        }
+
+        const marcador =
+          L.marker(
+            [Number(lat), Number(lon)],
+            {
+              icon: iconoBusVivo,
+              zIndexOffset: 1200
+            }
+          )
+          .addTo(mapa);
+
+        const distanciaTexto =
+          Number.isFinite(Number(bus.distanciaAParada))
+            ? `<br><strong>Aprox. ${formatearDistancia(bus.distanciaAParada)} de la parada</strong>`
+            : Number.isFinite(Number(bus.distance))
+              ? `<br><strong>${formatearDistancia(bus.distance)} de la parada</strong>`
+              : '';
+
+        const etaTexto =
+          Number.isFinite(Number(bus.eta))
+            ? `<br>Llegada estimada: <strong>${formatearETA(bus.eta)}</strong>`
+            : '';
+
+        marcador.bindPopup(`
+          <strong>🚌 ${bus.line || seleccion?.linea || ''}</strong>
+          ${bus.busId ? `<br>Coche ${bus.busId}` : ''}
+          ${bus.destination || seleccion?.destination ? `<br>→ ${bus.destination || seleccion.destination}` : ''}
+          ${etaTexto}
+          ${distanciaTexto}
+        `);
+
+        marcadoresBusesVivos.push(
+          marcador
+        );
+      }
+    }
+
+
+    // =========================================================
     // SELECCIONAR LÍNEA
     // =========================================================
 
@@ -1353,6 +1489,10 @@
 
       // Invalida de inmediato cualquier respuesta anterior.
       sesionProximos++;
+
+      // Al cambiar de parada o línea, quitamos del mapa
+      // los vehículos de la selección anterior.
+      limpiarMarcadoresBusesVivos();
 
 
       if (
@@ -1548,6 +1688,11 @@
           datos.length > 0
         ) {
 
+          mostrarMarcadoresBusesVivos(
+            datos,
+            seleccion
+          );
+
           mostrarProximos(
             datos,
             linea,
@@ -1740,6 +1885,8 @@
             : '';
 
         if (!busesMismaVariante.length) {
+          limpiarMarcadoresBusesVivos();
+
           proximos.innerHTML = `
             <h3>${linea}${destinoTexto}</h3>
             <div class="aviso-info">
@@ -1749,6 +1896,11 @@
           `;
           return;
         }
+
+        mostrarMarcadoresBusesVivos(
+          busesMismaVariante,
+          seleccion
+        );
 
         proximos.innerHTML = `
           <h3>${linea}${destinoTexto}</h3>
@@ -1810,6 +1962,8 @@
           seleccion.sesionId ===
             sesionProximos
         ) {
+          limpiarMarcadoresBusesVivos();
+
           proximos.innerHTML = `
             <h3>${linea}${destination ? ` → ${destination}` : ''}</h3>
             <div class="aviso-info">
