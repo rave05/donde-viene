@@ -2347,7 +2347,8 @@
         typeof dibujarRecorridoSeleccionado === 'function'
       ) {
         await dibujarRecorridoSeleccionado(
-          candidato
+          candidato,
+          destinoRutaActivo
         );
       }
 
@@ -2401,7 +2402,8 @@
           typeof dibujarCombinacionRuta === 'function'
         ) {
           await dibujarCombinacionRuta(
-            candidato
+            candidato,
+            destinoRutaActivo
           );
         }
       } finally {
@@ -5327,7 +5329,7 @@
   </script>
 
   <script src="./horarios.js"></script>
-  <script src="./recorridos.js?v=20261002-7"></script>
+  <script src="./recorridos.js?v=20261002-8"></script>
   <h1>Beta V0.5</h1>
 </body>
 </html>
