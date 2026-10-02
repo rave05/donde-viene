@@ -491,8 +491,8 @@
     try {
       const [opcionesOrigen, opcionesDestino] =
         await Promise.all([
-          opcionesLineasPorParadas(paradasOrigen),
-          opcionesLineasPorParadas(paradasDestino)
+          opcionesLineasPorParadas(paradasOrigen, 14),
+          opcionesLineasPorParadas(paradasDestino, 14)
         ]);
 
       if (!opcionesOrigen.length || !opcionesDestino.length) {
@@ -518,6 +518,47 @@
 
       const resultados = [];
       const vistos = new Set();
+      const MAX_CAMINATA_TRANSFER = 350;
+
+      function distanciaTransfer(paradaA, paradaB) {
+        const a = paradaA?.location?.coordinates;
+        const b = paradaB?.location?.coordinates;
+
+        if (
+          !Array.isArray(a) ||
+          !Array.isArray(b)
+        ) {
+          return Infinity;
+        }
+
+        const lat1 = Number(a[1]);
+        const lon1 = Number(a[0]);
+        const lat2 = Number(b[1]);
+        const lon2 = Number(b[0]);
+
+        if (
+          ![lat1, lon1, lat2, lon2]
+            .every(Number.isFinite)
+        ) {
+          return Infinity;
+        }
+
+        const R = 6371000;
+        const rad = Math.PI / 180;
+        const dLat = (lat2 - lat1) * rad;
+        const dLon = (lon2 - lon1) * rad;
+
+        const x =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos(lat1 * rad) *
+          Math.cos(lat2 * rad) *
+          Math.sin(dLon / 2) ** 2;
+
+        return R * 2 * Math.atan2(
+          Math.sqrt(x),
+          Math.sqrt(1 - x)
+        );
+      }
 
       for (const primera of opcionesOrigen) {
         const patrones1 =
@@ -550,16 +591,18 @@
             }
 
             const posteriores =
-              new Map();
+              stops1
+                .slice(iOrigen + 1)
+                .slice(0, 60)
+                .map((stopId, offset) => ({
+                  stopId,
+                  index: iOrigen + 1 + offset,
+                  parada: buscarParadaGlobal(stopId)
+                }))
+                .filter(item => item.parada);
 
-            for (
-              let i = iOrigen + 1;
-              i < stops1.length;
-              i++
-            ) {
-              if (!posteriores.has(stops1[i])) {
-                posteriores.set(stops1[i], i);
-              }
+            if (!posteriores.length) {
+              continue;
             }
 
             for (const p2 of patrones2) {
@@ -577,28 +620,60 @@
                 continue;
               }
 
+              const anteriores =
+                stops2
+                  .slice(Math.max(0, iDestino - 60), iDestino)
+                  .map((stopId, offset) => ({
+                    stopId,
+                    index:
+                      Math.max(0, iDestino - 60) + offset,
+                    parada: buscarParadaGlobal(stopId)
+                  }))
+                  .filter(item => item.parada);
+
+              if (!anteriores.length) {
+                continue;
+              }
+
               let mejorTransfer = null;
 
-              for (let j = 0; j < iDestino; j++) {
-                const stopTransfer = stops2[j];
-                const iPrimero = posteriores.get(stopTransfer);
+              for (const salida of posteriores) {
+                for (const entrada of anteriores) {
+                  const caminata =
+                    distanciaTransfer(
+                      salida.parada,
+                      entrada.parada
+                    );
 
-                if (iPrimero == null) {
-                  continue;
-                }
+                  if (
+                    !Number.isFinite(caminata) ||
+                    caminata > MAX_CAMINATA_TRANSFER
+                  ) {
+                    continue;
+                  }
 
-                const scoreTramo =
-                  (iPrimero - iOrigen) +
-                  (iDestino - j);
+                  const scoreTramo =
+                    (salida.index - iOrigen) +
+                    (iDestino - entrada.index);
 
-                if (
-                  !mejorTransfer ||
-                  scoreTramo < mejorTransfer.score
-                ) {
-                  mejorTransfer = {
-                    stopId: stopTransfer,
-                    score: scoreTramo
-                  };
+                  const puntajeTransfer =
+                    scoreTramo * 35 +
+                    caminata * 2.5;
+
+                  if (
+                    !mejorTransfer ||
+                    puntajeTransfer <
+                      mejorTransfer.puntajeTransfer
+                  ) {
+                    mejorTransfer = {
+                      paradaBajar:
+                        salida.parada,
+                      paradaSubir:
+                        entrada.parada,
+                      caminata,
+                      puntajeTransfer
+                    };
+                  }
                 }
               }
 
@@ -606,19 +681,15 @@
                 continue;
               }
 
-              const paradaCombinacion =
-                buscarParadaGlobal(
-                  mejorTransfer.stopId
-                );
-
-              if (!paradaCombinacion) {
-                continue;
-              }
-
               const clave =
                 primera.line + '|' +
                 segunda.line + '|' +
-                mejorTransfer.stopId;
+                String(
+                  mejorTransfer.paradaBajar.busstopId
+                ) + '|' +
+                String(
+                  mejorTransfer.paradaSubir.busstopId
+                );
 
               if (vistos.has(clave)) {
                 continue;
@@ -639,7 +710,12 @@
                   segunda.destination ||
                   '',
                 origen: primera.parada,
-                combinacion: paradaCombinacion,
+                combinacion:
+                  mejorTransfer.paradaBajar,
+                combinacion2:
+                  mejorTransfer.paradaSubir,
+                caminataCombinacion:
+                  mejorTransfer.caminata,
                 destino: segunda.parada,
                 puntaje:
                   Number(
@@ -648,7 +724,7 @@
                   Number(
                     segunda.parada.distanciaRuta || 0
                   ) +
-                  mejorTransfer.score * 35
+                  mejorTransfer.puntajeTransfer
               });
             }
           }
@@ -816,7 +892,8 @@
           tramoParaLinea(
             candidato.line2,
             candidato.destination2,
-            candidato.combinacion,
+            candidato.combinacion2 ||
+              candidato.combinacion,
             candidato.destino
           )
         ]);
@@ -887,6 +964,69 @@
           }
         ).addTo(mapa);
 
+      let caminataTransfer = null;
+      let marcadorTomarSegundo = null;
+
+      const coordBajarPrimero =
+        candidato.combinacion?.location?.coordinates;
+
+      const coordSubirSegundo =
+        (
+          candidato.combinacion2 ||
+          candidato.combinacion
+        )?.location?.coordinates;
+
+      if (
+        Array.isArray(coordBajarPrimero) &&
+        Array.isArray(coordSubirSegundo) &&
+        String(candidato.combinacion?.busstopId) !==
+          String(
+            (
+              candidato.combinacion2 ||
+              candidato.combinacion
+            )?.busstopId
+          )
+      ) {
+        caminataTransfer =
+          L.polyline(
+            [
+              [
+                Number(coordBajarPrimero[1]),
+                Number(coordBajarPrimero[0])
+              ],
+              [
+                Number(coordSubirSegundo[1]),
+                Number(coordSubirSegundo[0])
+              ]
+            ],
+            {
+              color: '#6b7280',
+              weight: 5,
+              opacity: 0.9,
+              dashArray: '8 10',
+              lineCap: 'round'
+            }
+          )
+          .addTo(mapa);
+
+        marcadorTomarSegundo =
+          L.marker(
+            [
+              Number(coordSubirSegundo[1]),
+              Number(coordSubirSegundo[0])
+            ],
+            {
+              icon: iconoEtiqueta(
+                '2° BUS',
+                '#7c3aed',
+                68
+              ),
+              zIndexOffset: 2360
+            }
+          )
+          .addTo(mapa);
+      }
+
       const marcadorBajar =
         L.marker(
           tramo2[tramo2.length - 1],
@@ -907,7 +1047,13 @@
         linea2,
         marcadorSubir,
         marcadorCombinar,
-        marcadorBajar
+        marcadorBajar,
+        ...(caminataTransfer
+          ? [caminataTransfer]
+          : []),
+        ...(marcadorTomarSegundo
+          ? [marcadorTomarSegundo]
+          : [])
       );
 
       const bounds =
