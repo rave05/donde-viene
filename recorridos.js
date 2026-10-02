@@ -128,6 +128,19 @@
       const destinoObjetivo =
         normalizar(candidato.destination);
 
+      const origenCoords =
+        candidato.origen.location?.coordinates;
+
+      const destinoCoords =
+        candidato.destino.location?.coordinates;
+
+      if (
+        !Array.isArray(origenCoords) ||
+        !Array.isArray(destinoCoords)
+      ) {
+        return false;
+      }
+
       let compatibles =
         patrones.filter(patron => {
           const paradas =
@@ -150,11 +163,7 @@
           );
         });
 
-      if (!compatibles.length) {
-        return false;
-      }
-
-      if (destinoObjetivo) {
+      if (destinoObjetivo && compatibles.length) {
         const porDestino =
           compatibles.filter(patron => {
             const n =
@@ -172,19 +181,82 @@
         }
       }
 
-      const patron =
+      let patron =
         compatibles[0];
 
-      const origenCoords =
-        candidato.origen.location?.coordinates;
+      // Fallback importante: en algunas rutas programadas el identificador
+      // de parada usado por la app no coincide exactamente con el stop_id
+      // guardado en el patrón. En ese caso elegimos el shape de la misma
+      // línea que pasa más cerca de las dos paradas.
+      if (!patron) {
+        const candidatosShape =
+          patrones
+            .filter(p =>
+              Array.isArray(p.shape) &&
+              p.shape.length >= 2
+            )
+            .map(p => {
+              const iOrigenShape =
+                indiceShapeMasCercano(
+                  p.shape,
+                  Number(origenCoords[1]),
+                  Number(origenCoords[0])
+                );
 
-      const destinoCoords =
-        candidato.destino.location?.coordinates;
+              const iDestinoShape =
+                indiceShapeMasCercano(
+                  p.shape,
+                  Number(destinoCoords[1]),
+                  Number(destinoCoords[0])
+                );
 
-      if (
-        !Array.isArray(origenCoords) ||
-        !Array.isArray(destinoCoords)
-      ) {
+              if (
+                iOrigenShape < 0 ||
+                iDestinoShape < 0 ||
+                iOrigenShape === iDestinoShape
+              ) {
+                return null;
+              }
+
+              const po = p.shape[iOrigenShape];
+              const pd = p.shape[iDestinoShape];
+
+              let puntaje =
+                distanciaSimple(
+                  po[0],
+                  po[1],
+                  Number(origenCoords[1]),
+                  Number(origenCoords[0])
+                ) +
+                distanciaSimple(
+                  pd[0],
+                  pd[1],
+                  Number(destinoCoords[1]),
+                  Number(destinoCoords[0])
+                );
+
+              if (
+                destinoObjetivo &&
+                normalizar(p.destination) === destinoObjetivo
+              ) {
+                puntaje *= 0.5;
+              }
+
+              return {
+                patron: p,
+                puntaje
+              };
+            })
+            .filter(Boolean)
+            .sort((a, b) =>
+              a.puntaje - b.puntaje
+            );
+
+        patron =
+          candidatosShape[0]?.patron;
+      }
+
+      if (!patron) {
         return false;
       }
 
