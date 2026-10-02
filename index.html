@@ -2397,7 +2397,12 @@
 
           if (!combinaciones.length) {
             const diag =
-              window.ultimoDiagnosticoCombinacion || {};
+              window.ultimoDiagnosticoCombinacion || {
+                error:
+                  buscarCombinaciones
+                    ? 'El motor cargó, pero no llegó a generar diagnóstico.'
+                    : 'El motor de combinaciones (recorridos.js) no está cargado.'
+              };
 
             resultadoRuta.innerHTML =
               '<div class="route-empty">' +
@@ -4716,7 +4721,7 @@
   </script>
 
   <script src="./horarios.js"></script>
-  <script src="./recorridos.js"></script>
+  <script src="./recorridos.js?v=20261002-1"></script>
   <h1>Beta V0.5</h1>
 </body>
 </html>
