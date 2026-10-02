@@ -1302,6 +1302,20 @@
         return;
       }
 
+      const puntosParaEncuadrar = [];
+
+      // La parada seleccionada también entra en el encuadre.
+      // Así siempre vemos la relación entre la parada y los buses.
+      if (
+        Number.isFinite(Number(seleccion?.stopLat)) &&
+        Number.isFinite(Number(seleccion?.stopLon))
+      ) {
+        puntosParaEncuadrar.push([
+          Number(seleccion.stopLat),
+          Number(seleccion.stopLon)
+        ]);
+      }
+
       for (const bus of buses) {
 
         if (
@@ -1321,9 +1335,12 @@
           continue;
         }
 
+        const latNumero = Number(lat);
+        const lonNumero = Number(lon);
+
         const marcador =
           L.marker(
-            [Number(lat), Number(lon)],
+            [latNumero, lonNumero],
             {
               icon: iconoBusVivo,
               zIndexOffset: 1200
@@ -1353,6 +1370,32 @@
 
         marcadoresBusesVivos.push(
           marcador
+        );
+
+        // Usamos como máximo los 3 primeros buses para no alejar
+        // demasiado el mapa si hay un vehículo muy remoto.
+        if (puntosParaEncuadrar.length < 4) {
+          puntosParaEncuadrar.push([
+            latNumero,
+            lonNumero
+          ]);
+        }
+      }
+
+      if (puntosParaEncuadrar.length >= 2) {
+        mapa.fitBounds(
+          L.latLngBounds(puntosParaEncuadrar),
+          {
+            padding: [45, 45],
+            maxZoom: 15,
+            animate: true
+          }
+        );
+      } else if (puntosParaEncuadrar.length === 1) {
+        mapa.setView(
+          puntosParaEncuadrar[0],
+          15,
+          { animate: true }
         );
       }
     }
