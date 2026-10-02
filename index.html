@@ -1480,6 +1480,9 @@
         todasLasParadas =
           datos;
 
+        window.todasLasParadas =
+          todasLasParadas;
+
         estado.textContent =
           `Se cargaron ${datos.length} paradas.`;
 
@@ -1970,6 +1973,42 @@
     }
 
 
+    async function abrirOpcionCombinacion(candidato) {
+      if (
+        !candidato?.origen ||
+        !candidato?.line1 ||
+        !candidato?.line2
+      ) {
+        return;
+      }
+
+      if (
+        typeof dibujarCombinacionRuta === 'function'
+      ) {
+        await dibujarCombinacionRuta(
+          candidato
+        );
+      }
+
+      await seleccionarParada(
+        candidato.origen
+      );
+
+      const botones =
+        [...listaLineas.querySelectorAll('.linea')];
+
+      const botonPrimeraLinea =
+        botones.find(boton =>
+          String(boton._lineaData?.line || '') ===
+            String(candidato.line1)
+        );
+
+      if (botonPrimeraLinea) {
+        botonPrimeraLinea.click();
+      }
+    }
+
+
     async function buscarRutaSimple() {
       const origenTexto =
         origenRuta.value.trim();
@@ -2308,10 +2347,127 @@
 
         if (!candidatos.length) {
           resultadoRuta.innerHTML =
-            '<div class="route-empty">' +
-              '<strong>No encontramos una línea directa.</strong><br>' +
-              'Probamos las paradas cercanas y, cuando el destino es un barrio, también las paradas dentro de esa zona.' +
-            '</div>';
+            '<div class="route-status">No hay línea directa. Buscando una combinación...</div>';
+
+          const buscarCombinaciones =
+            typeof window.buscarCombinacionesRuta === 'function'
+              ? window.buscarCombinacionesRuta
+              : null;
+
+          const combinaciones =
+            buscarCombinaciones
+              ? await buscarCombinaciones(
+                  paradasOrigen,
+                  paradasDestino
+                )
+              : [];
+
+          if (!combinaciones.length) {
+            resultadoRuta.innerHTML =
+              '<div class="route-empty">' +
+                '<strong>No encontramos una ruta directa ni una combinación simple.</strong><br>' +
+                'Probamos una combinación de hasta dos ómnibus usando los recorridos GTFS disponibles.' +
+              '</div>';
+            return;
+          }
+
+          const combinacionesMostradas =
+            combinaciones.slice(0, 4);
+
+          resultadoRuta.innerHTML =
+            combinacionesMostradas
+              .map((candidato, indice) => {
+                const subir =
+                  escaparHTML(
+                    nombreParadaRuta(
+                      candidato.origen
+                    )
+                  );
+
+                const combinar =
+                  escaparHTML(
+                    nombreParadaRuta(
+                      candidato.combinacion
+                    )
+                  );
+
+                const bajar =
+                  escaparHTML(
+                    nombreParadaRuta(
+                      candidato.destino
+                    )
+                  );
+
+                const destino1 =
+                  candidato.destination1
+                    ? ' → ' +
+                      escaparHTML(
+                        candidato.destination1
+                      )
+                    : '';
+
+                const destino2 =
+                  candidato.destination2
+                    ? ' → ' +
+                      escaparHTML(
+                        candidato.destination2
+                      )
+                    : '';
+
+                return (
+                  '<button type="button" class="route-result route-result-button route-combination" data-combo-index="' +
+                    indice +
+                  '">' +
+                    '<div class="route-line">🔁 1 combinación</div>' +
+                    '<div><strong>🚌 ' +
+                      escaparHTML(candidato.line1) +
+                      destino1 +
+                    '</strong></div>' +
+                    '<div><strong>Subí en:</strong> ' +
+                      subir +
+                    '</div>' +
+                    '<div><strong>Combiná en:</strong> ' +
+                      combinar +
+                    '</div>' +
+                    '<div style="margin-top:8px"><strong>🚌 ' +
+                      escaparHTML(candidato.line2) +
+                      destino2 +
+                    '</strong></div>' +
+                    '<div><strong>Bajá en:</strong> ' +
+                      bajar +
+                    '</div>' +
+                    '<div class="route-meta">' +
+                      'Azul: primer ómnibus · Violeta: segundo ómnibus' +
+                    '</div>' +
+                    '<div class="route-result-action">Ver combinación →</div>' +
+                  '</button>'
+                );
+              })
+              .join('');
+
+          resultadoRuta
+            .querySelectorAll('[data-combo-index]')
+            .forEach(boton => {
+              boton.addEventListener(
+                'click',
+                () => {
+                  const indice =
+                    Number(
+                      boton.dataset.comboIndex
+                    );
+
+                  const candidato =
+                    combinacionesMostradas[indice];
+
+                  if (candidato) {
+                    abrirOpcionCombinacion(
+                      candidato
+                    );
+                  }
+                }
+              );
+            });
+
           return;
         }
 
