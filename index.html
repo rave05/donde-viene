@@ -1716,7 +1716,17 @@
 
           return {
             ...parada,
+            // Distancia real de caminata al lugar buscado.
             distanciaRuta:
+              distanciaMetros(
+                Number(punto.lat),
+                Number(punto.lon),
+                lat,
+                lon
+              ),
+            // Solo se usa para ordenar qué lado del barrio conviene más
+            // respecto al otro extremo del viaje.
+            distanciaReferencia:
               distanciaMetros(
                 refLat,
                 refLon,
@@ -1726,8 +1736,8 @@
           };
         })
         .sort((a, b) =>
-          a.distanciaRuta -
-          b.distanciaRuta
+          a.distanciaReferencia -
+          b.distanciaReferencia
         )
         .slice(0, limite);
     }
@@ -2344,9 +2354,18 @@
           }
         }
 
+        // Una coincidencia de número de línea no sirve como ruta directa
+        // si obliga a caminar kilómetros después. En ese caso pasamos a
+        // buscar una combinación de dos ómnibus.
+        candidatos =
+          candidatos.filter(candidato =>
+            Number(candidato.origen?.distanciaRuta || 0) <= 1500 &&
+            Number(candidato.destino?.distanciaRuta || 0) <= 1500
+          );
+
         if (!candidatos.length) {
           resultadoRuta.innerHTML =
-            '<div class="route-status">No hay línea directa. Buscando una combinación...</div>';
+            '<div class="route-status">No hay una línea directa razonable. Buscando una combinación...</div>';
 
           const buscarCombinaciones =
             typeof window.buscarCombinacionesRuta === 'function'
