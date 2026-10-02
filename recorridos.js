@@ -2,6 +2,7 @@
   const cacheRecorridos = new Map();
   let manifiestoRecorridos = null;
   let aliasesRecorridos = null;
+  let redRecorridos = null;
   let lineaRecorridoMapa = null;
   let haloRecorridoMapa = null;
   let marcadorInicioRecorrido = null;
@@ -80,6 +81,36 @@
       claves.has(String(stop))
     );
   }
+
+  async function cargarRedRecorridos() {
+    if (redRecorridos) {
+      return redRecorridos;
+    }
+
+    try {
+      const respuesta =
+        await fetch(
+          './recorridos/red.json',
+          { cache: 'no-cache' }
+        );
+
+      if (!respuesta.ok) {
+        return null;
+      }
+
+      redRecorridos =
+        await respuesta.json();
+
+      return redRecorridos;
+    } catch (error) {
+      console.warn(
+        'No se pudo cargar la red global de recorridos:',
+        error
+      );
+      return null;
+    }
+  }
+
 
   async function cargarRecorridoLinea(linea) {
     const clave = String(linea);
@@ -571,40 +602,79 @@
     try {
       await cargarAliasesRecorridos();
 
-      const [opcionesOrigen, opcionesDestino] =
-        await Promise.all([
-          opcionesLineasPorParadas(paradasOrigen, 60),
-          opcionesLineasPorParadas(paradasDestino, 60)
-        ]);
+      const red =
+        await cargarRedRecorridos();
 
-      if (!opcionesOrigen.length || !opcionesDestino.length) {
+      if (
+        !red ||
+        !Array.isArray(red.patterns) ||
+        !red.byStop ||
+        !red.coords
+      ) {
         return [];
       }
 
-      const lineasNecesarias =
-        [...new Set([
-          ...opcionesOrigen.map(item => item.line),
-          ...opcionesDestino.map(item => item.line)
-        ])];
+      function entradasParadas(paradas, limite = 90) {
+        const resultado = [];
+        const vistos = new Set();
 
-      const datosPorLinea = new Map();
+        for (const parada of paradas.slice(0, 35)) {
+          const claves =
+            clavesCompatiblesParada(
+              parada.busstopId
+            );
 
-      await Promise.all(
-        lineasNecesarias.map(async linea => {
-          const datos = await cargarRecorridoLinea(linea);
-          if (datos) {
-            datosPorLinea.set(linea, datos);
+          for (const clave of claves) {
+            const entradas =
+              red.byStop[String(clave)] || [];
+
+            for (const entrada of entradas) {
+              const patronIndex =
+                Number(entrada?.[0]);
+
+              const secuencia =
+                Number(entrada?.[1]);
+
+              if (
+                !Number.isInteger(patronIndex) ||
+                !Number.isInteger(secuencia)
+              ) {
+                continue;
+              }
+
+              const key =
+                patronIndex + '|' +
+                secuencia + '|' +
+                String(parada.busstopId);
+
+              if (vistos.has(key)) {
+                continue;
+              }
+
+              vistos.add(key);
+
+              resultado.push({
+                patronIndex,
+                secuencia,
+                parada
+              });
+
+              if (resultado.length >= limite) {
+                return resultado;
+              }
+            }
           }
-        })
-      );
+        }
 
-      const resultados = [];
-      const vistos = new Set();
-      const MAX_CAMINATA_TRANSFER = 450;
+        return resultado;
+      }
 
-      function distanciaTransfer(paradaA, paradaB) {
-        const a = paradaA?.location?.coordinates;
-        const b = paradaB?.location?.coordinates;
+      function distanciaStops(stopA, stopB) {
+        const a =
+          red.coords[String(stopA)];
+
+        const b =
+          red.coords[String(stopB)];
 
         if (
           !Array.isArray(a) ||
@@ -613,17 +683,10 @@
           return Infinity;
         }
 
-        const lat1 = Number(a[1]);
-        const lon1 = Number(a[0]);
-        const lat2 = Number(b[1]);
-        const lon2 = Number(b[0]);
-
-        if (
-          ![lat1, lon1, lat2, lon2]
-            .every(Number.isFinite)
-        ) {
-          return Infinity;
-        }
+        const lat1 = Number(a[0]);
+        const lon1 = Number(a[1]);
+        const lat2 = Number(b[0]);
+        const lon2 = Number(b[1]);
 
         const R = 6371000;
         const rad = Math.PI / 180;
@@ -642,181 +705,195 @@
         );
       }
 
-      for (const primera of opcionesOrigen) {
-        const patrones1 =
-          datosPorLinea.get(primera.line)?.patterns || [];
+      const origenEntradas =
+        entradasParadas(
+          paradasOrigen,
+          90
+        );
 
-        for (const segunda of opcionesDestino) {
-          if (primera.line === segunda.line) {
+      const destinoEntradas =
+        entradasParadas(
+          paradasDestino,
+          90
+        );
+
+      if (
+        !origenEntradas.length ||
+        !destinoEntradas.length
+      ) {
+        return [];
+      }
+
+      const resultados = [];
+      const vistos = new Set();
+      const MAX_TRANSFER = 500;
+
+      for (const origenItem of origenEntradas) {
+        const p1 =
+          red.patterns[origenItem.patronIndex];
+
+        if (
+          !p1 ||
+          !Array.isArray(p1.s) ||
+          origenItem.secuencia >= p1.s.length - 1
+        ) {
+          continue;
+        }
+
+        for (const destinoItem of destinoEntradas) {
+          const p2 =
+            red.patterns[destinoItem.patronIndex];
+
+          if (
+            !p2 ||
+            !Array.isArray(p2.s) ||
+            destinoItem.secuencia <= 0 ||
+            String(p1.l) === String(p2.l)
+          ) {
             continue;
           }
 
-          const patrones2 =
-            datosPorLinea.get(segunda.line)?.patterns || [];
+          let mejorTransfer = null;
 
-          for (const p1 of patrones1) {
-            const stops1 =
-              Array.isArray(p1.stops)
-                ? p1.stops.map(String)
-                : [];
+          // Buscamos el punto de transferencia únicamente en el tramo
+          // posterior al origen del primer bus y anterior al destino
+          // del segundo bus.
+          const inicio1 =
+            origenItem.secuencia + 1;
 
-            const iOrigen =
-              indiceParadaCompatible(
-                stops1,
-                primera.parada.busstopId
-              );
+          const fin1 =
+            Math.min(
+              p1.s.length,
+              inicio1 + 75
+            );
 
-            if (
-              iOrigen < 0 ||
-              iOrigen >= stops1.length - 1
+          const inicio2 =
+            Math.max(
+              0,
+              destinoItem.secuencia - 75
+            );
+
+          for (
+            let i = inicio1;
+            i < fin1;
+            i++
+          ) {
+            const stop1 =
+              String(p1.s[i]);
+
+            for (
+              let j = inicio2;
+              j < destinoItem.secuencia;
+              j++
             ) {
-              continue;
-            }
+              const stop2 =
+                String(p2.s[j]);
 
-            const posteriores =
-              stops1
-                .slice(iOrigen + 1)
-                .slice(0, 60)
-                .map((stopId, offset) => ({
-                  stopId,
-                  index: iOrigen + 1 + offset,
-                  parada: buscarParadaGlobal(stopId)
-                }))
-                .filter(item => item.parada);
+              let caminata;
 
-            if (!posteriores.length) {
-              continue;
-            }
+              if (stop1 === stop2) {
+                caminata = 0;
+              } else {
+                caminata =
+                  distanciaStops(
+                    stop1,
+                    stop2
+                  );
+              }
 
-            for (const p2 of patrones2) {
-              const stops2 =
-                Array.isArray(p2.stops)
-                  ? p2.stops.map(String)
-                  : [];
-
-              const iDestino =
-                indiceParadaCompatible(
-                  stops2,
-                  segunda.parada.busstopId
-                );
-
-              if (iDestino <= 0) {
+              if (
+                !Number.isFinite(caminata) ||
+                caminata > MAX_TRANSFER
+              ) {
                 continue;
               }
 
-              const anteriores =
-                stops2
-                  .slice(Math.max(0, iDestino - 60), iDestino)
-                  .map((stopId, offset) => ({
-                    stopId,
-                    index:
-                      Math.max(0, iDestino - 60) + offset,
-                    parada: buscarParadaGlobal(stopId)
-                  }))
-                  .filter(item => item.parada);
+              const score =
+                (i - origenItem.secuencia) * 28 +
+                (destinoItem.secuencia - j) * 28 +
+                caminata * 2.2;
 
-              if (!anteriores.length) {
-                continue;
+              if (
+                !mejorTransfer ||
+                score < mejorTransfer.score
+              ) {
+                mejorTransfer = {
+                  stop1,
+                  stop2,
+                  caminata,
+                  score
+                };
               }
-
-              let mejorTransfer = null;
-
-              for (const salida of posteriores) {
-                for (const entrada of anteriores) {
-                  const caminata =
-                    distanciaTransfer(
-                      salida.parada,
-                      entrada.parada
-                    );
-
-                  if (
-                    !Number.isFinite(caminata) ||
-                    caminata > MAX_CAMINATA_TRANSFER
-                  ) {
-                    continue;
-                  }
-
-                  const scoreTramo =
-                    (salida.index - iOrigen) +
-                    (iDestino - entrada.index);
-
-                  const puntajeTransfer =
-                    scoreTramo * 35 +
-                    caminata * 2.5;
-
-                  if (
-                    !mejorTransfer ||
-                    puntajeTransfer <
-                      mejorTransfer.puntajeTransfer
-                  ) {
-                    mejorTransfer = {
-                      paradaBajar:
-                        salida.parada,
-                      paradaSubir:
-                        entrada.parada,
-                      caminata,
-                      puntajeTransfer
-                    };
-                  }
-                }
-              }
-
-              if (!mejorTransfer) {
-                continue;
-              }
-
-              const clave =
-                primera.line + '|' +
-                segunda.line + '|' +
-                String(
-                  mejorTransfer.paradaBajar.busstopId
-                ) + '|' +
-                String(
-                  mejorTransfer.paradaSubir.busstopId
-                );
-
-              if (vistos.has(clave)) {
-                continue;
-              }
-
-              vistos.add(clave);
-
-              resultados.push({
-                tipo: 'combinacion',
-                line1: primera.line,
-                destination1:
-                  p1.destination ||
-                  primera.destination ||
-                  '',
-                line2: segunda.line,
-                destination2:
-                  p2.destination ||
-                  segunda.destination ||
-                  '',
-                origen: primera.parada,
-                combinacion:
-                  mejorTransfer.paradaBajar,
-                combinacion2:
-                  mejorTransfer.paradaSubir,
-                caminataCombinacion:
-                  mejorTransfer.caminata,
-                destino: segunda.parada,
-                puntaje:
-                  Number(
-                    primera.parada.distanciaRuta || 0
-                  ) +
-                  Number(
-                    segunda.parada.distanciaRuta || 0
-                  ) +
-                  mejorTransfer.puntajeTransfer
-              });
             }
           }
+
+          if (!mejorTransfer) {
+            continue;
+          }
+
+          const paradaBajar =
+            buscarParadaGlobal(
+              mejorTransfer.stop1
+            );
+
+          const paradaSubir =
+            buscarParadaGlobal(
+              mejorTransfer.stop2
+            );
+
+          if (
+            !paradaBajar ||
+            !paradaSubir
+          ) {
+            continue;
+          }
+
+          const clave =
+            String(p1.l) + '|' +
+            String(p2.l) + '|' +
+            String(mejorTransfer.stop1) + '|' +
+            String(mejorTransfer.stop2);
+
+          if (vistos.has(clave)) {
+            continue;
+          }
+
+          vistos.add(clave);
+
+          resultados.push({
+            tipo: 'combinacion',
+            line1: String(p1.l),
+            destination1:
+              String(p1.d || ''),
+            line2: String(p2.l),
+            destination2:
+              String(p2.d || ''),
+            origen:
+              origenItem.parada,
+            combinacion:
+              paradaBajar,
+            combinacion2:
+              paradaSubir,
+            caminataCombinacion:
+              mejorTransfer.caminata,
+            destino:
+              destinoItem.parada,
+            puntaje:
+              Number(
+                origenItem.parada.distanciaRuta || 0
+              ) +
+              Number(
+                destinoItem.parada.distanciaRuta || 0
+              ) +
+              mejorTransfer.score
+          });
         }
       }
 
       return resultados
-        .sort((a, b) => a.puntaje - b.puntaje)
+        .sort((a, b) =>
+          a.puntaje - b.puntaje
+        )
         .slice(0, 6);
 
     } catch (error) {
