@@ -1905,6 +1905,15 @@
         return;
       }
 
+      // Dibujamos el tramo real del recorrido GTFS cuando está disponible.
+      if (
+        typeof dibujarRecorridoSeleccionado === 'function'
+      ) {
+        await dibujarRecorridoSeleccionado(
+          candidato
+        );
+      }
+
       // Reutilizamos exactamente el flujo normal de la app:
       // primero seleccionamos la parada de subida y después la línea.
       await seleccionarParada(candidato.origen);
@@ -4492,6 +4501,7 @@
   </script>
 
   <script src="./horarios.js"></script>
+  <script src="./recorridos.js"></script>
   <h1>Beta V0.5</h1>
 </body>
 </html>
