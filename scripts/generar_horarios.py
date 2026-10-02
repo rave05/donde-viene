@@ -300,6 +300,75 @@ def main():
         encoding="utf-8"
     )
 
+    # Índice global y compacto para planificar rutas con una combinación.
+    # Usa stop_code como clave canónica cuando existe, igual que horarios.
+    red_patterns = []
+    red_seen = set()
+
+    for line in sorted(patterns_by_line):
+        for pattern in patterns_by_line[line]:
+            stops = [str(s) for s in pattern.get("stops", []) if str(s)]
+            if len(stops) < 2:
+                continue
+
+            key = (
+                line,
+                pattern.get("destination", ""),
+                tuple(stops)
+            )
+
+            if key in red_seen:
+                continue
+
+            red_seen.add(key)
+            red_patterns.append({
+                "l": line,
+                "d": pattern.get("destination", ""),
+                "s": stops
+            })
+
+    red_coords = {}
+    for sid, coords in stop_coords.items():
+        alias = stop_alias.get(sid, sid)
+        if not alias:
+            continue
+        lat, lon = coords
+        red_coords[str(alias)] = [
+            round(float(lat), 6),
+            round(float(lon), 6)
+        ]
+        red_coords.setdefault(
+            str(sid),
+            [
+                round(float(lat), 6),
+                round(float(lon), 6)
+            ]
+        )
+
+    red_by_stop = defaultdict(list)
+    for pattern_index, pattern in enumerate(red_patterns):
+        for seq, stop in enumerate(pattern["s"]):
+            red_by_stop[str(stop)].append([
+                pattern_index,
+                seq
+            ])
+
+    red_payload = {
+        "generated": True,
+        "patterns": red_patterns,
+        "coords": red_coords,
+        "byStop": dict(red_by_stop)
+    }
+
+    (recorridos_out / "red.json").write_text(
+        json.dumps(
+            red_payload,
+            ensure_ascii=False,
+            separators=(",", ":")
+        ),
+        encoding="utf-8"
+    )
+
     print(
         f"Generadas {len(manifest['lines'])} lineas, "
         f"{len(paradas_payload)} paradas y "
