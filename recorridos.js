@@ -233,10 +233,16 @@
       }
 
       const origenId =
-        String(candidato.origen.busstopId);
+        String(
+          candidato.origen.gtfsStopId ||
+          candidato.origen.busstopId
+        );
 
       const destinoId =
-        String(candidato.destino.busstopId);
+        String(
+          candidato.destino.gtfsStopId ||
+          candidato.destino.busstopId
+        );
 
       const destinoObjetivo =
         normalizar(candidato.destination);
@@ -530,7 +536,7 @@
     const claves =
       clavesCompatiblesParada(stopId);
 
-    return (
+    const encontrada =
       Array.isArray(window.todasLasParadas)
         ? window.todasLasParadas.find(
             parada =>
@@ -538,8 +544,38 @@
                 String(parada?.busstopId)
               )
           )
-        : null
-    );
+        : null;
+
+    if (encontrada) {
+      return {
+        ...encontrada,
+        gtfsStopId: String(stopId)
+      };
+    }
+
+    const punto =
+      redRecorridos?.coords?.[String(stopId)];
+
+    if (
+      Array.isArray(punto) &&
+      punto.length >= 2
+    ) {
+      return {
+        busstopId: String(stopId),
+        gtfsStopId: String(stopId),
+        street1: 'Parada GTFS',
+        street2: '',
+        location: {
+          type: 'Point',
+          coordinates: [
+            Number(punto[1]),
+            Number(punto[0])
+          ]
+        }
+      };
+    }
+
+    return null;
   }
 
   async function opcionesLineasPorParadas(paradas, maxOpciones = 60) {
@@ -595,9 +631,177 @@
     return opciones;
   }
 
-  window.buscarCombinacionesRuta = async function(
+    function distanciaMetrosPuntos(
+    lat1,
+    lon1,
+    lat2,
+    lon2
+  ) {
+    const R = 6371000;
+    const rad = Math.PI / 180;
+    const dLat = (Number(lat2) - Number(lat1)) * rad;
+    const dLon = (Number(lon2) - Number(lon1)) * rad;
+
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(Number(lat1) * rad) *
+      Math.cos(Number(lat2) * rad) *
+      Math.sin(dLon / 2) ** 2;
+
+    return R * 2 * Math.atan2(
+      Math.sqrt(a),
+      Math.sqrt(1 - a)
+    );
+  }
+
+  function entradasDesdePunto(
+    punto,
+    red,
+    limiteParadas = 18,
+    maxMetros = 1200,
+    limiteEntradas = 120
+  ) {
+    const lat = Number(punto?.lat);
+    const lon = Number(punto?.lon);
+
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lon)
+    ) {
+      return [];
+    }
+
+    const candidatos = [];
+    const vistosCoord = new Set();
+
+    for (const [stopId, coords] of Object.entries(red.coords || {})) {
+      if (
+        !Array.isArray(coords) ||
+        !(red.byStop?.[String(stopId)]?.length)
+      ) {
+        continue;
+      }
+
+      const stopLat = Number(coords[0]);
+      const stopLon = Number(coords[1]);
+
+      if (
+        !Number.isFinite(stopLat) ||
+        !Number.isFinite(stopLon)
+      ) {
+        continue;
+      }
+
+      const distancia =
+        distanciaMetrosPuntos(
+          lat,
+          lon,
+          stopLat,
+          stopLon
+        );
+
+      if (distancia > maxMetros) {
+        continue;
+      }
+
+      // stop_id y stop_code pueden apuntar exactamente al mismo lugar.
+      const coordKey =
+        stopLat.toFixed(6) + '|' +
+        stopLon.toFixed(6);
+
+      if (vistosCoord.has(coordKey)) {
+        continue;
+      }
+
+      vistosCoord.add(coordKey);
+
+      candidatos.push({
+        stopId: String(stopId),
+        distancia,
+        lat: stopLat,
+        lon: stopLon
+      });
+    }
+
+    candidatos.sort((a, b) =>
+      a.distancia - b.distancia
+    );
+
+    const resultado = [];
+    const vistosEntrada = new Set();
+
+    for (const candidato of candidatos.slice(0, limiteParadas)) {
+      const entradas =
+        red.byStop?.[candidato.stopId] || [];
+
+      const paradaBase =
+        buscarParadaGlobal(
+          candidato.stopId
+        ) || {
+          busstopId: candidato.stopId,
+          gtfsStopId: candidato.stopId,
+          street1: 'Parada GTFS',
+          street2: '',
+          location: {
+            type: 'Point',
+            coordinates: [
+              candidato.lon,
+              candidato.lat
+            ]
+          }
+        };
+
+      const parada = {
+        ...paradaBase,
+        gtfsStopId: candidato.stopId,
+        distanciaRuta: candidato.distancia
+      };
+
+      for (const entrada of entradas) {
+        const patronIndex =
+          Number(entrada?.[0]);
+
+        const secuencia =
+          Number(entrada?.[1]);
+
+        if (
+          !Number.isInteger(patronIndex) ||
+          !Number.isInteger(secuencia)
+        ) {
+          continue;
+        }
+
+        const clave =
+          patronIndex + '|' +
+          secuencia + '|' +
+          candidato.stopId;
+
+        if (vistosEntrada.has(clave)) {
+          continue;
+        }
+
+        vistosEntrada.add(clave);
+
+        resultado.push({
+          patronIndex,
+          secuencia,
+          parada
+        });
+
+        if (resultado.length >= limiteEntradas) {
+          return resultado;
+        }
+      }
+    }
+
+    return resultado;
+  }
+
+window.buscarCombinacionesRuta = async function(
     paradasOrigen,
-    paradasDestino
+    paradasDestino,
+    origenPunto = null,
+    destinoPunto = null
   ) {
     try {
       await cargarAliasesRecorridos();
@@ -818,16 +1022,32 @@
       }
 
       const origenEntradas =
-        entradasParadas(
-          paradasOrigen,
-          90
-        );
+        origenPunto
+          ? entradasDesdePunto(
+              origenPunto,
+              red,
+              18,
+              1200,
+              120
+            )
+          : entradasParadas(
+              paradasOrigen,
+              90
+            );
 
       const destinoEntradas =
-        entradasParadas(
-          paradasDestino,
-          90
-        );
+        destinoPunto
+          ? entradasDesdePunto(
+              destinoPunto,
+              red,
+              18,
+              1200,
+              120
+            )
+          : entradasParadas(
+              paradasDestino,
+              90
+            );
 
       if (
         !origenEntradas.length ||
@@ -1227,10 +1447,18 @@
         : [];
 
     const desdeId =
-      String(paradaDesde?.busstopId || '');
+      String(
+        paradaDesde?.gtfsStopId ||
+        paradaDesde?.busstopId ||
+        ''
+      );
 
     const hastaId =
-      String(paradaHasta?.busstopId || '');
+      String(
+        paradaHasta?.gtfsStopId ||
+        paradaHasta?.busstopId ||
+        ''
+      );
 
     let compatibles =
       patrones.filter(patron => {
