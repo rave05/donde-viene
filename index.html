@@ -2439,14 +2439,59 @@
           const exactos =
             construir(true);
 
-          if (exactos.length) {
-            return exactos;
+          // No descartamos otras líneas directas solo porque exista
+          // al menos una coincidencia exacta de headsign. El texto de
+          // destino puede cambiar entre paradas aunque sea el mismo
+          // recorrido (por ejemplo, una 494 que sí pasa por ambos puntos).
+          const aproximados =
+            construir(false);
+
+          const unificados =
+            new Map();
+
+          for (const candidato of [
+            ...exactos,
+            ...aproximados
+          ]) {
+            const clave =
+              [
+                String(candidato.line || ''),
+                String(candidato.destination || '')
+                  .trim()
+                  .toUpperCase()
+              ].join('|');
+
+            const anterior =
+              unificados.get(clave);
+
+            if (
+              !anterior ||
+              candidato.puntaje < anterior.puntaje ||
+              (
+                anterior.coincidenciaAproximada &&
+                !candidato.coincidenciaAproximada
+              )
+            ) {
+              unificados.set(
+                clave,
+                candidato
+              );
+            }
           }
 
-          // En varios recorridos el texto de destino/headsign cambia
-          // entre tramos. Si no hay coincidencia exacta, usamos el
-          // mismo número de línea como fallback.
-          return construir(false);
+          return [...unificados.values()]
+            .sort((a, b) => {
+              if (
+                a.coincidenciaAproximada !==
+                b.coincidenciaAproximada
+              ) {
+                return a.coincidenciaAproximada
+                  ? 1
+                  : -1;
+              }
+
+              return a.puntaje - b.puntaje;
+            });
         }
 
         let candidatos =
@@ -2725,8 +2770,46 @@
           return;
         }
 
-        const candidatosMostrados =
-          candidatos.slice(0, 4);
+        // Priorizamos variedad de líneas públicas. Distintos
+        // recorridos internos de la misma línea no deben ocupar los
+        // cuatro lugares y ocultar alternativas directas como la 494.
+        const candidatosMostrados = [];
+        const lineasYaMostradas = new Set();
+
+        for (const candidato of candidatos) {
+          const numero =
+            String(candidato.line || '')
+              .trim()
+              .toUpperCase();
+
+          if (
+            numero &&
+            !lineasYaMostradas.has(numero)
+          ) {
+            candidatosMostrados.push(candidato);
+            lineasYaMostradas.add(numero);
+          }
+
+          if (candidatosMostrados.length >= 4) {
+            break;
+          }
+        }
+
+        if (candidatosMostrados.length < 4) {
+          for (const candidato of candidatos) {
+            if (
+              candidatosMostrados.includes(candidato)
+            ) {
+              continue;
+            }
+
+            candidatosMostrados.push(candidato);
+
+            if (candidatosMostrados.length >= 4) {
+              break;
+            }
+          }
+        }
 
         resultadoRuta.innerHTML =
           candidatosMostrados
