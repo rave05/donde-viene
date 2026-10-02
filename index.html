@@ -1078,6 +1078,58 @@
       }
     }
 
+    .combo-accordion {
+      margin-top: 12px;
+    }
+
+    .combo-accordion-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 13px;
+      cursor: pointer;
+      background: #f3f5f8;
+      color: inherit;
+      font: inherit;
+      font-weight: 800;
+      text-align: left;
+    }
+
+    .combo-accordion-arrow {
+      display: inline-block;
+      transition: transform .28s ease;
+    }
+
+    .combo-accordion.is-collapsed .combo-accordion-arrow {
+      transform: rotate(-90deg);
+    }
+
+    .combo-accordion-panel {
+      display: grid;
+      grid-template-rows: 1fr;
+      opacity: 1;
+      transition:
+        grid-template-rows .32s ease,
+        opacity .24s ease,
+        margin-top .32s ease;
+      margin-top: 10px;
+    }
+
+    .combo-accordion.is-collapsed .combo-accordion-panel {
+      grid-template-rows: 0fr;
+      opacity: 0;
+      margin-top: 0;
+    }
+
+    .combo-accordion-inner {
+      min-height: 0;
+      overflow: hidden;
+    }
+
     details.panel-details {
       margin-top: 14px;
     }
@@ -2508,7 +2560,7 @@
           const combinacionesMostradas =
             combinaciones.slice(0, 4);
 
-          resultadoRuta.innerHTML =
+          const htmlCombinaciones =
             combinacionesMostradas
               .map((candidato, indice) => {
                 const subir =
@@ -2578,6 +2630,47 @@
                 );
               })
               .join('');
+
+          resultadoRuta.innerHTML =
+            '<div class="combo-accordion" id="comboAccordion">' +
+              '<button type="button" class="combo-accordion-toggle" id="comboAccordionToggle" aria-expanded="true">' +
+                '<span>Combinaciones encontradas (' +
+                  combinacionesMostradas.length +
+                ')</span>' +
+                '<span class="combo-accordion-arrow">▼</span>' +
+              '</button>' +
+              '<div class="combo-accordion-panel">' +
+                '<div class="combo-accordion-inner">' +
+                  htmlCombinaciones +
+                '</div>' +
+              '</div>' +
+            '</div>';
+
+          const comboAccordion =
+            document.getElementById('comboAccordion');
+
+          const comboAccordionToggle =
+            document.getElementById('comboAccordionToggle');
+
+          if (
+            comboAccordion &&
+            comboAccordionToggle
+          ) {
+            comboAccordionToggle.addEventListener(
+              'click',
+              () => {
+                const colapsado =
+                  comboAccordion.classList.toggle(
+                    'is-collapsed'
+                  );
+
+                comboAccordionToggle.setAttribute(
+                  'aria-expanded',
+                  String(!colapsado)
+                );
+              }
+            );
+          }
 
           resultadoRuta
             .querySelectorAll('[data-combo-index]')
