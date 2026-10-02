@@ -29,6 +29,43 @@
     return manifiestoHorarios;
   }
 
+  let indiceParadasHorarios = null;
+
+  async function cargarIndiceParadasHorarios() {
+    if (indiceParadasHorarios) {
+      return indiceParadasHorarios;
+    }
+
+    const respuesta = await fetch(
+      './horarios/paradas.json',
+      { cache: 'no-cache' }
+    );
+
+    if (!respuesta.ok) {
+      return {};
+    }
+
+    indiceParadasHorarios = await respuesta.json();
+    return indiceParadasHorarios;
+  }
+
+  window.obtenerLineasProgramadas = async function(stopId) {
+    try {
+      const indice = await cargarIndiceParadasHorarios();
+      const lineas = indice?.[String(stopId)];
+
+      return Array.isArray(lineas)
+        ? lineas
+        : [];
+    } catch (error) {
+      console.warn(
+        'No se pudieron cargar las líneas programadas:',
+        error
+      );
+      return [];
+    }
+  };
+
   async function cargarHorarioLinea(linea) {
     const clave = String(linea);
 
