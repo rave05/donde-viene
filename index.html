@@ -867,6 +867,40 @@
       };
 
 
+
+
+    // =========================================================
+    // SCROLL SUAVE DE NAVEGACIÓN
+    // =========================================================
+
+    function scrollSuaveA(
+      elemento,
+      margen = 14
+    ) {
+
+      if (!elemento) {
+        return;
+      }
+
+
+      const posicion =
+        elemento.getBoundingClientRect().top +
+        window.scrollY -
+        margen;
+
+
+      window.scrollTo({
+        top:
+          Math.max(
+            0,
+            posicion
+          ),
+        behavior:
+          'smooth'
+      });
+    }
+
+
     // =========================================================
     // SELECCIONAR PARADA
     // =========================================================
@@ -1040,6 +1074,16 @@
 
         mostrarLineas(
           lineas
+        );
+
+
+        // Al elegir una parada, llevamos al usuario
+        // directamente a las líneas disponibles.
+        requestAnimationFrame(
+          () =>
+            scrollSuaveA(
+              listaLineas
+            )
         );
 
 
@@ -1258,6 +1302,16 @@
         `<div class="cargando">
           🔄 Buscando próximos ${linea.line}...
         </div>`;
+
+
+      // Al elegir una línea, llevamos al usuario
+      // a la zona donde aparecerán los buses.
+      requestAnimationFrame(
+        () =>
+          scrollSuaveA(
+            proximos
+          )
+      );
 
 
       await cargarProximos(
