@@ -2008,47 +2008,90 @@
               }))
             );
 
-          const encontrados = [];
-          const vistos = new Set();
+          const construir =
+            exigirMismoDestino => {
+              const encontrados = [];
+              const vistos = new Set();
 
-          for (const origenItem of origenConLineas) {
-            for (const lineaOrigen of origenItem.lineas) {
-              const claveOrigen =
-                String(lineaOrigen.line || '') + '|' +
-                String(lineaOrigen.destination || '');
+              for (const origenItem of origenConLineas) {
+                for (const lineaOrigen of origenItem.lineas) {
+                  const numeroLinea =
+                    String(lineaOrigen.line || '');
 
-              for (const destinoItem of destinoConLineas) {
-                const coincide =
-                  destinoItem.lineas.find(lineaDestino =>
-                    String(lineaDestino.line || '') + '|' +
-                    String(lineaDestino.destination || '') ===
-                      claveOrigen
-                  );
+                  if (!numeroLinea) {
+                    continue;
+                  }
 
-                if (!coincide || vistos.has(claveOrigen)) {
-                  continue;
+                  const destinoOrigen =
+                    String(lineaOrigen.destination || '');
+
+                  const claveVista =
+                    exigirMismoDestino
+                      ? numeroLinea + '|' + destinoOrigen
+                      : numeroLinea;
+
+                  for (const destinoItem of destinoConLineas) {
+                    const coincide =
+                      destinoItem.lineas.find(lineaDestino => {
+                        if (
+                          String(lineaDestino.line || '') !==
+                          numeroLinea
+                        ) {
+                          return false;
+                        }
+
+                        if (!exigirMismoDestino) {
+                          return true;
+                        }
+
+                        return (
+                          String(lineaDestino.destination || '') ===
+                          destinoOrigen
+                        );
+                      });
+
+                    if (!coincide || vistos.has(claveVista)) {
+                      continue;
+                    }
+
+                    vistos.add(claveVista);
+
+                    encontrados.push({
+                      line: lineaOrigen.line,
+                      destination:
+                        lineaOrigen.destination ||
+                        coincide.destination ||
+                        '',
+                      origen: origenItem.parada,
+                      destino: destinoItem.parada,
+                      coincidenciaAproximada:
+                        !exigirMismoDestino,
+                      puntaje:
+                        origenItem.parada.distanciaRuta +
+                        destinoItem.parada.distanciaRuta
+                    });
+                  }
                 }
-
-                vistos.add(claveOrigen);
-
-                encontrados.push({
-                  line: lineaOrigen.line,
-                  destination: lineaOrigen.destination || '',
-                  origen: origenItem.parada,
-                  destino: destinoItem.parada,
-                  puntaje:
-                    origenItem.parada.distanciaRuta +
-                    destinoItem.parada.distanciaRuta
-                });
               }
-            }
+
+              encontrados.sort((a, b) =>
+                a.puntaje - b.puntaje
+              );
+
+              return encontrados;
+            };
+
+          const exactos =
+            construir(true);
+
+          if (exactos.length) {
+            return exactos;
           }
 
-          encontrados.sort((a, b) =>
-            a.puntaje - b.puntaje
-          );
-
-          return encontrados;
+          // En varios recorridos el texto de destino/headsign cambia
+          // entre tramos. Si no hay coincidencia exacta, usamos el
+          // mismo número de línea como fallback.
+          return construir(false);
         }
 
         let candidatos =
@@ -2152,6 +2195,11 @@
                     formatearDistancia(candidato.destino.distanciaRuta) +
                     ' al bajar' +
                   '</div>' +
+                  (
+                    candidato.coincidenciaAproximada
+                      ? '<div class="route-meta">Coincidencia por número de línea; confirmamos el sentido al abrirla.</div>'
+                      : ''
+                  ) +
                   '<div class="route-result-action">Ver esta línea →</div>' +
                 '</button>'
               );
