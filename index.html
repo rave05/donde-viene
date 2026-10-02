@@ -217,7 +217,57 @@
 
     .route-field {
       min-width: 0;
+      position: relative;
     }
+
+    .place-suggestions {
+      position: absolute;
+      z-index: 1500;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      margin: 0;
+      padding: 6px;
+      list-style: none;
+      max-height: min(360px, 45vh);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      box-shadow: var(--shadow-md);
+    }
+
+    .place-suggestions[hidden] { display: none; }
+
+    .place-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 56px;
+      padding: 10px;
+      border-radius: 9px;
+      cursor: pointer;
+    }
+
+    .place-option:hover,
+    .place-option[aria-selected="true"] { background: var(--primary-soft); }
+
+    .place-option-icon {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      flex: 0 0 auto;
+      border-radius: 10px;
+      background: var(--surface-soft);
+      font-size: 20px;
+    }
+
+    .place-option-copy { min-width: 0; }
+    .place-option-name { display: block; font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+    .place-option-category { display: block; margin-top: 3px; font-size: 13px; color: var(--muted); }
+    .place-option-address { border-top: 1px solid var(--border); margin-top: 4px; }
 
     .route-field label {
       display: block;
@@ -1358,18 +1408,17 @@
       <div class="route-fields">
         <div class="route-field">
           <label for="origenRuta">Origen</label>
-          <input id="origenRuta" type="text" autocomplete="street-address" list="lugaresMontevideo" placeholder="Ej: Tres Cruces">
+          <input id="origenRuta" type="text" autocomplete="off" placeholder="Ej: Tres Cruces">
         </div>
 
         <div class="route-field">
           <label for="destinoRuta">Destino</label>
-          <input id="destinoRuta" type="text" autocomplete="street-address" list="lugaresMontevideo" placeholder="Ej: Plaza Independencia">
+          <input id="destinoRuta" type="text" autocomplete="off" placeholder="Ej: Plaza Independencia">
         </div>
 
         <button id="btnBuscarRuta" type="button">Buscar ruta</button>
       </div>
 
-      <datalist id="lugaresMontevideo"></datalist>
 
       <div id="resultadoRuta" aria-live="polite"></div>
     </section>
@@ -1545,26 +1594,152 @@
     const btnCambiarRuta =
       document.getElementById('btnCambiarRuta');
 
-    const lugaresMontevideoDatalist =
-      document.getElementById('lugaresMontevideo');
+    // Sugerencias locales: la selección conserva el geocodificador y motor actuales.
+    function iniciarSugerenciasLugares(input) {
+      const categorias = {
+        shopping: ['🛍️', 'Shopping'], terminal: ['🚏', 'Terminal'],
+        hospital: ['🏥', 'Hospital'], facultad: ['🎓', 'Facultad'],
+        estadio: ['🏟️', 'Estadio'], espectaculos: ['🎤', 'Espectáculos'],
+        plaza: ['🌳', 'Plaza'], parque: ['🌿', 'Parque'],
+        mercado: ['🛒', 'Mercado'], cultura: ['🎭', 'Cultura'],
+        'edificio-publico': ['🏛️', 'Edificio público'], institucion: ['🏢', 'Institución']
+      };
+      const normalizar = texto => String(texto || '').normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '').toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ').trim();
+      const lugares = (window.LUGARES_MONTEVIDEO || []).map(lugar => ({
+        lugar,
+        nombres: [lugar.nombre, lugar.consulta, ...(lugar.aliases || [])].map(normalizar),
+        categoria: normalizar((categorias[lugar.categoria] || ['📍', 'Lugar'])[1])
+      }));
+      const lista = document.createElement('ul');
+      lista.id = input.id + '-sugerencias';
+      lista.className = 'place-suggestions';
+      lista.setAttribute('role', 'listbox');
+      lista.setAttribute('aria-label', 'Sugerencias de ' + (input === origenRuta ? 'origen' : 'destino'));
+      lista.hidden = true;
+      input.parentElement.appendChild(lista);
+      input.setAttribute('role', 'combobox');
+      input.setAttribute('aria-autocomplete', 'list');
+      input.setAttribute('aria-haspopup', 'listbox');
+      input.setAttribute('aria-controls', lista.id);
+      input.setAttribute('aria-expanded', 'false');
+      let opciones = [];
+      let activa = -1;
 
-    if (
-      lugaresMontevideoDatalist &&
-      Array.isArray(window.LUGARES_MONTEVIDEO)
-    ) {
-      lugaresMontevideoDatalist.innerHTML =
-        window.LUGARES_MONTEVIDEO
-          .map(lugar =>
-            '<option value="' +
-              lugar.nombre
-                .replaceAll('&', '&amp;')
-                .replaceAll('"', '&quot;')
-                .replaceAll('<', '&lt;')
-                .replaceAll('>', '&gt;') +
-            '"></option>'
-          )
-          .join('');
+      function cerrar() {
+        lista.hidden = true;
+        input.setAttribute('aria-expanded', 'false');
+        input.removeAttribute('aria-activedescendant');
+        activa = -1;
+      }
+
+      function activar(indice) {
+        activa = indice;
+        Array.from(lista.children).forEach((elemento, i) => {
+          elemento.setAttribute('aria-selected', String(i === activa));
+        });
+        if (activa >= 0) {
+          const elemento = lista.children[activa];
+          input.setAttribute('aria-activedescendant', elemento.id);
+          elemento.scrollIntoView({ block: 'nearest' });
+        } else {
+          input.removeAttribute('aria-activedescendant');
+        }
+      }
+
+      function elegir(indice) {
+        const opcion = opciones[indice];
+        if (!opcion) return;
+        input.value = opcion.valor;
+        cerrar();
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        input.focus({ preventScroll: true });
+        // Enfocar al seleccionar no debe volver a abrir la lista.
+        cerrar();
+      }
+
+      function mostrar() {
+        const texto = input.value.trim();
+        const clave = normalizar(texto);
+        const palabras = clave.split(' ').filter(Boolean);
+        const resultados = lugares.map(item => {
+          const campos = [...item.nombres, item.categoria];
+          const coincide = palabras.every(palabra => campos.some(campo => campo.includes(palabra)));
+          const puntaje = item.nombres.includes(clave) ? 0
+            : item.nombres.some(nombre => nombre.startsWith(clave)) ? 1 : 2;
+          return { ...item, coincide, puntaje };
+        }).filter(item => !clave || item.coincide)
+          .sort((a, b) => a.puntaje - b.puntaje)
+          .slice(0, 8);
+        opciones = resultados.map(({ lugar }) => {
+          const [icono, categoria] = categorias[lugar.categoria] || ['📍', 'Lugar'];
+          return { valor: lugar.nombre, nombre: lugar.nombre, icono, categoria };
+        });
+        if (texto) opciones.push({
+          valor: texto, nombre: 'Buscar “' + texto + '”', icono: '🔎',
+          categoria: 'Dirección o lugar en el mapa', direccion: true
+        });
+        lista.replaceChildren();
+        activa = -1;
+        input.removeAttribute('aria-activedescendant');
+        opciones.forEach((opcion, i) => {
+          const elemento = document.createElement('li');
+          elemento.id = lista.id + '-' + i;
+          elemento.className = 'place-option' + (opcion.direccion ? ' place-option-address' : '');
+          elemento.setAttribute('role', 'option');
+          elemento.setAttribute('aria-selected', 'false');
+          const icono = document.createElement('span');
+          icono.className = 'place-option-icon';
+          icono.setAttribute('aria-hidden', 'true');
+          icono.textContent = opcion.icono;
+          const copia = document.createElement('span');
+          copia.className = 'place-option-copy';
+          const nombre = document.createElement('span');
+          nombre.className = 'place-option-name';
+          nombre.textContent = opcion.nombre;
+          const categoria = document.createElement('span');
+          categoria.className = 'place-option-category';
+          categoria.textContent = opcion.categoria;
+          copia.append(nombre, categoria);
+          elemento.append(icono, copia);
+          // Mantener el foco en el campo hasta que el clic seleccione el lugar.
+          elemento.addEventListener('pointerdown', event => event.preventDefault());
+          elemento.addEventListener('click', () => elegir(i));
+          lista.appendChild(elemento);
+        });
+        lista.hidden = !opciones.length;
+        input.setAttribute('aria-expanded', String(!lista.hidden));
+      }
+
+      input.addEventListener('input', mostrar);
+      input.addEventListener('focus', mostrar);
+      input.addEventListener('click', () => { if (lista.hidden) mostrar(); });
+      input.addEventListener('blur', cerrar);
+      input.addEventListener('keydown', event => {
+        if (event.isComposing) return;
+        if (event.key === 'Escape' && !lista.hidden) {
+          event.preventDefault();
+          cerrar();
+        } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          if (lista.hidden) mostrar();
+          if (opciones.length) activar(event.key === 'ArrowDown'
+            ? (activa + 1) % opciones.length
+            : (activa < 0 ? opciones.length - 1 : (activa - 1 + opciones.length) % opciones.length));
+        } else if (event.key === 'Enter' && !lista.hidden && activa >= 0) {
+          event.preventDefault();
+          elegir(activa);
+        } else if (event.key === 'Enter' || event.key === 'Tab') {
+          cerrar();
+        }
+      });
+      document.addEventListener('pointerdown', event => {
+        if (!input.parentElement.contains(event.target)) cerrar();
+      });
     }
+
+    [origenRuta, destinoRuta].forEach(iniciarSugerenciasLugares);
 
 
     function setSeccionColapsada(seccion, colapsada) {
@@ -5452,7 +5627,7 @@
         input.addEventListener(
           'keydown',
           event => {
-            if (event.key === 'Enter') {
+            if (event.key === 'Enter' && !event.defaultPrevented && !event.isComposing) {
               buscarRutaSimple();
             }
           }
