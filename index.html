@@ -1078,6 +1078,44 @@
       }
     }
 
+    .collapsible-section {
+      margin-top: 14px;
+    }
+
+    .collapsible-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 0;
+      background: transparent;
+      padding: 8px 0;
+      cursor: pointer;
+      text-align: left;
+      color: inherit;
+      font: inherit;
+    }
+
+    .collapsible-toggle .section-label {
+      margin: 0;
+      pointer-events: none;
+    }
+
+    .collapsible-arrow {
+      font-size: 14px;
+      transition: transform .18s ease;
+      opacity: .72;
+    }
+
+    .collapsible-section.is-collapsed .collapsible-arrow {
+      transform: rotate(-90deg);
+    }
+
+    .collapsible-section.is-collapsed .collapsible-content {
+      display: none;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *,
       *::before,
@@ -1187,23 +1225,35 @@
         Seleccioná una parada
       </div>
 
-      <div class="section-label">
-        Paradas cercanas
+      <div class="collapsible-section" id="seccionParadas">
+        <button class="collapsible-toggle" type="button" aria-expanded="true">
+          <span class="section-label">Paradas cercanas</span>
+          <span class="collapsible-arrow">▼</span>
+        </button>
+        <div class="collapsible-content">
+          <div id="listaParadas"></div>
+        </div>
       </div>
 
-      <div id="listaParadas"></div>
-
-      <div class="section-label">
-        Líneas
+      <div class="collapsible-section" id="seccionLineas">
+        <button class="collapsible-toggle" type="button" aria-expanded="true">
+          <span class="section-label">Líneas</span>
+          <span class="collapsible-arrow">▼</span>
+        </button>
+        <div class="collapsible-content">
+          <div id="listaLineas"></div>
+        </div>
       </div>
 
-      <div id="listaLineas"></div>
-
-      <div class="section-label">
-        Próximos buses
+      <div class="collapsible-section" id="seccionProximos">
+        <button class="collapsible-toggle" type="button" aria-expanded="true">
+          <span class="section-label">Próximos buses</span>
+          <span class="collapsible-arrow">▼</span>
+        </button>
+        <div class="collapsible-content">
+          <div id="proximos"></div>
+        </div>
       </div>
-
-      <div id="proximos"></div>
 
     </section>
 
@@ -1262,6 +1312,15 @@
     const proximos =
       document.getElementById('proximos');
 
+    const seccionParadas =
+      document.getElementById('seccionParadas');
+
+    const seccionLineas =
+      document.getElementById('seccionLineas');
+
+    const seccionProximos =
+      document.getElementById('seccionProximos');
+
     const btnUbicacion =
       document.getElementById('btnUbicacion');
 
@@ -1277,6 +1336,27 @@
     const resultadoRuta =
       document.getElementById('resultadoRuta');
 
+
+    function setSeccionColapsada(seccion, colapsada) {
+      if (!seccion) return;
+
+      seccion.classList.toggle('is-collapsed', colapsada);
+
+      const boton = seccion.querySelector('.collapsible-toggle');
+      if (boton) {
+        boton.setAttribute('aria-expanded', String(!colapsada));
+      }
+    }
+
+    document.querySelectorAll('.collapsible-toggle').forEach(boton => {
+      boton.addEventListener('click', () => {
+        const seccion = boton.closest('.collapsible-section');
+        setSeccionColapsada(
+          seccion,
+          !seccion.classList.contains('is-collapsed')
+        );
+      });
+    });
 
     // =========================================================
     // ICONOS PERSONALIZADOS
@@ -2701,6 +2781,8 @@
       paradas
     ) {
 
+      setSeccionColapsada(seccionParadas, false);
+
       listaParadas.innerHTML =
         '';
 
@@ -2945,6 +3027,10 @@
 
       paradaActual =
         parada;
+
+      setSeccionColapsada(seccionParadas, true);
+      setSeccionColapsada(seccionLineas, false);
+      setSeccionColapsada(seccionProximos, true);
 
 
       cancelarActualizacionProximos();
@@ -3475,6 +3561,9 @@
       ) {
         return;
       }
+
+      setSeccionColapsada(seccionLineas, true);
+      setSeccionColapsada(seccionProximos, false);
 
 
       if (
