@@ -1028,108 +1028,166 @@ window.buscarCombinacionesRuta = async function(
             const stopTransfer =
               String(patron1.s[i]);
 
-            const conexiones =
-              red.byStop?.[stopTransfer] || [];
+            const transferCoords =
+              red.coords?.[stopTransfer];
 
-            for (const conexion of conexiones) {
-              const patron2Index =
-                Number(conexion?.[0]);
+            if (!Array.isArray(transferCoords)) {
+              continue;
+            }
 
-              const seqTransfer =
-                Number(conexion?.[1]);
+            // Buscamos primero conexiones en la misma parada.
+            // Si no alcanza, permitimos caminar hasta una parada GTFS
+            // cercana (máximo 300 m) para tomar el segundo ómnibus.
+            const conexionesCercanas = [];
 
-              if (
-                !Number.isInteger(patron2Index) ||
-                !Number.isInteger(seqTransfer) ||
-                patron2Index === patron1Index
-              ) {
+            for (const [stop2, coords2] of Object.entries(red.coords)) {
+              if (!Array.isArray(coords2)) {
                 continue;
               }
 
-              const llegada =
-                llegadaPorPatron.get(
-                  patron2Index
+              const entradas2 =
+                red.byStop?.[String(stop2)] || [];
+
+              if (!entradas2.length) {
+                continue;
+              }
+
+              const caminata =
+                distanciaMetrosLocal(
+                  Number(transferCoords[0]),
+                  Number(transferCoords[1]),
+                  Number(coords2[0]),
+                  Number(coords2[1])
                 );
 
-              if (
-                !llegada ||
-                llegada.secuencia <= seqTransfer
-              ) {
+              if (caminata > 300) {
                 continue;
               }
 
-              const patron2 =
-                red.patterns?.[patron2Index];
-
-              if (!patron2) {
-                continue;
-              }
-
-              const clave =
-                patron1Index + '|' +
-                patron2Index + '|' +
-                stopTransfer + '|' +
-                llegada.destino.stopId;
-
-              if (vistos.has(clave)) {
-                continue;
-              }
-
-              vistos.add(clave);
-
-              const transferCoords =
-                red.coords?.[stopTransfer];
-
-              if (!Array.isArray(transferCoords)) {
-                continue;
-              }
-
-              const paradaTransfer =
-                paradaObjeto({
-                  stopId:
-                    stopTransfer,
-                  lat:
-                    Number(transferCoords[0]),
-                  lon:
-                    Number(transferCoords[1]),
-                  distancia:
-                    0
-                });
-
-              const paradaOrigen =
-                paradaObjeto(origen);
-
-              const paradaDestino =
-                paradaObjeto(
-                  llegada.destino
-                );
-
-              candidatos.push({
-                tipo: 'combinacion',
-                line1:
-                  String(patron1.l || ''),
-                destination1:
-                  String(patron1.d || ''),
-                line2:
-                  String(patron2.l || ''),
-                destination2:
-                  String(patron2.d || ''),
-                origen:
-                  paradaOrigen,
-                combinacion:
-                  paradaTransfer,
-                combinacion2:
-                  paradaTransfer,
-                caminataCombinacion:
-                  0,
-                destino:
-                  paradaDestino,
-                puntaje:
-                  origen.distancia +
-                  llegada.destino.distancia +
-                  (i - seqOrigen) * 20 +
-                  (llegada.secuencia - seqTransfer) * 20
+              conexionesCercanas.push({
+                stop2: String(stop2),
+                caminata,
+                entradas: entradas2
               });
+            }
+
+            conexionesCercanas.sort((a, b) =>
+              a.caminata - b.caminata
+            );
+
+            for (const grupo of conexionesCercanas.slice(0, 12)) {
+              for (const conexion of grupo.entradas) {
+                const patron2Index =
+                  Number(conexion?.[0]);
+
+                const seqTransfer =
+                  Number(conexion?.[1]);
+
+                if (
+                  !Number.isInteger(patron2Index) ||
+                  !Number.isInteger(seqTransfer) ||
+                  patron2Index === patron1Index
+                ) {
+                  continue;
+                }
+
+                const llegada =
+                  llegadaPorPatron.get(
+                    patron2Index
+                  );
+
+                if (
+                  !llegada ||
+                  llegada.secuencia <= seqTransfer
+                ) {
+                  continue;
+                }
+
+                const patron2 =
+                  red.patterns?.[patron2Index];
+
+                if (!patron2) {
+                  continue;
+                }
+
+                const clave =
+                  patron1Index + '|' +
+                  patron2Index + '|' +
+                  stopTransfer + '|' +
+                  grupo.stop2 + '|' +
+                  llegada.destino.stopId;
+
+                if (vistos.has(clave)) {
+                  continue;
+                }
+
+                vistos.add(clave);
+
+                const paradaTransfer =
+                  paradaObjeto({
+                    stopId:
+                      stopTransfer,
+                    lat:
+                      Number(transferCoords[0]),
+                    lon:
+                      Number(transferCoords[1]),
+                    distancia:
+                      0
+                  });
+
+                const coordsSubida =
+                  red.coords?.[grupo.stop2];
+
+                const paradaSubidaSegundo =
+                  Array.isArray(coordsSubida)
+                    ? paradaObjeto({
+                        stopId:
+                          grupo.stop2,
+                        lat:
+                          Number(coordsSubida[0]),
+                        lon:
+                          Number(coordsSubida[1]),
+                        distancia:
+                          grupo.caminata
+                      })
+                    : paradaTransfer;
+
+                const paradaOrigen =
+                  paradaObjeto(origen);
+
+                const paradaDestino =
+                  paradaObjeto(
+                    llegada.destino
+                  );
+
+                candidatos.push({
+                  tipo: 'combinacion',
+                  line1:
+                    String(patron1.l || ''),
+                  destination1:
+                    String(patron1.d || ''),
+                  line2:
+                    String(patron2.l || ''),
+                  destination2:
+                    String(patron2.d || ''),
+                  origen:
+                    paradaOrigen,
+                  combinacion:
+                    paradaTransfer,
+                  combinacion2:
+                    paradaSubidaSegundo,
+                  caminataCombinacion:
+                    grupo.caminata,
+                  destino:
+                    paradaDestino,
+                  puntaje:
+                    origen.distancia +
+                    llegada.destino.distancia +
+                    grupo.caminata * 2 +
+                    (i - seqOrigen) * 20 +
+                    (llegada.secuencia - seqTransfer) * 20
+                });
+              }
             }
           }
         }
