@@ -1358,16 +1358,18 @@
       <div class="route-fields">
         <div class="route-field">
           <label for="origenRuta">Origen</label>
-          <input id="origenRuta" type="text" autocomplete="street-address" placeholder="Ej: Tres Cruces">
+          <input id="origenRuta" type="text" autocomplete="street-address" list="lugaresMontevideo" placeholder="Ej: Tres Cruces">
         </div>
 
         <div class="route-field">
           <label for="destinoRuta">Destino</label>
-          <input id="destinoRuta" type="text" autocomplete="street-address" placeholder="Ej: Plaza Independencia">
+          <input id="destinoRuta" type="text" autocomplete="street-address" list="lugaresMontevideo" placeholder="Ej: Plaza Independencia">
         </div>
 
         <button id="btnBuscarRuta" type="button">Buscar ruta</button>
       </div>
+
+      <datalist id="lugaresMontevideo"></datalist>
 
       <div id="resultadoRuta" aria-live="polite"></div>
     </section>
@@ -1446,6 +1448,9 @@
 
   </main>
 
+
+  <!-- Catálogo local de lugares conocidos -->
+  <script src="./lugares.js?v=20261002-1"></script>
 
   <!-- Leaflet -->
 
@@ -1539,6 +1544,27 @@
 
     const btnCambiarRuta =
       document.getElementById('btnCambiarRuta');
+
+    const lugaresMontevideoDatalist =
+      document.getElementById('lugaresMontevideo');
+
+    if (
+      lugaresMontevideoDatalist &&
+      Array.isArray(window.LUGARES_MONTEVIDEO)
+    ) {
+      lugaresMontevideoDatalist.innerHTML =
+        window.LUGARES_MONTEVIDEO
+          .map(lugar =>
+            '<option value="' +
+              lugar.nombre
+                .replaceAll('&', '&amp;')
+                .replaceAll('"', '&quot;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;') +
+            '"></option>'
+          )
+          .join('');
+    }
 
 
     function setSeccionColapsada(seccion, colapsada) {
@@ -2029,7 +2055,21 @@
     async function geocodificarRuta(texto) {
       const limpio = texto.trim();
 
+      // Los puntos conocidos usan un nombre canónico antes de consultar
+      // Nominatim. Así "MAM", "FING", "Nuevo Centro", etc. apuntan al
+      // lugar correcto sin cambiar el motor de rutas.
+      const lugarPredefinido =
+        typeof window.buscarLugarMontevideo === 'function'
+          ? window.buscarLugarMontevideo(limpio)
+          : null;
+
+      const consultaPrincipal =
+        lugarPredefinido?.consulta ||
+        lugarPredefinido?.nombre ||
+        limpio;
+
       const variantes = [
+        consultaPrincipal,
         limpio,
         limpio.replace(/\s+y\s+/gi, ' & '),
         limpio.replace(/\s+esq(?:uina)?\.?\s+/gi, ' & ')
@@ -2109,11 +2149,17 @@
           return {
             lat: elegido.lat,
             lon: elegido.lon,
-            nombre: elegido.item.display_name || texto,
+            nombre:
+              lugarPredefinido?.nombre ||
+              elegido.item.display_name ||
+              texto,
             tipo:
+              lugarPredefinido?.categoria ||
               elegido.item.type ||
               elegido.item.addresstype ||
               '',
+            lugarPredefinido:
+              Boolean(lugarPredefinido),
             boundingBox:
               Array.isArray(elegido.item.boundingbox)
                 ? elegido.item.boundingbox.map(Number)
