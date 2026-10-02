@@ -7,6 +7,8 @@
   let haloRecorridoMapa = null;
   let marcadorInicioRecorrido = null;
   let marcadorFinRecorrido = null;
+  let lineaCaminataFinal = null;
+  let marcadorCaminataFinal = null;
   let capasCombinacion = [];
   let versionDibujoRecorrido = 0;
 
@@ -224,6 +226,16 @@
       marcadorFinRecorrido = null;
     }
 
+    if (lineaCaminataFinal) {
+      mapa.removeLayer(lineaCaminataFinal);
+      lineaCaminataFinal = null;
+    }
+
+    if (marcadorCaminataFinal) {
+      mapa.removeLayer(marcadorCaminataFinal);
+      marcadorCaminataFinal = null;
+    }
+
     for (const capa of capasCombinacion) {
       mapa.removeLayer(capa);
     }
@@ -231,7 +243,108 @@
     capasCombinacion = [];
   };
 
-  window.dibujarRecorridoSeleccionado = async function(candidato) {
+  function crearTramoCaminataFinal(
+    puntoInicio,
+    destinoRuta
+  ) {
+    if (
+      !Array.isArray(puntoInicio) ||
+      puntoInicio.length < 2
+    ) {
+      return null;
+    }
+
+    const latDestino =
+      Number(destinoRuta?.lat);
+
+    const lonDestino =
+      Number(destinoRuta?.lon);
+
+    if (
+      !Number.isFinite(latDestino) ||
+      !Number.isFinite(lonDestino)
+    ) {
+      return null;
+    }
+
+    const latInicio =
+      Number(puntoInicio[0]);
+
+    const lonInicio =
+      Number(puntoInicio[1]);
+
+    const distancia =
+      distanciaMetrosCoords(
+        latInicio,
+        lonInicio,
+        latDestino,
+        lonDestino
+      );
+
+    if (
+      !Number.isFinite(distancia) ||
+      distancia <= 50
+    ) {
+      return null;
+    }
+
+    const linea =
+      L.polyline(
+        [
+          [latInicio, lonInicio],
+          [latDestino, lonDestino]
+        ],
+        {
+          color: '#6b7280',
+          weight: 5,
+          opacity: 0.9,
+          dashArray: '8 10',
+          lineCap: 'round'
+        }
+      ).addTo(mapa);
+
+    const icono =
+      L.divIcon({
+        className: '',
+        html:
+          '<div style="' +
+            'background:#fff;' +
+            'border:3px solid #1769e0;' +
+            'box-shadow:0 3px 10px rgba(0,0,0,.22);' +
+            'border-radius:999px;' +
+            'padding:4px 8px;' +
+            'font:700 16px/1 system-ui,sans-serif;' +
+            'white-space:nowrap;' +
+          '">🚶</div>',
+        iconSize: [42, 32],
+        iconAnchor: [21, 16]
+      });
+
+    const marcador =
+      L.marker(
+        [
+          (latInicio + latDestino) / 2,
+          (lonInicio + lonDestino) / 2
+        ],
+        {
+          icon: icono,
+          zIndexOffset: 2250
+        }
+      ).addTo(mapa);
+
+    return {
+      linea,
+      marcador,
+      distancia,
+      destino: [latDestino, lonDestino]
+    };
+  }
+
+
+  window.dibujarRecorridoSeleccionado = async function(
+    candidato,
+    destinoRuta = null
+  ) {
     try {
       window.limpiarRecorridoSeleccionado();
 
@@ -545,8 +658,28 @@
         )
         .addTo(mapa);
 
+      const caminataFinal =
+        crearTramoCaminataFinal(
+          tramo[tramo.length - 1],
+          destinoRuta
+        );
+
+      if (caminataFinal) {
+        lineaCaminataFinal =
+          caminataFinal.linea;
+
+        marcadorCaminataFinal =
+          caminataFinal.marcador;
+      }
+
       const boundsRecorrido =
         lineaRecorridoMapa.getBounds();
+
+      if (caminataFinal) {
+        boundsRecorrido.extend(
+          caminataFinal.destino
+        );
+      }
 
       mapa.fitBounds(
         boundsRecorrido,
@@ -1942,10 +2075,37 @@ window.buscarCombinacionesRuta = async function(
               zIndexOffset: 2200
             }
           ).addTo(mapa);
+
+        const caminataFinal =
+          crearTramoCaminataFinal(
+            tramo[tramo.length - 1],
+            destinoRuta
+          );
+
+        if (caminataFinal) {
+          lineaCaminataFinal =
+            caminataFinal.linea;
+
+          marcadorCaminataFinal =
+            caminataFinal.marcador;
+        }
+      }
+
+      const boundsLinea =
+        lineaRecorridoMapa.getBounds();
+
+      if (
+        limitarADestino &&
+        lineaCaminataFinal
+      ) {
+        boundsLinea.extend([
+          latDestinoRuta,
+          lonDestinoRuta
+        ]);
       }
 
       mapa.fitBounds(
-        lineaRecorridoMapa.getBounds(),
+        boundsLinea,
         {
           paddingTopLeft: [40, 55],
           paddingBottomRight: [40, 55],
@@ -1965,7 +2125,10 @@ window.buscarCombinacionesRuta = async function(
   };
 
 
-  window.dibujarCombinacionRuta = async function(candidato) {
+  window.dibujarCombinacionRuta = async function(
+    candidato,
+    destinoRuta = null
+  ) {
     try {
       window.limpiarRecorridoSeleccionado();
 
@@ -2135,6 +2298,12 @@ window.buscarCombinacionesRuta = async function(
           }
         ).addTo(mapa);
 
+      const caminataFinal =
+        crearTramoCaminataFinal(
+          tramo2[tramo2.length - 1],
+          destinoRuta
+        );
+
       capasCombinacion.push(
         halo1,
         linea1,
@@ -2148,6 +2317,12 @@ window.buscarCombinacionesRuta = async function(
           : []),
         ...(marcadorTomarSegundo
           ? [marcadorTomarSegundo]
+          : []),
+        ...(caminataFinal
+          ? [
+              caminataFinal.linea,
+              caminataFinal.marcador
+            ]
           : [])
       );
 
@@ -2156,6 +2331,12 @@ window.buscarCombinacionesRuta = async function(
           ...tramo1,
           ...tramo2
         ]);
+
+      if (caminataFinal) {
+        bounds.extend(
+          caminataFinal.destino
+        );
+      }
 
       mapa.fitBounds(bounds, {
         paddingTopLeft: [45, 55],
