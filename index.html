@@ -1524,6 +1524,8 @@
 
     let consultaLineasActual = 0;
 
+    let suprimirScrollAutomatico = false;
+
     const cacheLineas =
       new Map();
 
@@ -2097,46 +2099,48 @@
         return;
       }
 
-      // Primero seleccionamos la parada y la primera línea.
-      // seleccionarLinea() limpia cualquier recorrido anterior, por eso
-      // la combinación debe dibujarse DESPUÉS y no antes.
-      await seleccionarParada(
-        candidato.origen
-      );
+      suprimirScrollAutomatico = true;
 
-      const botones =
-        [...listaLineas.querySelectorAll('.linea')];
-
-      const botonPrimeraLinea =
-        botones.find(boton =>
-          String(boton._lineaData?.line || '') ===
-            String(candidato.line1)
+      try {
+        // Al abrir una combinación actualizamos parada, línea y mapa,
+        // pero mantenemos la posición actual de la página.
+        await seleccionarParada(
+          candidato.origen
         );
 
-      if (
-        botonPrimeraLinea &&
-        botonPrimeraLinea._lineaData
-      ) {
-        // seleccionarLinea limpia el recorrido al arrancar, pero luego puede
-        // tardar varios segundos esperando la API de próximos buses.
-        // La iniciamos sin bloquear el dibujo de la combinación.
-        seleccionarLinea(
-          botonPrimeraLinea._lineaData,
-          botonPrimeraLinea
-        ).catch(error =>
-          console.warn(
-            'No se pudo abrir la primera línea de la combinación:',
-            error
-          )
-        );
-      }
+        const botones =
+          [...listaLineas.querySelectorAll('.linea')];
 
-      if (
-        typeof dibujarCombinacionRuta === 'function'
-      ) {
-        await dibujarCombinacionRuta(
-          candidato
-        );
+        const botonPrimeraLinea =
+          botones.find(boton =>
+            String(boton._lineaData?.line || '') ===
+              String(candidato.line1)
+          );
+
+        if (
+          botonPrimeraLinea &&
+          botonPrimeraLinea._lineaData
+        ) {
+          seleccionarLinea(
+            botonPrimeraLinea._lineaData,
+            botonPrimeraLinea
+          ).catch(error =>
+            console.warn(
+              'No se pudo abrir la primera línea de la combinación:',
+              error
+            )
+          );
+        }
+
+        if (
+          typeof dibujarCombinacionRuta === 'function'
+        ) {
+          await dibujarCombinacionRuta(
+            candidato
+          );
+        }
+      } finally {
+        suprimirScrollAutomatico = false;
       }
     }
 
@@ -3330,12 +3334,14 @@
 
         // Al elegir una parada, llevamos al usuario
         // directamente a las líneas disponibles.
-        requestAnimationFrame(
-          () =>
-            scrollSuaveA(
-              listaLineas
-            )
-        );
+        if (!suprimirScrollAutomatico) {
+          requestAnimationFrame(
+            () =>
+              scrollSuaveA(
+                listaLineas
+              )
+          );
+        }
 
 
       } catch (error) {
@@ -3702,10 +3708,12 @@
           </div>
         `;
 
-        requestAnimationFrame(
-          () =>
-            scrollSuaveA(proximos)
-        );
+        if (!suprimirScrollAutomatico) {
+          requestAnimationFrame(
+            () =>
+              scrollSuaveA(proximos)
+          );
+        }
 
         await agregarProximoProgramado(
           seleccionProgramada
@@ -3777,12 +3785,14 @@
 
       // Al elegir una línea, llevamos al usuario
       // a la zona donde aparecerán los buses.
-      requestAnimationFrame(
-        () =>
-          scrollSuaveA(
-            proximos
-          )
-      );
+      if (!suprimirScrollAutomatico) {
+        requestAnimationFrame(
+          () =>
+            scrollSuaveA(
+              proximos
+            )
+        );
+      }
 
 
       await cargarProximos(
