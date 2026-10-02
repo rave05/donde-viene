@@ -2602,6 +2602,16 @@
               );
             });
 
+          // Cuando aparecen las combinaciones, las llevamos suavemente
+          // a la vista para evitar tener que scrollear manualmente.
+          requestAnimationFrame(
+            () =>
+              scrollSuaveA(
+                resultadoRuta,
+                20
+              )
+          );
+
           return;
         }
 
