@@ -10,6 +10,21 @@
 
   <title>¿Dónde Viene?</title>
 
+  <button id="btnCambiarRuta" type="button" hidden>🔄 Cambiar ruta</button>
+
+  <div id="selectorRutaOverlay" class="route-choice-overlay" aria-hidden="true">
+    <section class="route-choice-modal" role="dialog" aria-modal="true" aria-labelledby="selectorRutaTitulo">
+      <div class="route-choice-header">
+        <div>
+          <h3 id="selectorRutaTitulo">Elegí tu ruta</h3>
+          <p id="selectorRutaResumen"></p>
+        </div>
+        <button id="btnCerrarSelectorRuta" class="route-choice-close" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <div id="selectorRutaContenido" class="route-choice-list"></div>
+    </section>
+  </div>
+
   <!-- Leaflet -->
   <link
     rel="stylesheet"
@@ -313,6 +328,119 @@
 
     .route-result:first-child {
       margin-top: 0;
+    }
+
+    .route-choice-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(13, 23, 38, .42);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity .24s ease, visibility .24s ease;
+    }
+
+    .route-choice-overlay.is-open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .route-choice-modal {
+      width: min(580px, 100%);
+      max-height: min(82vh, 760px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 22px;
+      background: #fff;
+      box-shadow: 0 24px 70px rgba(14, 30, 54, .28);
+      transform: translateY(18px) scale(.985);
+      opacity: 0;
+      transition: transform .28s cubic-bezier(.2,.8,.2,1), opacity .22s ease;
+    }
+
+    .route-choice-overlay.is-open .route-choice-modal {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+
+    .route-choice-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 20px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .route-choice-header h3 { margin: 0; font-size: 20px; }
+    .route-choice-header p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+
+    .route-choice-close {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      border: 0;
+      border-radius: 11px;
+      background: #f2f4f7;
+      color: #344054;
+      cursor: pointer;
+      font-size: 20px;
+    }
+
+    .route-choice-list {
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 12px 18px 20px;
+    }
+
+    .route-choice-list .route-result { margin-top: 10px; }
+    .route-choice-list .route-result:first-child { margin-top: 0; }
+
+    .route-choice-list .route-result.is-current-route {
+      border-color: #1769e0;
+      box-shadow: 0 0 0 3px rgba(23,105,224,.12);
+      background: #eef6ff;
+    }
+
+    #btnCambiarRuta {
+      position: fixed;
+      z-index: 1200;
+      right: max(18px, env(safe-area-inset-right));
+      bottom: max(18px, env(safe-area-inset-bottom));
+      min-height: 46px;
+      padding: 11px 17px;
+      border: 0;
+      border-radius: 999px;
+      background: #1769e0;
+      color: #fff;
+      box-shadow: 0 10px 28px rgba(23,105,224,.28);
+      font: 800 14px/1 system-ui, sans-serif;
+      cursor: pointer;
+    }
+
+    #btnCambiarRuta[hidden] { display: none; }
+
+    body.route-modal-open { overflow: hidden; }
+
+    @media (max-width: 640px) {
+      .route-choice-overlay {
+        align-items: end;
+        padding: 0;
+      }
+
+      .route-choice-modal {
+        width: 100%;
+        max-height: 84vh;
+        border-radius: 22px 22px 0 0;
+        transform: translateY(36px);
+      }
     }
 
     .route-line {
@@ -1377,6 +1505,21 @@
     const resultadoRuta =
       document.getElementById('resultadoRuta');
 
+    const selectorRutaOverlay =
+      document.getElementById('selectorRutaOverlay');
+
+    const selectorRutaContenido =
+      document.getElementById('selectorRutaContenido');
+
+    const selectorRutaResumen =
+      document.getElementById('selectorRutaResumen');
+
+    const btnCerrarSelectorRuta =
+      document.getElementById('btnCerrarSelectorRuta');
+
+    const btnCambiarRuta =
+      document.getElementById('btnCambiarRuta');
+
 
     function setSeccionColapsada(seccion, colapsada) {
       if (!seccion) {
@@ -1529,6 +1672,10 @@
     let consultaLineasActual = 0;
 
     let suprimirScrollAutomatico = false;
+
+    let alternativasRutaActuales = null;
+
+    let indiceRutaSeleccionada = null;
 
     const cacheLineas =
       new Map();
@@ -2025,6 +2172,83 @@
     }
 
 
+    function cerrarSelectorRuta() {
+      selectorRutaOverlay.classList.remove('is-open');
+      selectorRutaOverlay.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('route-modal-open');
+    }
+
+    function abrirSelectorRuta() {
+      if (!alternativasRutaActuales || !selectorRutaContenido.children.length) {
+        return;
+      }
+
+      selectorRutaOverlay.classList.add('is-open');
+      selectorRutaOverlay.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('route-modal-open');
+    }
+
+    function marcarRutaSeleccionada(indice) {
+      indiceRutaSeleccionada = indice;
+
+      selectorRutaContenido
+        .querySelectorAll('.route-result-button')
+        .forEach((boton, i) => {
+          boton.classList.toggle('is-current-route', i === indice);
+        });
+    }
+
+    function mostrarSelectorRuta(tipo, candidatos, html) {
+      alternativasRutaActuales = { tipo, candidatos };
+      indiceRutaSeleccionada = null;
+      selectorRutaContenido.innerHTML = html;
+      selectorRutaResumen.textContent =
+        origenRuta.value.trim() + ' → ' + destinoRuta.value.trim();
+
+      selectorRutaContenido
+        .querySelectorAll('[data-route-index], [data-combo-index]')
+        .forEach((boton, indice) => {
+          boton.addEventListener('click', () => {
+            const candidato = candidatos[indice];
+            if (!candidato) return;
+
+            marcarRutaSeleccionada(indice);
+            cerrarSelectorRuta();
+            btnCambiarRuta.hidden = false;
+
+            if (tipo === 'combinacion') {
+              abrirOpcionCombinacion(candidato);
+            } else {
+              abrirOpcionRuta(candidato);
+            }
+          });
+        });
+
+      resultadoRuta.innerHTML = '';
+      btnCambiarRuta.hidden = true;
+      abrirSelectorRuta();
+    }
+
+    btnCerrarSelectorRuta.addEventListener('click', cerrarSelectorRuta);
+
+    selectorRutaOverlay.addEventListener('click', event => {
+      if (event.target === selectorRutaOverlay) {
+        cerrarSelectorRuta();
+      }
+    });
+
+    btnCambiarRuta.addEventListener('click', abrirSelectorRuta);
+
+    document.addEventListener('keydown', event => {
+      if (
+        event.key === 'Escape' &&
+        selectorRutaOverlay.classList.contains('is-open')
+      ) {
+        cerrarSelectorRuta();
+      }
+    });
+
+
     async function abrirOpcionRuta(candidato) {
       if (!candidato?.origen || !candidato?.line) {
         return;
@@ -2173,6 +2397,10 @@
 
       btnBuscarRuta.disabled = true;
       btnBuscarRuta.textContent = 'Buscando...';
+      btnCambiarRuta.hidden = true;
+      cerrarSelectorRuta();
+      alternativasRutaActuales = null;
+      indiceRutaSeleccionada = null;
       resultadoRuta.innerHTML =
         '<div class="route-status">Buscando origen y destino...</div>';
 
@@ -2693,78 +2921,10 @@
               })
               .join('');
 
-          resultadoRuta.innerHTML =
-            '<div class="combo-accordion" id="comboAccordion">' +
-              '<button type="button" class="combo-accordion-toggle" id="comboAccordionToggle" aria-expanded="true">' +
-                '<span>Combinaciones encontradas (' +
-                  combinacionesMostradas.length +
-                ')</span>' +
-                '<span class="combo-accordion-arrow">▼</span>' +
-              '</button>' +
-              '<div class="combo-accordion-panel">' +
-                '<div class="combo-accordion-inner">' +
-                  htmlCombinaciones +
-                '</div>' +
-              '</div>' +
-            '</div>';
-
-          const comboAccordion =
-            document.getElementById('comboAccordion');
-
-          const comboAccordionToggle =
-            document.getElementById('comboAccordionToggle');
-
-          if (
-            comboAccordion &&
-            comboAccordionToggle
-          ) {
-            comboAccordionToggle.addEventListener(
-              'click',
-              () => {
-                const colapsado =
-                  comboAccordion.classList.toggle(
-                    'is-collapsed'
-                  );
-
-                comboAccordionToggle.setAttribute(
-                  'aria-expanded',
-                  String(!colapsado)
-                );
-              }
-            );
-          }
-
-          resultadoRuta
-            .querySelectorAll('[data-combo-index]')
-            .forEach(boton => {
-              boton.addEventListener(
-                'click',
-                () => {
-                  const indice =
-                    Number(
-                      boton.dataset.comboIndex
-                    );
-
-                  const candidato =
-                    combinacionesMostradas[indice];
-
-                  if (candidato) {
-                    abrirOpcionCombinacion(
-                      candidato
-                    );
-                  }
-                }
-              );
-            });
-
-          // Cuando aparecen las combinaciones, las llevamos suavemente
-          // a la vista para evitar tener que scrollear manualmente.
-          requestAnimationFrame(
-            () =>
-              scrollSuaveA(
-                resultadoRuta,
-                20
-              )
+          mostrarSelectorRuta(
+            'combinacion',
+            combinacionesMostradas,
+            htmlCombinaciones
           );
 
           return;
@@ -2811,7 +2971,7 @@
           }
         }
 
-        resultadoRuta.innerHTML =
+        const htmlRutasDirectas =
           candidatosMostrados
             .map((candidato, indice) => {
               const subir =
@@ -2853,24 +3013,12 @@
             })
             .join('');
 
-        resultadoRuta
-          .querySelectorAll('.route-result-button')
-          .forEach(boton => {
-            boton.addEventListener(
-              'click',
-              () => {
-                const indice =
-                  Number(boton.dataset.routeIndex);
 
-                const candidato =
-                  candidatosMostrados[indice];
-
-                if (candidato) {
-                  abrirOpcionRuta(candidato);
-                }
-              }
-            );
-          });
+        mostrarSelectorRuta(
+          'directa',
+          candidatosMostrados,
+          htmlRutasDirectas
+        );
 
       } catch (error) {
         console.error(error);
