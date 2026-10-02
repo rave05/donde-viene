@@ -1176,8 +1176,12 @@ window.buscarCombinacionesRuta = async function(
 
                 if (
                   !patron2 ||
-                  String(patron2.l || '') ===
-                    String(patron1.l || '')
+                  String(patron2.l || '')
+                    .trim()
+                    .toUpperCase() ===
+                  String(patron1.l || '')
+                    .trim()
+                    .toUpperCase()
                 ) {
                   continue;
                 }
