@@ -813,615 +813,333 @@ window.buscarCombinacionesRuta = async function(
         !red ||
         !Array.isArray(red.patterns) ||
         !red.byStop ||
-        !red.coords
+        !red.coords ||
+        !origenPunto ||
+        !destinoPunto
       ) {
         return [];
       }
 
-      function entradasParadas(paradas, limite = 90) {
-        const resultado = [];
-        const vistos = new Set();
-
-        const clavesCoords =
-          Object.entries(red.coords || {});
-
-        function claveGTFSmasCercana(parada) {
-          const coords =
-            parada?.location?.coordinates;
-
-          if (!Array.isArray(coords)) {
-            return null;
-          }
-
-          const lat =
-            Number(coords[1]);
-
-          const lon =
-            Number(coords[0]);
-
-          if (
-            !Number.isFinite(lat) ||
-            !Number.isFinite(lon)
-          ) {
-            return null;
-          }
-
-          let mejor = null;
-
-          for (const [clave, punto] of clavesCoords) {
-            if (!Array.isArray(punto)) {
-              continue;
-            }
-
-            const dLat =
-              (Number(punto[0]) - lat);
-
-            const dLon =
-              (Number(punto[1]) - lon);
-
-            const metros =
-              Math.sqrt(
-                dLat * dLat +
-                dLon * dLon
-              ) * 111000;
-
-            if (
-              metros <= 300 &&
-              (!mejor || metros < mejor.metros)
-            ) {
-              mejor = {
-                clave,
-                metros
-              };
-            }
-          }
-
-          return mejor?.clave || null;
-        }
-
-        for (const parada of paradas.slice(0, 35)) {
-          const claves =
-            clavesCompatiblesParada(
-              parada.busstopId
-            );
-
-          let encontroEntradas = false;
-
-          for (const clave of claves) {
-            const entradas =
-              red.byStop[String(clave)] || [];
-
-            if (entradas.length) {
-              encontroEntradas = true;
-            }
-
-            for (const entrada of entradas) {
-              const patronIndex =
-                Number(entrada?.[0]);
-
-              const secuencia =
-                Number(entrada?.[1]);
-
-              if (
-                !Number.isInteger(patronIndex) ||
-                !Number.isInteger(secuencia)
-              ) {
-                continue;
-              }
-
-              const key =
-                patronIndex + '|' +
-                secuencia + '|' +
-                String(parada.busstopId);
-
-              if (vistos.has(key)) {
-                continue;
-              }
-
-              vistos.add(key);
-
-              resultado.push({
-                patronIndex,
-                secuencia,
-                parada
-              });
-
-              if (resultado.length >= limite) {
-                return resultado;
-              }
-            }
-          }
-
-          // Último fallback: si los IDs de API y GTFS no coinciden,
-          // asociamos la parada a la parada GTFS más cercana (máx. 300 m).
-          // Esto equivale a "caminar hasta la parada más cercana".
-          if (!encontroEntradas) {
-            const claveCercana =
-              claveGTFSmasCercana(parada);
-
-            const entradas =
-              claveCercana
-                ? red.byStop[String(claveCercana)] || []
-                : [];
-
-            for (const entrada of entradas) {
-              const patronIndex =
-                Number(entrada?.[0]);
-
-              const secuencia =
-                Number(entrada?.[1]);
-
-              if (
-                !Number.isInteger(patronIndex) ||
-                !Number.isInteger(secuencia)
-              ) {
-                continue;
-              }
-
-              const key =
-                patronIndex + '|' +
-                secuencia + '|geo|' +
-                String(parada.busstopId);
-
-              if (vistos.has(key)) {
-                continue;
-              }
-
-              vistos.add(key);
-
-              resultado.push({
-                patronIndex,
-                secuencia,
-                parada
-              });
-
-              if (resultado.length >= limite) {
-                return resultado;
-              }
-            }
-          }
-        }
-
-        return resultado;
-      }
-
-      function distanciaStops(stopA, stopB) {
-        const a =
-          red.coords[String(stopA)];
-
-        const b =
-          red.coords[String(stopB)];
-
-        if (
-          !Array.isArray(a) ||
-          !Array.isArray(b)
-        ) {
-          return Infinity;
-        }
-
-        const lat1 = Number(a[0]);
-        const lon1 = Number(a[1]);
-        const lat2 = Number(b[0]);
-        const lon2 = Number(b[1]);
-
+      function distanciaMetrosLocal(
+        lat1,
+        lon1,
+        lat2,
+        lon2
+      ) {
         const R = 6371000;
         const rad = Math.PI / 180;
         const dLat = (lat2 - lat1) * rad;
         const dLon = (lon2 - lon1) * rad;
 
-        const x =
+        const a =
           Math.sin(dLat / 2) ** 2 +
           Math.cos(lat1 * rad) *
           Math.cos(lat2 * rad) *
           Math.sin(dLon / 2) ** 2;
 
         return R * 2 * Math.atan2(
-          Math.sqrt(x),
-          Math.sqrt(1 - x)
+          Math.sqrt(a),
+          Math.sqrt(1 - a)
         );
       }
 
-      const origenEntradas =
-        origenPunto
-          ? entradasDesdePunto(
-              origenPunto,
-              red,
-              18,
-              1200,
-              120
-            )
-          : entradasParadas(
-              paradasOrigen,
-              90
-            );
-
-      const destinoEntradas =
-        destinoPunto
-          ? entradasDesdePunto(
-              destinoPunto,
-              red,
-              18,
-              1200,
-              120
-            )
-          : entradasParadas(
-              paradasDestino,
-              90
-            );
-
-      if (
-        !origenEntradas.length ||
-        !destinoEntradas.length
+      function paradasGTFSmasCercanas(
+        punto,
+        max = 8,
+        radio = 1000
       ) {
-        return [];
-      }
+        const lat = Number(punto.lat);
+        const lon = Number(punto.lon);
 
-      const resultados = [];
-      const vistos = new Set();
-      const MAX_TRANSFER = 500;
+        const candidatos = [];
+        const vistosCoord = new Set();
 
-      for (const origenItem of origenEntradas) {
-        const p1 =
-          red.patterns[origenItem.patronIndex];
-
-        if (
-          !p1 ||
-          !Array.isArray(p1.s) ||
-          origenItem.secuencia >= p1.s.length - 1
-        ) {
-          continue;
-        }
-
-        for (const destinoItem of destinoEntradas) {
-          const p2 =
-            red.patterns[destinoItem.patronIndex];
-
+        for (const [stopId, coords] of Object.entries(red.coords)) {
           if (
-            !p2 ||
-            !Array.isArray(p2.s) ||
-            destinoItem.secuencia <= 0 ||
-            String(p1.l) === String(p2.l)
+            !Array.isArray(coords) ||
+            !(red.byStop?.[stopId]?.length)
           ) {
             continue;
           }
 
-          let mejorTransfer = null;
+          const stopLat = Number(coords[0]);
+          const stopLon = Number(coords[1]);
 
-          // Buscamos el punto de transferencia únicamente en el tramo
-          // posterior al origen del primer bus y anterior al destino
-          // del segundo bus.
-          const inicio1 =
-            origenItem.secuencia + 1;
+          if (
+            !Number.isFinite(stopLat) ||
+            !Number.isFinite(stopLon)
+          ) {
+            continue;
+          }
 
-          const fin1 =
-            Math.min(
-              p1.s.length,
-              inicio1 + 75
+          const distancia =
+            distanciaMetrosLocal(
+              lat,
+              lon,
+              stopLat,
+              stopLon
             );
 
-          const inicio2 =
-            Math.max(
-              0,
-              destinoItem.secuencia - 75
-            );
+          if (distancia > radio) {
+            continue;
+          }
 
+          const coordKey =
+            stopLat.toFixed(6) + '|' +
+            stopLon.toFixed(6);
+
+          if (vistosCoord.has(coordKey)) {
+            continue;
+          }
+
+          vistosCoord.add(coordKey);
+
+          candidatos.push({
+            stopId,
+            lat: stopLat,
+            lon: stopLon,
+            distancia
+          });
+        }
+
+        return candidatos
+          .sort((a, b) =>
+            a.distancia - b.distancia
+          )
+          .slice(0, max);
+      }
+
+      function paradaObjeto(item) {
+        const existente =
+          buscarParadaGlobal(item.stopId);
+
+        return {
+          ...(existente || {}),
+          busstopId:
+            existente?.busstopId ||
+            item.stopId,
+          gtfsStopId:
+            item.stopId,
+          street1:
+            existente?.street1 ||
+            'Parada cercana',
+          street2:
+            existente?.street2 ||
+            '',
+          distanciaRuta:
+            item.distancia,
+          location:
+            existente?.location || {
+              type: 'Point',
+              coordinates: [
+                item.lon,
+                item.lat
+              ]
+            }
+        };
+      }
+
+      const origenes =
+        paradasGTFSmasCercanas(
+          origenPunto,
+          8,
+          1000
+        );
+
+      const destinos =
+        paradasGTFSmasCercanas(
+          destinoPunto,
+          8,
+          1000
+        );
+
+      if (!origenes.length || !destinos.length) {
+        return [];
+      }
+
+      // Índice rápido: para cada patrón que llega cerca del destino,
+      // guardamos la secuencia donde debe bajarse.
+      const llegadaPorPatron = new Map();
+
+      for (const destino of destinos) {
+        const entradas =
+          red.byStop?.[destino.stopId] || [];
+
+        for (const entrada of entradas) {
+          const patronIndex = Number(entrada?.[0]);
+          const secuencia = Number(entrada?.[1]);
+
+          if (
+            !Number.isInteger(patronIndex) ||
+            !Number.isInteger(secuencia)
+          ) {
+            continue;
+          }
+
+          const actual =
+            llegadaPorPatron.get(patronIndex);
+
+          if (
+            !actual ||
+            secuencia < actual.secuencia
+          ) {
+            llegadaPorPatron.set(
+              patronIndex,
+              {
+                secuencia,
+                destino
+              }
+            );
+          }
+        }
+      }
+
+      const candidatos = [];
+      const vistos = new Set();
+
+      for (const origen of origenes) {
+        const entradasOrigen =
+          red.byStop?.[origen.stopId] || [];
+
+        for (const entradaOrigen of entradasOrigen) {
+          const patron1Index =
+            Number(entradaOrigen?.[0]);
+
+          const seqOrigen =
+            Number(entradaOrigen?.[1]);
+
+          const patron1 =
+            red.patterns?.[patron1Index];
+
+          if (
+            !patron1 ||
+            !Array.isArray(patron1.s) ||
+            !Number.isInteger(seqOrigen)
+          ) {
+            continue;
+          }
+
+          // Recorremos hacia adelante el primer bus.
           for (
-            let i = inicio1;
-            i < fin1;
+            let i = seqOrigen + 1;
+            i < patron1.s.length;
             i++
           ) {
-            const stop1 =
-              String(p1.s[i]);
+            const stopTransfer =
+              String(patron1.s[i]);
 
-            for (
-              let j = inicio2;
-              j < destinoItem.secuencia;
-              j++
-            ) {
-              const stop2 =
-                String(p2.s[j]);
+            const conexiones =
+              red.byStop?.[stopTransfer] || [];
 
-              let caminata;
+            for (const conexion of conexiones) {
+              const patron2Index =
+                Number(conexion?.[0]);
 
-              if (stop1 === stop2) {
-                caminata = 0;
-              } else {
-                caminata =
-                  distanciaStops(
-                    stop1,
-                    stop2
-                  );
-              }
+              const seqTransfer =
+                Number(conexion?.[1]);
 
               if (
-                !Number.isFinite(caminata) ||
-                caminata > MAX_TRANSFER
+                !Number.isInteger(patron2Index) ||
+                !Number.isInteger(seqTransfer) ||
+                patron2Index === patron1Index
               ) {
                 continue;
               }
 
-              const score =
-                (i - origenItem.secuencia) * 28 +
-                (destinoItem.secuencia - j) * 28 +
-                caminata * 2.2;
+              const llegada =
+                llegadaPorPatron.get(
+                  patron2Index
+                );
 
               if (
-                !mejorTransfer ||
-                score < mejorTransfer.score
+                !llegada ||
+                llegada.secuencia <= seqTransfer
               ) {
-                mejorTransfer = {
-                  stop1,
-                  stop2,
-                  caminata,
-                  score
-                };
+                continue;
               }
-            }
-          }
 
-          if (!mejorTransfer) {
-            continue;
-          }
+              const patron2 =
+                red.patterns?.[patron2Index];
 
-          const paradaBajar =
-            buscarParadaGlobal(
-              mejorTransfer.stop1
-            );
+              if (!patron2) {
+                continue;
+              }
 
-          const paradaSubir =
-            buscarParadaGlobal(
-              mejorTransfer.stop2
-            );
+              const clave =
+                patron1Index + '|' +
+                patron2Index + '|' +
+                stopTransfer + '|' +
+                llegada.destino.stopId;
 
-          if (
-            !paradaBajar ||
-            !paradaSubir
-          ) {
-            continue;
-          }
+              if (vistos.has(clave)) {
+                continue;
+              }
 
-          const clave =
-            String(p1.l) + '|' +
-            String(p2.l) + '|' +
-            String(mejorTransfer.stop1) + '|' +
-            String(mejorTransfer.stop2);
+              vistos.add(clave);
 
-          if (vistos.has(clave)) {
-            continue;
-          }
+              const transferCoords =
+                red.coords?.[stopTransfer];
 
-          vistos.add(clave);
+              if (!Array.isArray(transferCoords)) {
+                continue;
+              }
 
-          resultados.push({
-            tipo: 'combinacion',
-            line1: String(p1.l),
-            destination1:
-              String(p1.d || ''),
-            line2: String(p2.l),
-            destination2:
-              String(p2.d || ''),
-            origen:
-              origenItem.parada,
-            combinacion:
-              paradaBajar,
-            combinacion2:
-              paradaSubir,
-            caminataCombinacion:
-              mejorTransfer.caminata,
-            destino:
-              destinoItem.parada,
-            puntaje:
-              Number(
-                origenItem.parada.distanciaRuta || 0
-              ) +
-              Number(
-                destinoItem.parada.distanciaRuta || 0
-              ) +
-              mejorTransfer.score
-          });
-        }
-      }
-
-      let ordenados =
-        resultados
-          .sort((a, b) =>
-            a.puntaje - b.puntaje
-          )
-          .slice(0, 6);
-
-      // Fallback geográfico: si no encontramos una intersección por IDs
-      // de parada, buscamos dos recorridos cuyos shapes se acerquen entre
-      // sí. Esto cubre casos reales donde las paradas de combinación están
-      // enfrentadas o usan identificadores distintos.
-      if (!ordenados.length) {
-        const origenLineas =
-          [...new Set(
-            origenEntradas
-              .map(item =>
-                red.patterns[item.patronIndex]?.l
-              )
-              .filter(Boolean)
-          )]
-          .slice(0, 18);
-
-        const destinoLineas =
-          [...new Set(
-            destinoEntradas
-              .map(item =>
-                red.patterns[item.patronIndex]?.l
-              )
-              .filter(Boolean)
-          )]
-          .slice(0, 18);
-
-        const datosLineas = new Map();
-
-        await Promise.all(
-          [...new Set([
-            ...origenLineas,
-            ...destinoLineas
-          ])].map(async linea => {
-            const datos =
-              await cargarRecorridoLinea(linea);
-
-            if (datos) {
-              datosLineas.set(
-                String(linea),
-                datos
-              );
-            }
-          })
-        );
-
-        const candidatosGeo = [];
-
-        for (const linea1 of origenLineas) {
-          const patrones1 =
-            datosLineas.get(String(linea1))?.patterns || [];
-
-          for (const linea2 of destinoLineas) {
-            if (String(linea1) === String(linea2)) {
-              continue;
-            }
-
-            const patrones2 =
-              datosLineas.get(String(linea2))?.patterns || [];
-
-            for (const p1 of patrones1.slice(0, 10)) {
-              for (const p2 of patrones2.slice(0, 10)) {
-                if (
-                  !Array.isArray(p1.shape) ||
-                  !Array.isArray(p2.shape)
-                ) {
-                  continue;
-                }
-
-                let mejor = null;
-
-                // Muestreo para mantener el cálculo liviano.
-                const paso1 =
-                  Math.max(1, Math.floor(p1.shape.length / 120));
-
-                const paso2 =
-                  Math.max(1, Math.floor(p2.shape.length / 120));
-
-                for (let i = 0; i < p1.shape.length; i += paso1) {
-                  const a = p1.shape[i];
-
-                  for (let j = 0; j < p2.shape.length; j += paso2) {
-                    const b = p2.shape[j];
-
-                    const d =
-                      Math.sqrt(
-                        distanciaSimple(
-                          a[0], a[1],
-                          b[0], b[1]
-                        )
-                      ) * 111000;
-
-                    if (
-                      d <= 500 &&
-                      (!mejor || d < mejor.d)
-                    ) {
-                      mejor = {
-                        d,
-                        punto1: a,
-                        punto2: b
-                      };
-                    }
-                  }
-                }
-
-                if (!mejor) {
-                  continue;
-                }
-
-                const parada1 =
-                  Array.isArray(window.todasLasParadas)
-                    ? window.todasLasParadas
-                        .map(parada => {
-                          const coords =
-                            parada.location?.coordinates;
-
-                          if (!Array.isArray(coords)) {
-                            return null;
-                          }
-
-                          return {
-                            parada,
-                            d:
-                              distanciaSimple(
-                                Number(coords[1]),
-                                Number(coords[0]),
-                                mejor.punto1[0],
-                                mejor.punto1[1]
-                              )
-                          };
-                        })
-                        .filter(Boolean)
-                        .sort((a, b) => a.d - b.d)[0]?.parada
-                    : null;
-
-                const parada2 =
-                  Array.isArray(window.todasLasParadas)
-                    ? window.todasLasParadas
-                        .map(parada => {
-                          const coords =
-                            parada.location?.coordinates;
-
-                          if (!Array.isArray(coords)) {
-                            return null;
-                          }
-
-                          return {
-                            parada,
-                            d:
-                              distanciaSimple(
-                                Number(coords[1]),
-                                Number(coords[0]),
-                                mejor.punto2[0],
-                                mejor.punto2[1]
-                              )
-                          };
-                        })
-                        .filter(Boolean)
-                        .sort((a, b) => a.d - b.d)[0]?.parada
-                    : null;
-
-                if (!parada1 || !parada2) {
-                  continue;
-                }
-
-                candidatosGeo.push({
-                  tipo: 'combinacion',
-                  line1: String(linea1),
-                  destination1: String(p1.destination || ''),
-                  line2: String(linea2),
-                  destination2: String(p2.destination || ''),
-                  origen: paradasOrigen[0],
-                  combinacion: parada1,
-                  combinacion2: parada2,
-                  caminataCombinacion: mejor.d,
-                  destino: paradasDestino[0],
-                  puntaje:
-                    Number(paradasOrigen[0]?.distanciaRuta || 0) +
-                    Number(paradasDestino[0]?.distanciaRuta || 0) +
-                    mejor.d * 2.5
+              const paradaTransfer =
+                paradaObjeto({
+                  stopId:
+                    stopTransfer,
+                  lat:
+                    Number(transferCoords[0]),
+                  lon:
+                    Number(transferCoords[1]),
+                  distancia:
+                    0
                 });
-              }
+
+              const paradaOrigen =
+                paradaObjeto(origen);
+
+              const paradaDestino =
+                paradaObjeto(
+                  llegada.destino
+                );
+
+              candidatos.push({
+                tipo: 'combinacion',
+                line1:
+                  String(patron1.l || ''),
+                destination1:
+                  String(patron1.d || ''),
+                line2:
+                  String(patron2.l || ''),
+                destination2:
+                  String(patron2.d || ''),
+                origen:
+                  paradaOrigen,
+                combinacion:
+                  paradaTransfer,
+                combinacion2:
+                  paradaTransfer,
+                caminataCombinacion:
+                  0,
+                destino:
+                  paradaDestino,
+                puntaje:
+                  origen.distancia +
+                  llegada.destino.distancia +
+                  (i - seqOrigen) * 20 +
+                  (llegada.secuencia - seqTransfer) * 20
+              });
             }
           }
         }
-
-        ordenados =
-          candidatosGeo
-            .sort((a, b) =>
-              a.puntaje - b.puntaje
-            )
-            .slice(0, 6);
       }
 
-      return ordenados;
+      return candidatos
+        .sort((a, b) =>
+          a.puntaje - b.puntaje
+        )
+        .slice(0, 6);
 
     } catch (error) {
       console.warn(
