@@ -3299,11 +3299,27 @@
 
         boton.addEventListener(
           'click',
-          () =>
+          () => {
             seleccionarLinea(
               linea,
               boton
-            )
+            ).catch(error =>
+              console.warn(
+                'No se pudo seleccionar la línea:',
+                error
+              )
+            );
+
+            if (
+              typeof dibujarLineaDesdeParada === 'function'
+            ) {
+              dibujarLineaDesdeParada(
+                linea.line,
+                linea.destination || '',
+                paradaActual
+              );
+            }
+          }
         );
 
 
@@ -4744,7 +4760,7 @@
   </script>
 
   <script src="./horarios.js"></script>
-  <script src="./recorridos.js?v=20261002-2"></script>
+  <script src="./recorridos.js?v=20261002-3"></script>
   <h1>Beta V0.5</h1>
 </body>
 </html>
