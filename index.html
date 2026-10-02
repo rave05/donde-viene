@@ -1198,7 +1198,9 @@
 
     const RADIO_RUTA = 800;
 
-    const MAX_PARADAS_RUTA = 10;
+    const RADIO_RUTA_EXTENDIDO = 1500;
+
+    const MAX_PARADAS_RUTA = 20;
 
     const CACHE_LINEAS_MS =
       5 * 60 * 1000;
@@ -1362,6 +1364,8 @@
     let marcadorOrigenRuta = null;
 
     let marcadorDestinoRuta = null;
+
+    let ultimaUbicacionUsuario = null;
 
     let paradaActual = null;
 
@@ -1529,7 +1533,8 @@
 
     function obtenerParadasRutaCercanas(
       lat,
-      lon
+      lon,
+      radio = RADIO_RUTA
     ) {
       return todasLasParadas
         .filter(parada =>
@@ -1551,7 +1556,7 @@
           };
         })
         .filter(parada =>
-          parada.distanciaRuta <= RADIO_RUTA
+          parada.distanciaRuta <= radio
         )
         .sort((a, b) =>
           a.distanciaRuta - b.distanciaRuta
@@ -1561,42 +1566,63 @@
 
 
     async function geocodificarRuta(texto) {
-      const consulta =
-        texto.trim() + ', Montevideo, Uruguay';
+      const limpio = texto.trim();
 
-      const url =
-        'https://nominatim.openstreetmap.org/search' +
-        '?format=jsonv2' +
-        '&limit=1' +
-        '&countrycodes=uy' +
-        '&addressdetails=1' +
-        '&q=' + encodeURIComponent(consulta);
+      const variantes = [
+        limpio,
+        limpio.replace(/\s+y\s+/gi, ' & '),
+        limpio.replace(/\s+esq(?:uina)?\.?\s+/gi, ' & ')
+      ];
 
-      const respuesta =
-        await fetch(url, {
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
+      const consultas =
+        [...new Set(variantes)]
+          .filter(Boolean);
 
-      if (!respuesta.ok) {
-        throw new Error('No se pudo buscar la dirección.');
+      for (let i = 0; i < consultas.length; i++) {
+        const consulta =
+          consultas[i] + ', Montevideo, Uruguay';
+
+        const url =
+          'https://nominatim.openstreetmap.org/search' +
+          '?format=jsonv2' +
+          '&limit=5' +
+          '&countrycodes=uy' +
+          '&addressdetails=1' +
+          '&bounded=1' +
+          '&viewbox=-56.45,-34.65,-55.90,-35.05' +
+          '&q=' + encodeURIComponent(consulta);
+
+        const respuesta =
+          await fetch(url, {
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+
+        if (!respuesta.ok) {
+          throw new Error('No se pudo buscar la dirección.');
+        }
+
+        const datos =
+          await respuesta.json();
+
+        if (Array.isArray(datos) && datos.length) {
+          const elegido = datos[0];
+
+          return {
+            lat: Number(elegido.lat),
+            lon: Number(elegido.lon),
+            nombre: elegido.display_name || texto
+          };
+        }
+
+        if (i < consultas.length - 1) {
+          await esperar(1100);
+        }
       }
 
-      const datos =
-        await respuesta.json();
-
-      if (!Array.isArray(datos) || !datos.length) {
-        return null;
-      }
-
-      return {
-        lat: Number(datos[0].lat),
-        lon: Number(datos[0].lon),
-        nombre: datos[0].display_name || texto
-      };
+      return null;
     }
-
 
     function esperar(ms) {
       return new Promise(resolve =>
@@ -1690,15 +1716,28 @@
         '<div class="route-status">Buscando origen y destino...</div>';
 
       try {
+        const usarMiUbicacion =
+          ultimaUbicacionUsuario &&
+          /^(mi ubicación|mi ubicacion|ubicación actual|ubicacion actual)$/i
+            .test(origenTexto);
+
         const origen =
-          await geocodificarRuta(origenTexto);
+          usarMiUbicacion
+            ? {
+                ...ultimaUbicacionUsuario,
+                nombre: 'Mi ubicación'
+              }
+            : await geocodificarRuta(origenTexto);
 
         if (!origen) {
           throw new Error('No encontramos el origen. Probá escribiéndolo de otra forma.');
         }
 
-        // Evitamos dos consultas seguidas al geocodificador público.
-        await esperar(1100);
+        // Respetamos el intervalo del geocodificador público solo
+        // cuando el origen también necesitó una búsqueda externa.
+        if (!usarMiUbicacion) {
+          await esperar(1100);
+        }
 
         const destino =
           await geocodificarRuta(destinoTexto);
@@ -1709,21 +1748,49 @@
 
         mostrarPuntosRuta(origen, destino);
 
-        const paradasOrigen =
+        let paradasOrigen =
           obtenerParadasRutaCercanas(
             origen.lat,
             origen.lon
           );
 
-        const paradasDestino =
+        let paradasDestino =
           obtenerParadasRutaCercanas(
             destino.lat,
             destino.lon
           );
 
+        let usoRadioExtendido = false;
+
+        // Si un punto quedó en una zona con pocas paradas, ampliamos
+        // solamente la búsqueda de ruta. La lista principal sigue en 800 m.
+        if (!paradasOrigen.length) {
+          paradasOrigen =
+            obtenerParadasRutaCercanas(
+              origen.lat,
+              origen.lon,
+              RADIO_RUTA_EXTENDIDO
+            );
+          usoRadioExtendido = paradasOrigen.length > 0;
+        }
+
+        if (!paradasDestino.length) {
+          paradasDestino =
+            obtenerParadasRutaCercanas(
+              destino.lat,
+              destino.lon,
+              RADIO_RUTA_EXTENDIDO
+            );
+          usoRadioExtendido =
+            usoRadioExtendido || paradasDestino.length > 0;
+        }
+
         if (!paradasOrigen.length || !paradasDestino.length) {
           resultadoRuta.innerHTML =
-            '<div class="route-empty">No encontramos paradas a menos de 800 m de uno de los puntos.</div>';
+            '<div class="route-empty">' +
+              '<strong>No encontramos paradas cercanas a uno de los puntos.</strong><br>' +
+              'Probamos primero a 800 m y después hasta 1,5 km.' +
+            '</div>';
           return;
         }
 
@@ -1793,7 +1860,9 @@
           resultadoRuta.innerHTML =
             '<div class="route-empty">' +
               '<strong>No encontramos una línea directa.</strong><br>' +
-              'Buscamos coincidencias entre paradas a menos de 800 m del origen y del destino.' +
+              (usoRadioExtendido
+                ? 'Ampliamos la búsqueda de paradas hasta 1,5 km, pero no encontramos una línea directa.'
+                : 'Buscamos coincidencias entre paradas a menos de 800 m del origen y del destino.') +
             '</div>';
           return;
         }
@@ -3706,6 +3775,16 @@
 
           const lon =
             position.coords.longitude;
+
+          ultimaUbicacionUsuario = {
+            lat,
+            lon
+          };
+
+          // El buscador de rutas usa la ubicación real directamente,
+          // sin obligar al usuario a escribir su dirección.
+          origenRuta.value =
+            'Mi ubicación';
 
 
           // ==========================================
