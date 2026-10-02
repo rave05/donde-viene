@@ -1995,7 +1995,11 @@
 
           return {
             ...parada,
-            // Distancia real de caminata al lugar buscado.
+            // Esta parada pertenece al área/barrio buscado. No debemos
+            // tratar la distancia al centro geométrico como caminata real.
+            enAreaRuta: true,
+            // Distancia al punto devuelto por el geocodificador. Se usa
+            // para ordenar, pero no para descartar una parada del barrio.
             distanciaRuta:
               distanciaMetros(
                 Number(punto.lat),
@@ -2817,13 +2821,55 @@
         }
 
         // Una coincidencia de número de línea no sirve como ruta directa
-        // si obliga a caminar kilómetros después. En ese caso pasamos a
-        // buscar una combinación de dos ómnibus.
+        // si obliga a caminar kilómetros después. Para barrios/áreas
+        // amplias, sin embargo, la distancia al centro geométrico NO es
+        // una caminata real: alcanza con que la parada esté dentro del área.
         candidatos =
-          candidatos.filter(candidato =>
-            Number(candidato.origen?.distanciaRuta || 0) <= 800 &&
-            Number(candidato.destino?.distanciaRuta || 0) <= 800
-          );
+          candidatos.filter(candidato => {
+            const origenValido =
+              candidato.origen?.enAreaRuta === true ||
+              Number(
+                candidato.origen?.distanciaRuta ||
+                0
+              ) <= 800;
+
+            const destinoValido =
+              candidato.destino?.enAreaRuta === true ||
+              Number(
+                candidato.destino?.distanciaRuta ||
+                0
+              ) <= 800;
+
+            return origenValido && destinoValido;
+          });
+
+        // Confirmamos además que la línea realmente avance desde la
+        // parada de origen hacia el destino. Esto evita falsos directos
+        // causados por variantes/sentidos internos distintos del GTFS.
+        if (
+          candidatos.length &&
+          typeof lineaLlegaADestinoRuta === 'function'
+        ) {
+          const validados =
+            await Promise.all(
+              candidatos.map(async candidato => ({
+                candidato,
+                llega:
+                  await lineaLlegaADestinoRuta(
+                    candidato.line,
+                    candidato.destination || '',
+                    candidato.origen,
+                    destino,
+                    800
+                  )
+              }))
+            );
+
+          candidatos =
+            validados
+              .filter(item => item.llega)
+              .map(item => item.candidato);
+        }
 
         if (!candidatos.length) {
           resultadoRuta.innerHTML =
