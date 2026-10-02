@@ -1,0 +1,71 @@
+name: Actualizar horarios GTFS
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "20 6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Obtener token de Montevideo
+        env:
+          MONTEVIDEO_CLIENT_SECRET: ${{ secrets.MONTEVIDEO_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${MONTEVIDEO_CLIENT_SECRET:-}" ]; then
+            echo "Falta el secret MONTEVIDEO_CLIENT_SECRET."
+            exit 1
+          fi
+
+          TOKEN_RESPONSE=$(curl -fsS             -X POST             "https://mvdapi-auth.montevideo.gub.uy/auth/realms/pci/protocol/openid-connect/token"             -H "Content-Type: application/x-www-form-urlencoded"             --data-urlencode "grant_type=client_credentials"             --data-urlencode "client_id=2d809dba"             --data-urlencode "client_secret=${MONTEVIDEO_CLIENT_SECRET}")
+
+          ACCESS_TOKEN=$(python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])' <<< "$TOKEN_RESPONSE")
+
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Descargar GTFS oficial
+        run: |
+          set -euo pipefail
+
+          curl -fsSL             -H "Authorization: Bearer $ACCESS_TOKEN"             "https://api.montevideo.gub.uy/api/transportepublico/buses/gtfs/static/latest/google_transit.zip"             -o google_transit.zip
+
+      - name: Generar horarios livianos
+        run: |
+          set -euo pipefail
+
+          rm -rf horarios
+          python scripts/generar_horarios.py google_transit.zip horarios
+          rm -f google_transit.zip
+
+      - name: Guardar cambios
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add horarios
+
+          if git diff --cached --quiet; then
+            echo "El GTFS no cambió."
+            exit 0
+          fi
+
+          git commit -m "Actualizar horarios GTFS"
+          git push
