@@ -410,6 +410,16 @@
         box-shadow 0.16s ease;
     }
 
+    .linea-programada {
+      background: #eef5ff;
+      color: #24548f;
+      border: 1px dashed #b8cee9;
+    }
+
+    .linea-programada:hover {
+      background: #e4effd;
+    }
+
     .linea:hover {
       transform: translateY(-1px);
       background: #eaf2ff;
@@ -1666,6 +1676,60 @@
         }
 
 
+        // Completamos con las líneas programadas del GTFS.
+        // Esto evita que una parada aparezca vacía cuando no hay
+        // ningún coche de esa línea reportándose en vivo.
+        try {
+          if (
+            typeof obtenerLineasProgramadas ===
+              'function'
+          ) {
+            const programadas =
+              await obtenerLineasProgramadas(
+                parada.busstopId
+              );
+
+            if (Array.isArray(programadas)) {
+              const clavesExistentes =
+                new Set(
+                  lineas.map(item =>
+                    [
+                      String(item.line || ''),
+                      String(item.destination || '').trim().toUpperCase()
+                    ].join('|')
+                  )
+                );
+
+              for (const programada of programadas) {
+                const clave =
+                  [
+                    String(programada.line || ''),
+                    String(programada.destination || '').trim().toUpperCase()
+                  ].join('|');
+
+                if (
+                  programada.line &&
+                  !clavesExistentes.has(clave)
+                ) {
+                  lineas.push({
+                    ...programada,
+                    lineVariantId: null,
+                    source: 'gtfs'
+                  });
+
+                  clavesExistentes.add(clave);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn(
+            'No se pudieron combinar las líneas programadas:',
+            error
+          );
+        }
+
+
         if (
           consultaId !==
           consultaLineasActual
@@ -1749,7 +1813,9 @@
       ) {
 
         const clave =
-          `${linea.line}-${linea.lineVariantId || ''}`;
+          linea.lineVariantId
+            ? `${linea.line}-${linea.lineVariantId}`
+            : `${linea.line}-programada-${linea.destination || ''}`;
 
 
         if (
@@ -1783,6 +1849,12 @@
         boton.className =
           'linea';
 
+        if (!linea.lineVariantId) {
+          boton.classList.add(
+            'linea-programada'
+          );
+        }
+
 
         boton.innerHTML = `
           <span class="linea-contenido">
@@ -1790,6 +1862,11 @@
             ${
               linea.destination
                 ? `<span class="linea-destino">→ ${linea.destination}</span>`
+                : ''
+            }
+            ${
+              !linea.lineVariantId
+                ? '<span class="linea-destino">Horario programado</span>'
                 : ''
             }
           </span>
@@ -1968,10 +2045,58 @@
         !variantId
       ) {
 
-        proximos.innerHTML =
-          `<div class="error">
-            Esta línea no tiene un lineVariantId válido.
-          </div>`;
+        cancelarActualizacionProximos();
+
+        lineaActual =
+          linea.line;
+
+        variantActual =
+          null;
+
+        const seleccionProgramada = {
+          sesionId:
+            sesionProximos,
+          stopId:
+            paradaActual.busstopId,
+          variantId:
+            null,
+          linea:
+            linea.line,
+          destination:
+            linea.destination || '',
+          stopLon:
+            paradaActual.location?.coordinates?.[0],
+          stopLat:
+            paradaActual.location?.coordinates?.[1]
+        };
+
+        document
+          .querySelectorAll('.linea')
+          .forEach(
+            b =>
+              b.classList.remove('seleccionada')
+          );
+
+        boton.classList.add(
+          'seleccionada'
+        );
+
+        proximos.innerHTML = `
+          <h3>${linea.line}${linea.destination ? ` → ${linea.destination}` : ''}</h3>
+          <div class="aviso-info">
+            <strong>Sin vehículo en vivo asociado por ahora.</strong><br>
+            Esta línea aparece por su horario programado en esta parada.
+          </div>
+        `;
+
+        requestAnimationFrame(
+          () =>
+            scrollSuaveA(proximos)
+        );
+
+        await agregarProximoProgramado(
+          seleccionProgramada
+        );
 
         return;
       }
