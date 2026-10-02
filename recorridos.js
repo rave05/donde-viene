@@ -1446,6 +1446,190 @@ window.buscarCombinacionesRuta = async function(
     });
   }
 
+  window.dibujarLineaDesdeParada = async function(
+    linea,
+    destinoTexto,
+    parada
+  ) {
+    try {
+      if (
+        !linea ||
+        !parada?.busstopId ||
+        !Array.isArray(parada?.location?.coordinates)
+      ) {
+        return false;
+      }
+
+      await cargarAliasesRecorridos();
+
+      const datos =
+        await cargarRecorridoLinea(linea);
+
+      const patrones =
+        Array.isArray(datos?.patterns)
+          ? datos.patterns
+          : [];
+
+      if (!patrones.length) {
+        return false;
+      }
+
+      const paradaId =
+        String(
+          parada.gtfsStopId ||
+          parada.busstopId
+        );
+
+      const coords =
+        parada.location.coordinates;
+
+      const destinoObjetivo =
+        normalizar(destinoTexto || '');
+
+      const candidatos =
+        patrones
+          .filter(p =>
+            Array.isArray(p.shape) &&
+            p.shape.length >= 2
+          )
+          .map(p => {
+            const stops =
+              Array.isArray(p.stops)
+                ? p.stops.map(String)
+                : [];
+
+            const idxStop =
+              indiceParadaCompatible(
+                stops,
+                paradaId
+              );
+
+            const idxShape =
+              indiceShapeMasCercano(
+                p.shape,
+                Number(coords[1]),
+                Number(coords[0])
+              );
+
+            if (idxShape < 0) {
+              return null;
+            }
+
+            let puntaje =
+              distanciaSimple(
+                p.shape[idxShape][0],
+                p.shape[idxShape][1],
+                Number(coords[1]),
+                Number(coords[0])
+              );
+
+            if (idxStop >= 0) {
+              puntaje *= 0.2;
+            }
+
+            if (
+              destinoObjetivo &&
+              normalizar(p.destination) ===
+                destinoObjetivo
+            ) {
+              puntaje *= 0.25;
+            }
+
+            return {
+              patron: p,
+              idxShape,
+              puntaje
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) =>
+            a.puntaje - b.puntaje
+          );
+
+      const elegido =
+        candidatos[0];
+
+      if (!elegido) {
+        return false;
+      }
+
+      const tramo =
+        elegido.patron.shape.slice(
+          elegido.idxShape
+        );
+
+      if (tramo.length < 2) {
+        return false;
+      }
+
+      window.limpiarRecorridoSeleccionado();
+
+      haloRecorridoMapa =
+        L.polyline(tramo, {
+          color: '#ffffff',
+          weight: 11,
+          opacity: 0.92,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(mapa);
+
+      lineaRecorridoMapa =
+        L.polyline(tramo, {
+          color: '#1769e0',
+          weight: 7,
+          opacity: 0.96,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(mapa);
+
+      const iconoSubir =
+        L.divIcon({
+          className: '',
+          html:
+            '<div style="' +
+              'background:#18a66a;' +
+              'color:#fff;' +
+              'border:3px solid #fff;' +
+              'box-shadow:0 3px 10px rgba(0,0,0,.28);' +
+              'border-radius:999px;' +
+              'padding:5px 9px;' +
+              'font:700 11px/1.1 system-ui,sans-serif;' +
+              'white-space:nowrap;' +
+            '">SUBIR</div>',
+          iconSize: [58, 28],
+          iconAnchor: [29, 14]
+        });
+
+      marcadorInicioRecorrido =
+        L.marker(
+          tramo[0],
+          {
+            icon: iconoSubir,
+            zIndexOffset: 2200
+          }
+        ).addTo(mapa);
+
+      mapa.fitBounds(
+        lineaRecorridoMapa.getBounds(),
+        {
+          paddingTopLeft: [40, 55],
+          paddingBottomRight: [40, 55],
+          maxZoom: 15,
+          animate: true
+        }
+      );
+
+      return true;
+    } catch (error) {
+      console.warn(
+        'No se pudo dibujar la línea seleccionada:',
+        error
+      );
+      return false;
+    }
+  };
+
+
   window.dibujarCombinacionRuta = async function(candidato) {
     try {
       window.limpiarRecorridoSeleccionado();
