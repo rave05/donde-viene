@@ -101,6 +101,19 @@ def main():
                     elif kind == "2":
                         exceptions[date]["remove"].append(sid)
 
+    # Índice liviano parada -> líneas/destinos para que la web pueda
+    # mostrar servicios programados aunque no haya vehículos en vivo.
+    stop_index = defaultdict(dict)
+    for line, stops in data.items():
+        for stop, destinations in stops.items():
+            for destination in destinations.keys():
+                key = f"{line}|{destination}"
+                stop_index[stop][key] = {
+                    "line": line,
+                    "destination": destination,
+                    "programmedOnly": True
+                }
+
     manifest = {"generated": True, "lines": {}}
 
     for line in sorted(data):
@@ -136,7 +149,21 @@ def main():
         json.dumps(manifest, ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8"
     )
-    print(f"Generadas {len(manifest['lines'])} lineas en {out}")
+
+    paradas_payload = {
+        stop: list(entries.values())
+        for stop, entries in stop_index.items()
+    }
+
+    (out / "paradas.json").write_text(
+        json.dumps(paradas_payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8"
+    )
+
+    print(
+        f"Generadas {len(manifest['lines'])} lineas y "
+        f"{len(paradas_payload)} paradas en {out}"
+    )
 
 if __name__ == "__main__":
     main()
