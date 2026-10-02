@@ -1499,7 +1499,7 @@
 
 
   <!-- Catálogo local de lugares conocidos -->
-  <script src="./lugares.js?v=20261002-1"></script>
+  <script src="./lugares.js?v=20261002-2"></script>
 
   <!-- Leaflet -->
 
@@ -2230,13 +2230,28 @@
     async function geocodificarRuta(texto) {
       const limpio = texto.trim();
 
-      // Los puntos conocidos usan un nombre canónico antes de consultar
-      // Nominatim. Así "MAM", "FING", "Nuevo Centro", etc. apuntan al
-      // lugar correcto sin cambiar el motor de rutas.
+      // Los lugares con coordenadas verificadas se resuelven directamente.
+      // El resto usa su nombre canónico antes de consultar Nominatim.
       const lugarPredefinido =
         typeof window.buscarLugarMontevideo === 'function'
           ? window.buscarLugarMontevideo(limpio)
           : null;
+
+      if (
+        Number.isFinite(lugarPredefinido?.lat) &&
+        Number.isFinite(lugarPredefinido?.lon) &&
+        lugarPredefinido.lat >= -35.05 && lugarPredefinido.lat <= -34.65 &&
+        lugarPredefinido.lon >= -56.45 && lugarPredefinido.lon <= -55.90
+      ) {
+        return {
+          lat: lugarPredefinido.lat,
+          lon: lugarPredefinido.lon,
+          nombre: lugarPredefinido.nombre,
+          tipo: lugarPredefinido.categoria,
+          lugarPredefinido: true,
+          boundingBox: null
+        };
+      }
 
       const consultaPrincipal =
         lugarPredefinido?.consulta ||
