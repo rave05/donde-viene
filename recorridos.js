@@ -2,6 +2,9 @@
   const cacheRecorridos = new Map();
   let manifiestoRecorridos = null;
   let lineaRecorridoMapa = null;
+  let haloRecorridoMapa = null;
+  let marcadorInicioRecorrido = null;
+  let marcadorFinRecorrido = null;
 
   async function cargarManifiestoRecorridos() {
     if (manifiestoRecorridos) {
@@ -92,6 +95,21 @@
     if (lineaRecorridoMapa) {
       mapa.removeLayer(lineaRecorridoMapa);
       lineaRecorridoMapa = null;
+    }
+
+    if (haloRecorridoMapa) {
+      mapa.removeLayer(haloRecorridoMapa);
+      haloRecorridoMapa = null;
+    }
+
+    if (marcadorInicioRecorrido) {
+      mapa.removeLayer(marcadorInicioRecorrido);
+      marcadorInicioRecorrido = null;
+    }
+
+    if (marcadorFinRecorrido) {
+      mapa.removeLayer(marcadorFinRecorrido);
+      marcadorFinRecorrido = null;
     }
   };
 
@@ -297,24 +315,99 @@
         return false;
       }
 
-      lineaRecorridoMapa =
+      // Halo exterior para que el recorrido se lea bien
+      // incluso sobre calles y avenidas del mapa base.
+      haloRecorridoMapa =
         L.polyline(
           tramo,
           {
-            color: '#1769e0',
-            weight: 6,
-            opacity: 0.86,
+            color: '#ffffff',
+            weight: 11,
+            opacity: 0.92,
             lineCap: 'round',
             lineJoin: 'round'
           }
         )
         .addTo(mapa);
 
+      lineaRecorridoMapa =
+        L.polyline(
+          tramo,
+          {
+            color: '#1769e0',
+            weight: 7,
+            opacity: 0.95,
+            lineCap: 'round',
+            lineJoin: 'round'
+          }
+        )
+        .addTo(mapa);
+
+      const iconoSubir =
+        L.divIcon({
+          className: '',
+          html:
+            '<div style="' +
+              'background:#18a66a;' +
+              'color:#fff;' +
+              'border:3px solid #fff;' +
+              'box-shadow:0 3px 10px rgba(0,0,0,.28);' +
+              'border-radius:999px;' +
+              'padding:5px 9px;' +
+              'font:700 11px/1.1 system-ui,sans-serif;' +
+              'white-space:nowrap;' +
+            '">SUBIR</div>',
+          iconSize: [58, 28],
+          iconAnchor: [29, 14]
+        });
+
+      const iconoBajar =
+        L.divIcon({
+          className: '',
+          html:
+            '<div style="' +
+              'background:#e54b4b;' +
+              'color:#fff;' +
+              'border:3px solid #fff;' +
+              'box-shadow:0 3px 10px rgba(0,0,0,.28);' +
+              'border-radius:999px;' +
+              'padding:5px 9px;' +
+              'font:700 11px/1.1 system-ui,sans-serif;' +
+              'white-space:nowrap;' +
+            '">BAJAR</div>',
+          iconSize: [62, 28],
+          iconAnchor: [31, 14]
+        });
+
+      marcadorInicioRecorrido =
+        L.marker(
+          tramo[0],
+          {
+            icon: iconoSubir,
+            zIndexOffset: 2200
+          }
+        )
+        .addTo(mapa);
+
+      marcadorFinRecorrido =
+        L.marker(
+          tramo[tramo.length - 1],
+          {
+            icon: iconoBajar,
+            zIndexOffset: 2200
+          }
+        )
+        .addTo(mapa);
+
+      const boundsRecorrido =
+        lineaRecorridoMapa.getBounds();
+
       mapa.fitBounds(
-        lineaRecorridoMapa.getBounds(),
+        boundsRecorrido,
         {
-          padding: [55, 55],
-          maxZoom: 15,
+          paddingTopLeft: [40, 55],
+          paddingBottomRight: [40, 55],
+          maxZoom: 16,
           animate: true
         }
       );
