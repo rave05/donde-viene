@@ -1,6 +1,7 @@
 (() => {
   const cacheRecorridos = new Map();
   let manifiestoRecorridos = null;
+  let aliasesRecorridos = null;
   let lineaRecorridoMapa = null;
   let haloRecorridoMapa = null;
   let marcadorInicioRecorrido = null;
@@ -23,6 +24,61 @@
 
     manifiestoRecorridos = await respuesta.json();
     return manifiestoRecorridos;
+  }
+
+  async function cargarAliasesRecorridos() {
+    if (aliasesRecorridos) {
+      return aliasesRecorridos;
+    }
+
+    try {
+      const respuesta =
+        await fetch(
+          './recorridos/aliases.json',
+          { cache: 'no-cache' }
+        );
+
+      if (!respuesta.ok) {
+        return null;
+      }
+
+      aliasesRecorridos =
+        await respuesta.json();
+
+      return aliasesRecorridos;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function clavesCompatiblesParada(stopId) {
+    const clave = String(stopId || '');
+    const claves = new Set([clave]);
+
+    const alias =
+      aliasesRecorridos?.toAlias?.[clave];
+
+    const id =
+      aliasesRecorridos?.toId?.[clave];
+
+    if (alias) {
+      claves.add(String(alias));
+    }
+
+    if (id) {
+      claves.add(String(id));
+    }
+
+    return claves;
+  }
+
+  function indiceParadaCompatible(stops, stopId) {
+    const claves =
+      clavesCompatiblesParada(stopId);
+
+    return stops.findIndex(stop =>
+      claves.has(String(stop))
+    );
   }
 
   async function cargarRecorridoLinea(linea) {
@@ -123,6 +179,7 @@
   window.dibujarRecorridoSeleccionado = async function(candidato) {
     try {
       window.limpiarRecorridoSeleccionado();
+      await cargarAliasesRecorridos();
 
       if (
         !candidato?.line ||
@@ -174,10 +231,10 @@
               : [];
 
           const iOrigen =
-            paradas.indexOf(origenId);
+            indiceParadaCompatible(paradas, origenId);
 
           const iDestino =
-            paradas.indexOf(destinoId);
+            indiceParadaCompatible(paradas, destinoId);
 
           return (
             iOrigen >= 0 &&
@@ -439,13 +496,16 @@
     }
 
   function buscarParadaGlobal(stopId) {
-    const clave = String(stopId);
+    const claves =
+      clavesCompatiblesParada(stopId);
 
     return (
       Array.isArray(window.todasLasParadas)
         ? window.todasLasParadas.find(
             parada =>
-              String(parada?.busstopId) === clave
+              claves.has(
+                String(parada?.busstopId)
+              )
           )
         : null
     );
@@ -489,6 +549,8 @@
     paradasDestino
   ) {
     try {
+      await cargarAliasesRecorridos();
+
       const [opcionesOrigen, opcionesDestino] =
         await Promise.all([
           opcionesLineasPorParadas(paradasOrigen, 24),
@@ -579,8 +641,9 @@
                 : [];
 
             const iOrigen =
-              stops1.indexOf(
-                String(primera.parada.busstopId)
+              indiceParadaCompatible(
+                stops1,
+                primera.parada.busstopId
               );
 
             if (
@@ -612,8 +675,9 @@
                   : [];
 
               const iDestino =
-                stops2.indexOf(
-                  String(segunda.parada.busstopId)
+                indiceParadaCompatible(
+                  stops2,
+                  segunda.parada.busstopId
                 );
 
               if (iDestino <= 0) {
@@ -771,8 +835,8 @@
             ? patron.stops.map(String)
             : [];
 
-        const iDesde = stops.indexOf(desdeId);
-        const iHasta = stops.indexOf(hastaId);
+        const iDesde = indiceParadaCompatible(stops, desdeId);
+        const iHasta = indiceParadaCompatible(stops, hastaId);
 
         return (
           iDesde >= 0 &&
