@@ -491,8 +491,8 @@
     try {
       const [opcionesOrigen, opcionesDestino] =
         await Promise.all([
-          opcionesLineasPorParadas(paradasOrigen, 14),
-          opcionesLineasPorParadas(paradasDestino, 14)
+          opcionesLineasPorParadas(paradasOrigen, 24),
+          opcionesLineasPorParadas(paradasDestino, 24)
         ]);
 
       if (!opcionesOrigen.length || !opcionesDestino.length) {
@@ -518,7 +518,7 @@
 
       const resultados = [];
       const vistos = new Set();
-      const MAX_CAMINATA_TRANSFER = 350;
+      const MAX_CAMINATA_TRANSFER = 450;
 
       function distanciaTransfer(paradaA, paradaB) {
         const a = paradaA?.location?.coordinates;
