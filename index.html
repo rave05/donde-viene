@@ -2291,8 +2291,21 @@
           );
       }
 
-      if (botonLinea) {
-        botonLinea.click();
+      if (
+        botonLinea &&
+        botonLinea._lineaData
+      ) {
+        // No usamos .click() acá: el click del panel inferior también
+        // dibuja su propio shape y duplicaría marcadores/rutas.
+        seleccionarLinea(
+          botonLinea._lineaData,
+          botonLinea
+        ).catch(error =>
+          console.warn(
+            'No se pudo abrir la línea elegida:',
+            error
+          )
+        );
       } else {
         // Último fallback: abre la versión programada de esa línea.
         const botonTemporal =
@@ -5219,7 +5232,7 @@
   </script>
 
   <script src="./horarios.js"></script>
-  <script src="./recorridos.js?v=20261002-5"></script>
+  <script src="./recorridos.js?v=20261002-6"></script>
   <h1>Beta V0.5</h1>
 </body>
 </html>
