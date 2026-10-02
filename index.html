@@ -652,20 +652,79 @@
     }
 
     .horario-programado {
-      margin-top: 10px;
-      background: #fffaf0;
-      border-color: #f1dfb9;
+      margin-top: 12px;
+      padding: 14px 15px;
+      background: linear-gradient(180deg, #fffaf0 0%, #fff7e3 100%);
+      border: 1px solid #efcf8e;
+      border-left: 4px solid #e5a72b;
+      border-radius: 13px;
       color: #6f5424;
+      box-shadow: 0 5px 16px rgba(146, 102, 19, 0.08);
     }
 
-    .horario-programado strong {
+    .horario-cabecera {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 9px;
+    }
+
+    .horario-etiqueta {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #f2bd4f;
+      color: #4f390f;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .7px;
+    }
+
+    .horario-no-vivo {
+      color: #8a6b2f;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .horario-principal {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    .horario-hora {
+      color: #513b10;
+      font-size: 24px;
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: -0.4px;
+    }
+
+    .horario-espera {
+      color: #7a5c24;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .horario-destino {
+      margin-top: 3px;
       color: #5d4316;
-      font-size: 14px;
+      font-size: 13px;
+      font-weight: 700;
     }
 
     .horario-aclaracion {
+      display: block;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(178, 132, 43, 0.22);
       color: #806b46;
-      font-size: 12px;
+      font-size: 11px;
+      line-height: 1.4;
     }
 
     @media (max-width: 760px) {
