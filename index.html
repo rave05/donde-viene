@@ -279,6 +279,38 @@
       color: #344054;
     }
 
+    .route-result-button {
+      width: 100%;
+      display: block;
+      text-align: left;
+      cursor: pointer;
+      appearance: none;
+      transition:
+        transform .16s ease,
+        border-color .16s ease,
+        background .16s ease,
+        box-shadow .16s ease;
+    }
+
+    .route-result-button:hover {
+      transform: translateY(-1px);
+      background: #eef6ff;
+      border-color: #9fc6f5;
+      box-shadow: 0 6px 16px rgba(23, 105, 224, .09);
+    }
+
+    .route-result-button:focus-visible {
+      outline: 3px solid rgba(23, 105, 224, .2);
+      outline-offset: 2px;
+    }
+
+    .route-result-action {
+      margin-top: 8px;
+      color: #1769e0;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
     .route-result:first-child {
       margin-top: 0;
     }
@@ -1691,6 +1723,67 @@
     }
 
 
+    async function abrirOpcionRuta(candidato) {
+      if (!candidato?.origen || !candidato?.line) {
+        return;
+      }
+
+      // Reutilizamos exactamente el flujo normal de la app:
+      // primero seleccionamos la parada de subida y después la línea.
+      await seleccionarParada(candidato.origen);
+
+      const botones =
+        [...listaLineas.querySelectorAll('.linea')];
+
+      const destinoObjetivo =
+        String(candidato.destination || '')
+          .trim()
+          .toUpperCase();
+
+      let botonLinea =
+        botones.find(boton => {
+          const info = boton._lineaData;
+
+          return (
+            String(info?.line || '') === String(candidato.line) &&
+            String(info?.destination || '')
+              .trim()
+              .toUpperCase() === destinoObjetivo
+          );
+        });
+
+      // Si el destino cambia de nombre entre GTFS y tiempo real,
+      // priorizamos igualmente la misma línea.
+      if (!botonLinea) {
+        botonLinea =
+          botones.find(boton =>
+            String(boton._lineaData?.line || '') ===
+              String(candidato.line)
+          );
+      }
+
+      if (botonLinea) {
+        botonLinea.click();
+      } else {
+        // Último fallback: abre la versión programada de esa línea.
+        const botonTemporal =
+          document.createElement('button');
+
+        botonTemporal.className =
+          'linea seleccionada';
+
+        await seleccionarLinea(
+          {
+            line: candidato.line,
+            destination: candidato.destination || '',
+            lineVariantId: null
+          },
+          botonTemporal
+        );
+      }
+    }
+
+
     async function buscarRutaSimple() {
       const origenTexto =
         origenRuta.value.trim();
@@ -1867,10 +1960,12 @@
           return;
         }
 
+        const candidatosMostrados =
+          candidatos.slice(0, 4);
+
         resultadoRuta.innerHTML =
-          candidatos
-            .slice(0, 4)
-            .map(candidato => {
+          candidatosMostrados
+            .map((candidato, indice) => {
               const subir =
                 escaparHTML(nombreParadaRuta(candidato.origen));
 
@@ -1883,7 +1978,9 @@
                   : '';
 
               return (
-                '<div class="route-result">' +
+                '<button type="button" class="route-result route-result-button" data-route-index="' +
+                  indice +
+                '">' +
                   '<div class="route-line">🚌 ' +
                     escaparHTML(candidato.line) +
                     destinoLinea +
@@ -1897,10 +1994,30 @@
                     formatearDistancia(candidato.destino.distanciaRuta) +
                     ' al bajar' +
                   '</div>' +
-                '</div>'
+                  '<div class="route-result-action">Ver esta línea →</div>' +
+                '</button>'
               );
             })
             .join('');
+
+        resultadoRuta
+          .querySelectorAll('.route-result-button')
+          .forEach(boton => {
+            boton.addEventListener(
+              'click',
+              () => {
+                const indice =
+                  Number(boton.dataset.routeIndex);
+
+                const candidato =
+                  candidatosMostrados[indice];
+
+                if (candidato) {
+                  abrirOpcionRuta(candidato);
+                }
+              }
+            );
+          });
 
       } catch (error) {
         console.error(error);
@@ -2556,6 +2673,9 @@
 
         boton.className =
           'linea';
+
+        boton._lineaData =
+          linea;
 
         if (!linea.lineVariantId) {
           boton.classList.add(
