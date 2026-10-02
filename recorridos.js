@@ -302,14 +302,23 @@
         return false;
       }
 
-      const desde =
-        Math.min(iShapeOrigen, iShapeDestino);
+      let tramo;
 
-      const hasta =
-        Math.max(iShapeOrigen, iShapeDestino);
-
-      const tramo =
-        shape.slice(desde, hasta + 1);
+      if (iShapeOrigen < iShapeDestino) {
+        tramo =
+          shape.slice(
+            iShapeOrigen,
+            iShapeDestino + 1
+          );
+      } else {
+        tramo =
+          shape
+            .slice(
+              iShapeDestino,
+              iShapeOrigen + 1
+            )
+            .reverse();
+      }
 
       if (tramo.length < 2) {
         return false;
