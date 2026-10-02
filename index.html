@@ -334,9 +334,6 @@
     const CACHE_LINEAS_MS =
       5 * 60 * 1000;
 
-    const CACHE_PROXIMOS_MS =
-      8 * 1000;
-
     const INTERVALO_PROXIMOS_MS =
       30 * 1000;
 
@@ -443,6 +440,7 @@
     // VARIABLES
     // =========================================================
 
+
     let todasLasParadas = [];
 
     let marcadorUsuario = null;
@@ -457,19 +455,29 @@
 
     let variantActual = null;
 
-    let intervaloProximos = null;
-
-    let consultaProximosActual = 0;
+    // Solo puede existir un temporizador y una petición de próximos buses.
+    let temporizadorProximos = null;
 
     let abortControllerProximos = null;
+
+    // Cada cambio de parada o línea crea una nueva sesión.
+    // Las respuestas de sesiones anteriores se ignoran.
+    let sesionProximos = 0;
 
     let consultaLineasActual = 0;
 
     const cacheLineas =
       new Map();
 
-    const cacheProximos =
+    // Conserva brevemente el último resultado NO vacío de cada
+    // parada/variante. La API oficial puede devolver [] de forma
+    // puntual entre dos respuestas válidas.
+    const ultimoResultadoProximos =
       new Map();
+
+    const TOLERANCIA_RESULTADO_VACIO_MS =
+      90 * 1000;
+
 
 
     // =========================================================
@@ -1069,6 +1077,7 @@
     // SELECCIONAR LÍNEA
     // =========================================================
 
+
     async function seleccionarLinea(
       linea,
       boton
@@ -1098,17 +1107,9 @@
       }
 
 
-      if (
-        boton.disabled
-      ) {
-        return;
-      }
-
-
-      boton.disabled =
-        true;
-
-
+      // Cancelamos cualquier consulta/temporizador anterior.
+      // El botón NO se deshabilita: si el usuario vuelve a tocar
+      // la misma línea, esa acción inicia una consulta nueva.
       cancelarActualizacionProximos();
 
 
@@ -1118,6 +1119,20 @@
 
       variantActual =
         variantId;
+
+
+      const seleccion = {
+        sesionId:
+          sesionProximos,
+
+        stopId:
+          paradaActual.busstopId,
+
+        variantId,
+
+        linea:
+          linea.line
+      };
 
 
       document
@@ -1143,62 +1158,44 @@
         </div>`;
 
 
-      try {
-
-        await cargarProximos();
-
-      } finally {
-
-        boton.disabled =
-          false;
-      }
+      await cargarProximos(
+        seleccion
+      );
 
 
       if (
-        lineaActual ===
-          linea.line &&
-        variantActual ===
-          variantId &&
-        paradaActual
+        seleccion.sesionId ===
+          sesionProximos
       ) {
 
-        intervaloProximos =
-          setInterval(
-            () => {
-
-              if (
-                paradaActual &&
-                lineaActual ===
-                  linea.line &&
-                variantActual ===
-                  variantId
-              ) {
-
-                cargarProximos();
-              }
-
-            },
-            INTERVALO_PROXIMOS_MS
-          );
+        programarActualizacionProximos(
+          seleccion
+        );
       }
     }
+
 
 
     // =========================================================
     // CANCELAR ACTUALIZACIÓN
     // =========================================================
 
+
     function cancelarActualizacionProximos() {
 
+      // Invalida de inmediato cualquier respuesta anterior.
+      sesionProximos++;
+
+
       if (
-        intervaloProximos
+        temporizadorProximos
       ) {
 
-        clearInterval(
-          intervaloProximos
+        clearTimeout(
+          temporizadorProximos
         );
 
-        intervaloProximos =
+        temporizadorProximos =
           null;
       }
 
@@ -1212,39 +1209,100 @@
         abortControllerProximos =
           null;
       }
-
-
-      consultaProximosActual++;
     }
 
 
-    // =========================================================
-    // CARGAR PRÓXIMOS
-    // =========================================================
-
-    async function cargarProximos() {
+    function programarActualizacionProximos(
+      seleccion
+    ) {
 
       if (
-        !paradaActual ||
-        !variantActual
+        seleccion.sesionId !==
+        sesionProximos
       ) {
 
         return;
       }
 
 
-      const stopId =
-        paradaActual.busstopId;
+      if (
+        temporizadorProximos
+      ) {
+
+        clearTimeout(
+          temporizadorProximos
+        );
+      }
 
 
-      const variantId =
-        variantActual;
+      temporizadorProximos =
+        setTimeout(
+          async () => {
+
+            temporizadorProximos =
+              null;
 
 
-      const consultaId =
-        ++consultaProximosActual;
+            if (
+              seleccion.sesionId !==
+              sesionProximos
+            ) {
+
+              return;
+            }
 
 
+            await cargarProximos(
+              seleccion
+            );
+
+
+            if (
+              seleccion.sesionId ===
+              sesionProximos
+            ) {
+
+              programarActualizacionProximos(
+                seleccion
+              );
+            }
+
+          },
+          INTERVALO_PROXIMOS_MS
+        );
+    }
+
+
+
+    // =========================================================
+    // CARGAR PRÓXIMOS
+    // =========================================================
+
+
+    async function cargarProximos(
+      seleccion
+    ) {
+
+      if (
+        !seleccion ||
+        seleccion.sesionId !==
+          sesionProximos
+      ) {
+
+        return;
+      }
+
+
+      const {
+        stopId,
+        variantId,
+        linea,
+        sesionId
+      } =
+        seleccion;
+
+
+      // Nunca dejamos dos peticiones de próximos buses activas.
       if (
         abortControllerProximos
       ) {
@@ -1253,39 +1311,12 @@
       }
 
 
-      abortControllerProximos =
+      const controller =
         new AbortController();
 
 
-      const cacheKey =
-        `${stopId}|${variantId}`;
-
-
-      const cache =
-        cacheProximos.get(
-          cacheKey
-        );
-
-
-      if (
-        cache &&
-        Date.now() -
-          cache.timestamp <
-          CACHE_PROXIMOS_MS
-      ) {
-
-        if (
-          consultaId ===
-          consultaProximosActual
-        ) {
-
-          mostrarProximos(
-            cache.data
-          );
-        }
-
-        return;
-      }
+      abortControllerProximos =
+        controller;
 
 
       try {
@@ -1301,7 +1332,7 @@
             url,
             {
               signal:
-                abortControllerProximos.signal
+                controller.signal
             }
           );
 
@@ -1332,29 +1363,113 @@
 
 
         if (
-          consultaId !==
-          consultaProximosActual
+          sesionId !==
+          sesionProximos
         ) {
 
           return;
         }
 
 
-        cacheProximos.set(
-          cacheKey,
-          {
-            timestamp:
-              Date.now(),
+        const claveResultado =
+          `${stopId}|${variantId}`;
 
-            data:
-              datos
+
+        if (
+          Array.isArray(datos) &&
+          datos.length > 0
+        ) {
+
+          ultimoResultadoProximos.set(
+            claveResultado,
+            {
+              timestamp:
+                Date.now(),
+
+              data:
+                datos
+            }
+          );
+
+
+          mostrarProximos(
+            datos,
+            linea,
+            false
+          );
+
+        } else {
+
+          const anterior =
+            ultimoResultadoProximos.get(
+              claveResultado
+            );
+
+
+          const sigueVigente =
+            anterior &&
+            Date.now() -
+              anterior.timestamp <=
+              TOLERANCIA_RESULTADO_VACIO_MS;
+
+
+          if (
+            sigueVigente
+          ) {
+
+            const segundosPasados =
+              Math.floor(
+                (Date.now() - anterior.timestamp) / 1000
+              );
+
+
+            const busesAjustados =
+              anterior.data
+                .map(
+                  bus => ({
+                    ...bus,
+                    eta:
+                      Math.max(
+                        0,
+                        Number(bus.eta || 0) -
+                          segundosPasados
+                      )
+                  })
+                )
+                .filter(
+                  bus =>
+                    Number(bus.eta) > 0
+                );
+
+
+            if (
+              busesAjustados.length > 0
+            ) {
+
+              mostrarProximos(
+                busesAjustados,
+                linea,
+                true
+              );
+
+            } else {
+
+              mostrarProximos(
+                [],
+                linea,
+                false
+              );
+            }
+
+          } else {
+
+            mostrarProximos(
+              datos,
+              linea,
+              false
+            );
           }
-        );
-
-
-        mostrarProximos(
-          datos
-        );
+        }
 
 
       } catch (error) {
@@ -1374,8 +1489,8 @@
 
 
         if (
-          consultaId ===
-          consultaProximosActual
+          sesionId ===
+          sesionProximos
         ) {
 
           proximos.innerHTML =
@@ -1390,9 +1505,11 @@
 
       } finally {
 
+        // Solo limpia el controlador si sigue siendo el de ESTA petición.
+        // Así una petición vieja nunca borra el controlador de una nueva.
         if (
-          consultaId ===
-          consultaProximosActual
+          abortControllerProximos ===
+          controller
         ) {
 
           abortControllerProximos =
@@ -1400,6 +1517,7 @@
         }
       }
     }
+
 
 
     // =========================================================
@@ -1457,7 +1575,9 @@
     // =========================================================
 
     function mostrarProximos(
-      buses
+      buses,
+      lineaMostrada,
+      usandoUltimoResultado = false
     ) {
 
       if (
@@ -1490,8 +1610,15 @@
 
       proximos.innerHTML =
         `<h3>
-          Próximos ${lineaActual}
-        </h3>`;
+          Próximos ${lineaMostrada}
+        </h3>
+        ${
+          usandoUltimoResultado
+            ? `<div class="cargando">
+                Última actualización válida conservada mientras se reintenta.
+              </div>`
+            : ''
+        }`;
 
 
       for (
@@ -1521,7 +1648,7 @@
             <div>
 
               <div class="bus-linea">
-                🚌 ${bus.line || lineaActual}
+                🚌 ${bus.line || lineaMostrada}
               </div>
 
               <div class="bus-detalles">
