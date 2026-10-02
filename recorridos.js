@@ -804,6 +804,22 @@ window.buscarCombinacionesRuta = async function(
     destinoPunto = null
   ) {
     try {
+      window.ultimoDiagnosticoCombinacion = {
+        paradasOrigenEntrada:
+          Array.isArray(paradasOrigen)
+            ? paradasOrigen.length
+            : 0,
+        paradasDestinoEntrada:
+          Array.isArray(paradasDestino)
+            ? paradasDestino.length
+            : 0,
+        paradasGTFSOrigen: 0,
+        paradasGTFSDestino: 0,
+        entradasOrigen: 0,
+        entradasDestino: 0,
+        candidatosCombinacion: 0,
+        resultadoFinal: 0
+      };
       await cargarAliasesRecorridos();
 
       const red =
@@ -953,9 +969,34 @@ window.buscarCombinacionesRuta = async function(
           1000
         );
 
+      window.ultimoDiagnosticoCombinacion.paradasGTFSOrigen =
+        origenes.length;
+
+      window.ultimoDiagnosticoCombinacion.paradasGTFSDestino =
+        destinos.length;
+
       if (!origenes.length || !destinos.length) {
         return [];
       }
+
+      let totalEntradasOrigen = 0;
+      let totalEntradasDestino = 0;
+
+      for (const origenItem of origenes) {
+        totalEntradasOrigen +=
+          (red.byStop?.[origenItem.stopId] || []).length;
+      }
+
+      for (const destinoItem of destinos) {
+        totalEntradasDestino +=
+          (red.byStop?.[destinoItem.stopId] || []).length;
+      }
+
+      window.ultimoDiagnosticoCombinacion.entradasOrigen =
+        totalEntradasOrigen;
+
+      window.ultimoDiagnosticoCombinacion.entradasDestino =
+        totalEntradasDestino;
 
       // Índice rápido: para cada patrón que llega cerca del destino,
       // guardamos la secuencia donde debe bajarse.
@@ -1193,17 +1234,34 @@ window.buscarCombinacionesRuta = async function(
         }
       }
 
-      return candidatos
-        .sort((a, b) =>
-          a.puntaje - b.puntaje
-        )
-        .slice(0, 6);
+      window.ultimoDiagnosticoCombinacion.candidatosCombinacion =
+        candidatos.length;
+
+      const resultado =
+        candidatos
+          .sort((a, b) =>
+            a.puntaje - b.puntaje
+          )
+          .slice(0, 6);
+
+      window.ultimoDiagnosticoCombinacion.resultadoFinal =
+        resultado.length;
+
+      return resultado;
 
     } catch (error) {
       console.warn(
         'No se pudieron buscar combinaciones:',
         error
       );
+
+      window.ultimoDiagnosticoCombinacion = {
+        ...(window.ultimoDiagnosticoCombinacion || {}),
+        error:
+          error?.message ||
+          String(error)
+      };
+
       return [];
     }
   };
