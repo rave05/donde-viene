@@ -1077,6 +1077,11 @@ window.buscarCombinacionesRuta = async function(
       const candidatos = [];
       const vistos = new Set();
 
+      // Evitamos combinaciones demasiado cerca del punto de subida.
+      // Si el primer bus recorre menos de 800 m hasta el trasbordo,
+      // normalmente al usuario le conviene caminar ese tramo.
+      const MIN_TRAMO_PRIMER_BUS_COMBINACION_METROS = 800;
+
       for (const origen of origenes) {
         const entradasOrigen =
           red.byStop?.[origen.stopId] || [];
@@ -1112,6 +1117,21 @@ window.buscarCombinacionesRuta = async function(
               red.coords?.[stopTransfer];
 
             if (!Array.isArray(transferCoords)) {
+              continue;
+            }
+
+            const distanciaPrimerTramo =
+              distanciaMetrosLocal(
+                Number(origen.lat),
+                Number(origen.lon),
+                Number(transferCoords[0]),
+                Number(transferCoords[1])
+              );
+
+            if (
+              distanciaPrimerTramo <
+                MIN_TRAMO_PRIMER_BUS_COMBINACION_METROS
+            ) {
               continue;
             }
 
@@ -1268,6 +1288,7 @@ window.buscarCombinacionesRuta = async function(
                     grupo.caminata,
                   destino:
                     paradaDestino,
+                  distanciaPrimerTramo,
                   puntaje:
                     origen.distancia +
                     llegada.destino.distancia +
