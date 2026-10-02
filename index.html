@@ -164,6 +164,164 @@
       padding-bottom: 70px;
     }
 
+    .route-planner {
+      margin-bottom: 16px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.97);
+      border: 1px solid rgba(228, 233, 240, 0.95);
+      border-radius: 18px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .route-planner-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .route-planner-header h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.25px;
+    }
+
+    .route-planner-header p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .route-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .route-field {
+      min-width: 0;
+    }
+
+    .route-field label {
+      display: block;
+      margin-bottom: 6px;
+      color: #475467;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .route-field input {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+      font: inherit;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+
+    .route-field input:focus {
+      border-color: #1769e0;
+      box-shadow: 0 0 0 3px rgba(23, 105, 224, 0.12);
+    }
+
+    #btnBuscarRuta {
+      min-height: 44px;
+      padding: 10px 16px;
+      border: 0;
+      border-radius: 12px;
+      background: #1769e0;
+      color: #fff;
+      font-weight: 900;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    #btnBuscarRuta:disabled {
+      opacity: .65;
+      cursor: wait;
+    }
+
+    #resultadoRuta {
+      margin-top: 12px;
+    }
+
+    .route-status,
+    .route-result,
+    .route-empty {
+      padding: 12px 13px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .route-status {
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .route-empty {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #8a4b13;
+    }
+
+    .route-result {
+      margin-top: 8px;
+      background: #f7fbff;
+      border: 1px solid #d7e7fb;
+      color: #344054;
+    }
+
+    .route-result:first-child {
+      margin-top: 0;
+    }
+
+    .route-line {
+      margin-bottom: 5px;
+      color: #1553a3;
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    .route-meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .route-pin {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50% 50% 50% 8px;
+      transform: rotate(-45deg);
+      border: 3px solid #fff;
+      box-shadow: 0 5px 16px rgba(0, 0, 0, .25);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .route-pin span {
+      transform: rotate(45deg);
+    }
+
+    .route-pin-origin {
+      background: #1f9d68;
+      color: #fff;
+    }
+
+    .route-pin-destination {
+      background: #d84343;
+      color: #fff;
+    }
+
     .map-card {
       position: relative;
       border-radius: var(--radius-lg);
@@ -737,6 +895,24 @@
     }
 
     @media (max-width: 760px) {
+      .route-planner {
+        padding: 14px;
+      }
+
+      .route-planner-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .route-fields {
+        grid-template-columns: 1fr;
+      }
+
+      #btnBuscarRuta {
+        width: 100%;
+      }
+
       body {
         background:
           linear-gradient(180deg, #0e1d33 0 165px, var(--bg) 165px 100%);
@@ -905,6 +1081,31 @@
 
   <main class="app-shell">
 
+    <section class="route-planner" aria-label="Buscar ruta simple">
+      <div class="route-planner-header">
+        <div>
+          <h2>¿Cómo llego?</h2>
+          <p>Buscamos una línea directa entre paradas cercanas a ambos puntos.</p>
+        </div>
+      </div>
+
+      <div class="route-fields">
+        <div class="route-field">
+          <label for="origenRuta">Origen</label>
+          <input id="origenRuta" type="text" autocomplete="street-address" placeholder="Ej: Tres Cruces">
+        </div>
+
+        <div class="route-field">
+          <label for="destinoRuta">Destino</label>
+          <input id="destinoRuta" type="text" autocomplete="street-address" placeholder="Ej: Plaza Independencia">
+        </div>
+
+        <button id="btnBuscarRuta" type="button">Buscar ruta</button>
+      </div>
+
+      <div id="resultadoRuta" aria-live="polite"></div>
+    </section>
+
     <div class="map-card">
       <div id="mapa"></div>
 
@@ -995,6 +1196,10 @@
 
     const RADIO_PARADAS = 800;
 
+    const RADIO_RUTA = 800;
+
+    const MAX_PARADAS_RUTA = 10;
+
     const CACHE_LINEAS_MS =
       5 * 60 * 1000;
 
@@ -1023,6 +1228,18 @@
 
     const btnUbicacion =
       document.getElementById('btnUbicacion');
+
+    const origenRuta =
+      document.getElementById('origenRuta');
+
+    const destinoRuta =
+      document.getElementById('destinoRuta');
+
+    const btnBuscarRuta =
+      document.getElementById('btnBuscarRuta');
+
+    const resultadoRuta =
+      document.getElementById('resultadoRuta');
 
 
     // =========================================================
@@ -1141,6 +1358,10 @@
     let marcadoresParadas = [];
 
     let marcadoresBusesVivos = [];
+
+    let marcadorOrigenRuta = null;
+
+    let marcadorDestinoRuta = null;
 
     let paradaActual = null;
 
@@ -1274,6 +1495,356 @@
         );
 
       return R * c;
+    }
+
+
+    // =========================================================
+    // RUTA SIMPLE ORIGEN → DESTINO
+
+    // =========================================================
+
+    function escaparHTML(valor = '') {
+      return String(valor)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+
+    function nombreParadaRuta(parada) {
+      const nombre =
+        [
+          parada.street1,
+          parada.street2
+        ]
+        .filter(Boolean)
+        .join(' y ');
+
+      return nombre ||
+        'Parada ' + parada.busstopId;
+    }
+
+
+    function obtenerParadasRutaCercanas(
+      lat,
+      lon
+    ) {
+      return todasLasParadas
+        .filter(parada =>
+          parada.location &&
+          Array.isArray(parada.location.coordinates)
+        )
+        .map(parada => {
+          const [paradaLon, paradaLat] =
+            parada.location.coordinates;
+
+          return {
+            ...parada,
+            distanciaRuta: distanciaMetros(
+              lat,
+              lon,
+              Number(paradaLat),
+              Number(paradaLon)
+            )
+          };
+        })
+        .filter(parada =>
+          parada.distanciaRuta <= RADIO_RUTA
+        )
+        .sort((a, b) =>
+          a.distanciaRuta - b.distanciaRuta
+        )
+        .slice(0, MAX_PARADAS_RUTA);
+    }
+
+
+    async function geocodificarRuta(texto) {
+      const consulta =
+        texto.trim() + ', Montevideo, Uruguay';
+
+      const url =
+        'https://nominatim.openstreetmap.org/search' +
+        '?format=jsonv2' +
+        '&limit=1' +
+        '&countrycodes=uy' +
+        '&addressdetails=1' +
+        '&q=' + encodeURIComponent(consulta);
+
+      const respuesta =
+        await fetch(url, {
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+      if (!respuesta.ok) {
+        throw new Error('No se pudo buscar la dirección.');
+      }
+
+      const datos =
+        await respuesta.json();
+
+      if (!Array.isArray(datos) || !datos.length) {
+        return null;
+      }
+
+      return {
+        lat: Number(datos[0].lat),
+        lon: Number(datos[0].lon),
+        nombre: datos[0].display_name || texto
+      };
+    }
+
+
+    function esperar(ms) {
+      return new Promise(resolve =>
+        setTimeout(resolve, ms)
+      );
+    }
+
+
+    function limpiarMarcadoresRuta() {
+      if (marcadorOrigenRuta) {
+        mapa.removeLayer(marcadorOrigenRuta);
+        marcadorOrigenRuta = null;
+      }
+
+      if (marcadorDestinoRuta) {
+        mapa.removeLayer(marcadorDestinoRuta);
+        marcadorDestinoRuta = null;
+      }
+    }
+
+
+    function mostrarPuntosRuta(origen, destino) {
+      limpiarMarcadoresRuta();
+
+      const iconoOrigen = L.divIcon({
+        className: '',
+        html: '<div class="route-pin route-pin-origin"><span>A</span></div>',
+        iconSize: [34, 34],
+        iconAnchor: [17, 30]
+      });
+
+      const iconoDestino = L.divIcon({
+        className: '',
+        html: '<div class="route-pin route-pin-destination"><span>B</span></div>',
+        iconSize: [34, 34],
+        iconAnchor: [17, 30]
+      });
+
+      marcadorOrigenRuta =
+        L.marker(
+          [origen.lat, origen.lon],
+          { icon: iconoOrigen, zIndexOffset: 1400 }
+        )
+        .addTo(mapa)
+        .bindPopup('<strong>Origen</strong><br>' + escaparHTML(origen.nombre));
+
+      marcadorDestinoRuta =
+        L.marker(
+          [destino.lat, destino.lon],
+          { icon: iconoDestino, zIndexOffset: 1400 }
+        )
+        .addTo(mapa)
+        .bindPopup('<strong>Destino</strong><br>' + escaparHTML(destino.nombre));
+
+      mapa.fitBounds(
+        L.latLngBounds([
+          [origen.lat, origen.lon],
+          [destino.lat, destino.lon]
+        ]),
+        {
+          padding: [55, 55],
+          maxZoom: 15,
+          animate: true
+        }
+      );
+    }
+
+
+    async function buscarRutaSimple() {
+      const origenTexto =
+        origenRuta.value.trim();
+
+      const destinoTexto =
+        destinoRuta.value.trim();
+
+      if (!origenTexto || !destinoTexto) {
+        resultadoRuta.innerHTML =
+          '<div class="route-empty">Escribí un origen y un destino.</div>';
+        return;
+      }
+
+      if (!todasLasParadas.length) {
+        resultadoRuta.innerHTML =
+          '<div class="route-status">Todavía estamos cargando las paradas. Probá de nuevo en unos segundos.</div>';
+        return;
+      }
+
+      btnBuscarRuta.disabled = true;
+      btnBuscarRuta.textContent = 'Buscando...';
+      resultadoRuta.innerHTML =
+        '<div class="route-status">Buscando origen y destino...</div>';
+
+      try {
+        const origen =
+          await geocodificarRuta(origenTexto);
+
+        if (!origen) {
+          throw new Error('No encontramos el origen. Probá escribiéndolo de otra forma.');
+        }
+
+        // Evitamos dos consultas seguidas al geocodificador público.
+        await esperar(1100);
+
+        const destino =
+          await geocodificarRuta(destinoTexto);
+
+        if (!destino) {
+          throw new Error('No encontramos el destino. Probá escribiéndolo de otra forma.');
+        }
+
+        mostrarPuntosRuta(origen, destino);
+
+        const paradasOrigen =
+          obtenerParadasRutaCercanas(
+            origen.lat,
+            origen.lon
+          );
+
+        const paradasDestino =
+          obtenerParadasRutaCercanas(
+            destino.lat,
+            destino.lon
+          );
+
+        if (!paradasOrigen.length || !paradasDestino.length) {
+          resultadoRuta.innerHTML =
+            '<div class="route-empty">No encontramos paradas a menos de 800 m de uno de los puntos.</div>';
+          return;
+        }
+
+        const origenConLineas =
+          await Promise.all(
+            paradasOrigen.map(async parada => ({
+              parada,
+              lineas:
+                typeof obtenerLineasProgramadas === 'function'
+                  ? await obtenerLineasProgramadas(parada.busstopId)
+                  : []
+            }))
+          );
+
+        const destinoConLineas =
+          await Promise.all(
+            paradasDestino.map(async parada => ({
+              parada,
+              lineas:
+                typeof obtenerLineasProgramadas === 'function'
+                  ? await obtenerLineasProgramadas(parada.busstopId)
+                  : []
+            }))
+          );
+
+        const candidatos = [];
+        const vistos = new Set();
+
+        for (const origenItem of origenConLineas) {
+          for (const lineaOrigen of origenItem.lineas) {
+            const claveOrigen =
+              String(lineaOrigen.line || '') + '|' +
+              String(lineaOrigen.destination || '');
+
+            for (const destinoItem of destinoConLineas) {
+              const coincide =
+                destinoItem.lineas.find(lineaDestino =>
+                  String(lineaDestino.line || '') + '|' +
+                  String(lineaDestino.destination || '') ===
+                    claveOrigen
+                );
+
+              if (!coincide || vistos.has(claveOrigen)) {
+                continue;
+              }
+
+              vistos.add(claveOrigen);
+
+              candidatos.push({
+                line: lineaOrigen.line,
+                destination: lineaOrigen.destination || '',
+                origen: origenItem.parada,
+                destino: destinoItem.parada,
+                puntaje:
+                  origenItem.parada.distanciaRuta +
+                  destinoItem.parada.distanciaRuta
+              });
+            }
+          }
+        }
+
+        candidatos.sort((a, b) =>
+          a.puntaje - b.puntaje
+        );
+
+        if (!candidatos.length) {
+          resultadoRuta.innerHTML =
+            '<div class="route-empty">' +
+              '<strong>No encontramos una línea directa.</strong><br>' +
+              'Buscamos coincidencias entre paradas a menos de 800 m del origen y del destino.' +
+            '</div>';
+          return;
+        }
+
+        resultadoRuta.innerHTML =
+          candidatos
+            .slice(0, 4)
+            .map(candidato => {
+              const subir =
+                escaparHTML(nombreParadaRuta(candidato.origen));
+
+              const bajar =
+                escaparHTML(nombreParadaRuta(candidato.destino));
+
+              const destinoLinea =
+                candidato.destination
+                  ? ' → ' + escaparHTML(candidato.destination)
+                  : '';
+
+              return (
+                '<div class="route-result">' +
+                  '<div class="route-line">🚌 ' +
+                    escaparHTML(candidato.line) +
+                    destinoLinea +
+                  '</div>' +
+                  '<div><strong>Subí en:</strong> ' + subir + '</div>' +
+                  '<div><strong>Bajá en:</strong> ' + bajar + '</div>' +
+                  '<div class="route-meta">' +
+                    'Caminata aprox.: ' +
+                    formatearDistancia(candidato.origen.distanciaRuta) +
+                    ' al subir · ' +
+                    formatearDistancia(candidato.destino.distanciaRuta) +
+                    ' al bajar' +
+                  '</div>' +
+                '</div>'
+              );
+            })
+            .join('');
+
+      } catch (error) {
+        console.error(error);
+
+        resultadoRuta.innerHTML =
+          '<div class="route-empty">' +
+            escaparHTML(error.message || 'No se pudo buscar la ruta.') +
+          '</div>';
+
+      } finally {
+        btnBuscarRuta.disabled = false;
+        btnBuscarRuta.textContent = 'Buscar ruta';
+      }
     }
 
 
@@ -3335,6 +3906,23 @@
       'click',
       obtenerUbicacion
     );
+
+    btnBuscarRuta.addEventListener(
+      'click',
+      buscarRutaSimple
+    );
+
+    [origenRuta, destinoRuta]
+      .forEach(input =>
+        input.addEventListener(
+          'keydown',
+          event => {
+            if (event.key === 'Enter') {
+              buscarRutaSimple();
+            }
+          }
+        )
+      );
 
 
     // =========================================================
