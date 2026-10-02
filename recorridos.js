@@ -144,7 +144,7 @@
           return (
             iOrigen >= 0 &&
             iDestino >= 0 &&
-            iOrigen < iDestino &&
+            iOrigen !== iDestino &&
             Array.isArray(patron.shape) &&
             patron.shape.length >= 2
           );
