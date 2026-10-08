@@ -67,6 +67,17 @@ function preparar(hash = "") {
     "patrocinios-locales",
   ])
     w.eval(src(n + ".js"));
+  w.requestAnimationFrame = (fn) => fn();
+  w.eval(src("mapa-layout.js"));
+  assert.ok(d.querySelector(".map-column #mapa"));
+  assert.ok(d.querySelector(".route-saved-panel #habitualesLista"));
+  assert.ok(d.querySelector(".route-more-options #preferenciaViaje"));
+  assert.equal(d.querySelector(".route-more-options").open, false);
+  const expand = d.querySelector(".map-expand-button");
+  expand.click();
+  assert.equal(expand.getAttribute("aria-expanded"), "true");
+  expand.click();
+  assert.equal(expand.getAttribute("aria-expanded"), "false");
   return {
     dom,
     w,
