@@ -10,13 +10,17 @@
   function parada(p) {
     return [p?.street1, p?.street2].filter(Boolean).join(' y ') || 'Parada ' + (p?.busstopId ?? 'sin confirmar');
   }
-  function paso(titulo, detalle) {
-    return '<li><strong>' + escapar(titulo) + '</strong><span>' + escapar(detalle) + '</span></li>';
+  function paso(titulo, detalle, bajada) {
+    const coords = bajada?.location?.coordinates || [];
+    const lat = Number(coords[1]), lon = Number(coords[0]);
+    const valida = coords.length >= 2 && coords[0] != null && coords[1] != null && Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+    const datos = bajada ? ' data-bajada-nombre="' + escapar(parada(bajada)) + '"' + (valida ? ' data-bajada-lat="' + lat + '" data-bajada-lon="' + lon + '"' : '') : '';
+    return '<li' + datos + '><strong>'  + escapar(titulo) + '</strong><span>' + escapar(detalle) + '</span></li>';
   }
   function bus(linea, sentido, subida, bajada) {
     return paso('🚌 Tomá el ' + linea + (sentido ? ' → ' + sentido : ''),
       (sentido ? 'Buscá en el cartel: ' + sentido + '. ' : 'Confirmá el destino en el cartel antes de subir. ') +
-      'Subí en ' + parada(subida) + '. Bajá en ' + parada(bajada) + '.');
+      'Subí en ' + parada(subida) + '. Bajá en ' + parada(bajada) + '.', bajada);
   }
   window.buscarVarianteCompatibleViaje = function(opciones, linea, destino, variantId) {
     const normalizar = valor => String(valor ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();

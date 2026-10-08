@@ -1,9 +1,12 @@
 (() => {
-  let activo = false, watch = null, version = 0, seguir = true, ultima = null, reloj = null;
+  let activo = false, watch = null, version = 0, seguir = true, ultima = null, reloj = null, tramo = null;
   const estado = () => document.getElementById('estadoSeguimientoViaje');
   const boton = () => document.getElementById('btnSeguirViaje');
   const centrar = () => document.getElementById('btnCentrarViaje');
   function informar(texto) { const e = estado(); if (e) { e.hidden = false; e.textContent = texto; } }
+  const aviso = () => document.getElementById('avisoBajadaViaje');
+  function ocultarAviso() { if (aviso()) { aviso().hidden = true; aviso().textContent = ''; } }
+  function setTramo(nuevo) { tramo = nuevo || null; ocultarAviso(); mostrarUltima(); }
   function distancia(lat, lon, lat2, lon2) {
     const rad = Math.PI / 180;
     const a = Math.sin((lat2 - lat) * rad / 2) ** 2 + Math.cos(lat * rad) * Math.cos(lat2 * rad) * Math.sin((lon2 - lon) * rad / 2) ** 2;
@@ -17,14 +20,21 @@
   function mostrarUltima() {
     if (!activo || !ultima || document.hidden) return;
     const edad = Date.now() - ultima.timestamp;
-    if (edad > 30000) { informar('GPS sin actualizar. La posición mostrada es la última recibida.'); return; }
-    if (ultima.accuracy > 150) { informar('GPS poco preciso (±' + Math.round(ultima.accuracy) + ' m). Esperando una mejor ubicación.'); return; }
-    const resumen = document.querySelector('.trip-summary');
-    const lat = Number(resumen?.dataset.bajadaLat), lon = Number(resumen?.dataset.bajadaLon);
+    if (edad > 30000) { ocultarAviso(); informar('GPS sin actualizar. La posición mostrada es la última recibida.'); return; }
+    if (ultima.accuracy > 150) { ocultarAviso(); informar('GPS poco preciso (±' + Math.round(ultima.accuracy) + ' m). Esperando una mejor ubicación.'); return; }
+    const lat = Number(tramo?.lat), lon = Number(tramo?.lon);
     let texto = 'GPS activo · actualizado ' + new Date(ultima.timestamp).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    if (resumen?.dataset.bajadaLat && resumen?.dataset.bajadaLon && Number.isFinite(lat) && Number.isFinite(lon)) {
+    if (tramo?.lat != null && tramo.lat !== '' && tramo.lon != null && tramo.lon !== '' && Number.isFinite(lat) && Number.isFinite(lon)) {
       const metros = distancia(ultima.lat, ultima.lon, lat, lon);
-      texto += metros < 250 && ultima.accuracy <= 80 ? ' · Cerca de la parada final de bajada. Confirmá antes de bajar.' : ' · Bajada final a ' + (metros < 1000 ? Math.round(metros) + ' m' : (metros / 1000).toFixed(1).replace('.', ',') + ' km') + ' en línea recta';
+      texto += ' · Bajada de este tramo a ' + (metros < 1000 ? Math.round(metros) + ' m' : (metros / 1000).toFixed(1).replace('.', ',') + ' km') + ' en línea recta';
+      if (metros <= 250 && ultima.accuracy <= 80) {
+        const mensaje = '📍 Te estás acercando a tu bajada: ' + tramo.nombre + '. Confirmá la parada antes de bajar. Después tocá “Ya bajé · continuar”.';
+        const e = aviso();
+        if (e) { if (e.textContent !== mensaje) e.textContent = mensaje; e.hidden = false; }
+      } else ocultarAviso();
+    } else {
+      ocultarAviso();
+      if (tramo) texto += ' · Ubicación de la bajada sin confirmar. Consultá los detalles del paso.';
     }
     informar(texto);
   }
@@ -43,6 +53,7 @@
         mostrarUltima();
       }, error => {
         if (!activo || sesion !== version) return;
+        ocultarAviso();
         if (error.code === 1) {
           detener();
           informar('No hay permiso de ubicación. Permití el GPS en Safari y tocá “Ya subí” para reintentar. Podés continuar con los pasos manuales.');
@@ -63,14 +74,14 @@
     reloj = setInterval(mostrarUltima, 5000);
   }
   function detener() {
-    activo = false; detenerWatch(); clearInterval(reloj); reloj = null; ultima = null;
+    activo = false; ocultarAviso(); detenerWatch(); clearInterval(reloj); reloj = null; ultima = null;
     document.body.classList.remove('trip-tracking-active');
     window.mapaSeguimientoViaje?.preparar();
     if (boton()) { boton().disabled = false; boton().textContent = 'Ya subí · seguir mi viaje'; }
     if (estado()) estado().hidden = true;
     if (centrar()) centrar().hidden = true;
   }
-  window.seguimientoViaje = { iniciar, detener };
+  window.seguimientoViaje = { iniciar, detener, setTramo };
   window.mapaSeguimientoViaje?.alMover(() => {
     if (!activo) return;
     seguir = false;
@@ -83,7 +94,7 @@
   });
   document.addEventListener('visibilitychange', () => {
     if (!activo) return;
-    if (document.hidden) { detenerWatch(); informar('Seguimiento pausado mientras la app está en segundo plano.'); }
+    if (document.hidden) { ocultarAviso(); detenerWatch(); informar('Seguimiento pausado mientras la app está en segundo plano.'); }
     else observar();
   });
   window.addEventListener('donde-viene:viaje-cambio', detener);

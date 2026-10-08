@@ -70,3 +70,6 @@ body.trip-guide-active { padding-bottom: 210px; }
 .trip-tracking-active #mapa { height: 65vh; min-height: 320px; scroll-margin-top: 12px; }
 .trip-tracking-active .trip-guide { max-height: 36vh; }
 .trip-start:disabled { opacity: .65; cursor: default; }
+
+.trip-alight-alert { margin-top: 10px; padding: 12px; border: 2px solid #d99518; border-radius: 10px; background: #fff5d9; color: #674508; font-size: 14px; line-height: 1.5; font-weight: 700; }
+.trip-alight-alert[hidden] { display: none; }

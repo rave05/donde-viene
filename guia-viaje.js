@@ -8,8 +8,8 @@
   panel.hidden = true;
   panel.setAttribute('aria-label', 'Guía y seguimiento del viaje');
   panel.innerHTML = '<div class="trip-guide-header"><div><span id="progresoGuiaViaje" class="trip-guide-progress"></span><strong id="accionGuiaViaje" role="status"></strong></div><button id="btnSalirGuiaViaje" class="trip-guide-exit" type="button" aria-label="Salir del modo viaje">×</button></div>' +
-    '<div class="trip-guide-controls"><button id="btnAnteriorGuiaViaje" class="trip-change" type="button">Anterior</button><button id="btnSiguienteGuiaViaje" class="trip-guide-next" type="button">Paso completado</button></div>' +
-    '<button id="btnSeguirViaje" class="trip-start" type="button">Ya subí · seguir mi viaje</button><p id="estadoSeguimientoViaje" class="trip-tracking-status" role="status" hidden></p><button id="btnCentrarViaje" class="trip-change" type="button" hidden>Volver a seguirme</button><p class="trip-note">El seguimiento usa el GPS del teléfono. Mantené la app abierta y la pantalla encendida.</p>' +
+    '<div id="avisoBajadaViaje" class="trip-alight-alert" role="status" aria-live="polite" aria-atomic="true" hidden></div><div class="trip-guide-controls"><button id="btnAnteriorGuiaViaje" class="trip-change" type="button">Anterior</button><button id="btnSiguienteGuiaViaje" class="trip-guide-next" type="button">Paso completado</button></div>' +
+    '<button id="btnSeguirViaje" class="trip-start" type="button">Ya subí · seguir mi viaje</button><p id="estadoSeguimientoViaje" class="trip-tracking-status" role="status" hidden></p><button id="btnCentrarViaje" class="trip-change" type="button" hidden>Volver a seguirme</button><p class="trip-note">Al acercarte a la bajada, verás un aviso para este tramo. El seguimiento usa el GPS del teléfono. Mantené la app abierta y la pantalla encendida.</p>' +
     '<details id="detalleGuiaViaje"><summary>Detalles de este paso</summary><p id="descripcionGuiaViaje"></p><button id="btnMapaGuiaViaje" class="trip-change" type="button">Ver mapa</button></details>';
   document.body.appendChild(panel);
   const progreso = document.getElementById('progresoGuiaViaje');
@@ -27,7 +27,8 @@
     accion.textContent = paso.titulo;
     descripcion.textContent = paso.descripcion;
     anterior.disabled = indice === 0;
-    siguiente.textContent = indice === pasos.length - 1 ? 'Terminé el viaje' : 'Paso completado';
+    siguiente.textContent = indice === pasos.length - 1 ? 'Terminé el viaje' : paso.bajada ? 'Ya bajé · continuar' : 'Paso completado';
+    window.seguimientoViaje?.setTramo(paso.bajada);
     const boton = document.getElementById('btnEmpezarViaje');
     if (boton) boton.textContent = 'Viaje en curso';
   }
@@ -53,7 +54,8 @@
     const resumen = document.querySelector('.trip-summary');
     pasos = Array.from(resumen?.querySelectorAll('.trip-steps li') || []).map(paso => ({
       titulo: paso.querySelector('strong')?.textContent || '',
-      descripcion: paso.querySelector('span')?.textContent || ''
+      descripcion: paso.querySelector('span')?.textContent || '',
+      bajada: paso.dataset?.bajadaNombre ? { nombre: paso.dataset.bajadaNombre, lat: paso.dataset.bajadaLat, lon: paso.dataset.bajadaLon } : null
     })).filter(paso => paso.titulo);
     if (!pasos.length) return;
     const estado = document.getElementById('estadoGuiaViaje');
