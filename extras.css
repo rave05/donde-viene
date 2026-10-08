@@ -201,3 +201,25 @@
 .route-refresh-bar button {
   min-height: 44px;
 }
+.map-pick-controls {
+  padding: 12px 16px;
+  background: #f7faff;
+}
+.map-pick-controls .extras-status {
+  margin: 8px 0 0;
+}
+.map-pick-controls [hidden] {
+  display: none;
+}
+.map-picking {
+  cursor: crosshair;
+}
+.map-picking .leaflet-marker-pane,
+.map-picking .leaflet-overlay-pane {
+  pointer-events: none;
+}
+
+.map-picking .leaflet-marker-pane *,
+.map-picking .leaflet-overlay-pane * {
+  pointer-events: none !important;
+}

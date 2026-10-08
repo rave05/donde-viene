@@ -80,6 +80,8 @@ Agregar el objeto dentro de la lista. Solo se aceptan enlaces HTTPS, campañas a
 
 ## Verificación y publicación
 
+`mapa-puntos.js` agrega selección por toque con vista previa, confirmación y cancelación. Usa un contrato pequeño del mapa, libera el listener al terminar y guarda el punto como texto `Punto en el mapa (lat, lon)` con seis decimales. El geocodificador lo resuelve localmente: funciona al compartir, actualizar y guardar un recorrido. Los límites son los mismos del catálogo local de Montevideo. No inicia una búsqueda ni solicita GPS al elegir un punto.
+
 `actualizar-opciones.js` muestra la hora de la última comparación en Montevideo y permite repetirla manualmente con el mismo origen, destino, preferencia y fecha. Reutiliza el buscador, bloquea clics simultáneos y no consulta automáticamente mientras el usuario compara opciones.
 
 El orden predeterminado es `proximos` (Bus más próximo). La primera subida se compara por llegada estimada de la variante exacta, cuando alcanza el tiempo de caminar hasta la parada, y por horario programado como respaldo. La salida se conserva incluso si falta geometría o excede el límite de 90 minutos de la estimación total. Sin datos, la opción va después de las salidas conocidas. Las variantes siguen agrupadas y ordenadas internamente.

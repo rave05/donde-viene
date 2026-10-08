@@ -1425,7 +1425,7 @@
   <link rel="stylesheet" href="./mobile.css?v=20261008-1">
   <link rel="stylesheet" href="./patrocinios.css?v=20261008-2">
   <link rel="stylesheet" href="./viaje.css?v=20261008-8">
-  <link rel="stylesheet" href="./extras.css?v=20261008-2">
+  <link rel="stylesheet" href="./extras.css?v=20261008-3">
   <link rel="stylesheet" href="./bienvenida.css?v=20261008-1">
 </head>
 
@@ -2033,6 +2033,7 @@
 
     let marcadoresBusesVivos = [];
 
+    let vistaSeleccionMapa = null;
     let marcadorOrigenRuta = null;
 
     let marcadorDestinoRuta = null;
@@ -2453,6 +2454,7 @@
 
     async function geocodificarRuta(texto) {
       const limpio = texto.trim();
+      if (limpio.startsWith('Punto en el mapa (')) return window.DV?.puntosMapa?.resolver(limpio) || null;
 
       // Los lugares con coordenadas verificadas se resuelven directamente.
       // El resto usa su nombre canónico antes de consultar Nominatim.
@@ -5768,6 +5770,24 @@
     // Contrato pequeño para los módulos de interfaz. Las variables del motor siguen privadas.
     window.DondeVieneApp = {
       apiBase: API_BASE,
+      alElegirPuntoMapa(callback) {
+        const manejar = e => callback({ lat: e.latlng.lat, lon: e.latlng.lng });
+        mapa.closePopup();
+        mapa.on('click', manejar);
+        return () => mapa.off('click', manejar);
+      },
+      vistaPuntoMapa(punto) {
+        if (vistaSeleccionMapa) mapa.removeLayer(vistaSeleccionMapa);
+        vistaSeleccionMapa = punto ? L.circleMarker([punto.lat, punto.lon], { radius: 12, color: '#f19a00', weight: 3, fillOpacity: 0.4, interactive: false }).addTo(mapa) : null;
+      },
+      marcarPuntoBusqueda(campo, punto) {
+        const origen = campo === 'origen';
+        const anterior = origen ? marcadorOrigenRuta : marcadorDestinoRuta;
+        if (anterior) mapa.removeLayer(anterior);
+        const icono = origen ? L.divIcon({ className: '', html: '<div class="route-pin route-pin-origin"><span>A</span></div>', iconSize: [34,34], iconAnchor: [17,30] }) : crearIconoDestino();
+        const marker = L.marker([punto.lat, punto.lon], { icon: icono, zIndexOffset: 1400 }).addTo(mapa).bindPopup(origen ? 'Origen elegido en el mapa' : 'Destino elegido en el mapa').openPopup();
+        if (origen) marcadorOrigenRuta = marker; else marcadorDestinoRuta = marker;
+      },
       leerBusqueda: () => ({ origen: origenRuta.value.trim(), destino: destinoRuta.value.trim(), preferencia: document.getElementById('preferenciaViaje').value }),
       aplicarBusqueda(receta) {
         for (const [input, valor] of [[origenRuta, receta.origen], [destinoRuta, receta.destino]]) {
@@ -5841,6 +5861,7 @@
   <script src="./estimacion-viaje.js?v=20261008-2"></script>
   <script src="./proximos-viaje.js?v=20261008-1"></script>
   <script src="./actualizar-opciones.js?v=20261008-1"></script>
+  <script src="./mapa-puntos.js?v=20261008-1"></script>
   <script src="./viajes-habituales.js?v=20261008-1"></script>
   <script src="./compartir-viaje.js?v=20261008-1"></script>
   <script src="./ultimo-viaje.js?v=20261008-2"></script>
