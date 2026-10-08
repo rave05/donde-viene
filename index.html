@@ -5,10 +5,17 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
   >
 
   <title>¿Dónde Viene?</title>
+  <meta name="theme-color" content="#0e1d33">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="¿Dónde Viene?">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 
   <button id="btnCambiarRuta" type="button" hidden>🔄 Cambiar ruta</button>
 
@@ -1411,6 +1418,7 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="./mobile.css?v=20261008-1">
 </head>
 
 <body>
@@ -1435,11 +1443,17 @@
 
   <main class="app-shell">
 
+    <aside id="avisoInstalacion" class="install-card" hidden aria-label="Agregar al inicio">
+      <div><strong>Tu viaje, a un toque</strong><p>Agregá ¿Dónde Viene? a la pantalla de inicio.</p></div>
+      <button id="btnAyudaInstalacion" class="mobile-button" type="button">Cómo agregarla</button>
+      <button id="btnOcultarInstalacion" class="mobile-close" type="button" aria-label="Ocultar consejo de instalación">×</button>
+    </aside>
+
     <section class="route-planner" aria-label="Buscar ruta simple">
       <div class="route-planner-header">
         <div>
           <h2>¿Cómo llego?</h2>
-          <p>Buscamos una línea directa entre paradas cercanas a ambos puntos.</p>
+          <p>Encontrá buses directos y combinaciones para llegar.</p>
         </div>
       </div>
 
@@ -1458,6 +1472,12 @@
       </div>
 
 
+      <section class="favorite-section" aria-label="Lugares guardados">
+        <div class="favorite-heading"><h3>Mis lugares</h3><button id="btnGuardarFavorito" class="mobile-button" type="button">+ Guardar lugar</button></div>
+        <div class="favorite-target"><label for="campoFavorito">Usar como</label><select id="campoFavorito"><option value="destino">Destino</option><option value="origen">Origen</option></select></div>
+        <div id="favoritosLista" class="favorite-list"></div>
+        <p id="estadoFavoritos" class="favorite-note" role="status">Se guardan en este navegador.</p>
+      </section>
       <div id="resultadoRuta" aria-live="polite"></div>
     </section>
 
@@ -1640,7 +1660,8 @@
         estadio: ['🏟️', 'Estadio'], espectaculos: ['🎤', 'Espectáculos'],
         plaza: ['🌳', 'Plaza'], parque: ['🌿', 'Parque'],
         mercado: ['🛒', 'Mercado'], cultura: ['🎭', 'Cultura'],
-        'edificio-publico': ['🏛️', 'Edificio público'], institucion: ['🏢', 'Institución']
+        'edificio-publico': ['🏛️', 'Edificio público'], institucion: ['🏢', 'Institución'],
+        favorito: ['⭐', 'Favorito']
       };
       const normalizar = texto => String(texto || '').normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -1654,7 +1675,7 @@
       lista.id = input.id + '-sugerencias';
       lista.className = 'place-suggestions';
       lista.setAttribute('role', 'listbox');
-      lista.setAttribute('aria-label', 'Sugerencias de ' + (input === origenRuta ? 'origen' : 'destino'));
+      lista.setAttribute('aria-label', 'Sugerencias de ' + (input === origenRuta ? 'origen' : input === destinoRuta ? 'destino' : 'lugar'));
       lista.hidden = true;
       input.parentElement.appendChild(lista);
       input.setAttribute('role', 'combobox');
@@ -1696,7 +1717,7 @@
         // Enfocar al seleccionar no debe volver a abrir la lista.
         cerrar();
         if (input === destinoRuta && !opcion.direccion) {
-          resaltarLugarDestino(window.buscarLugarMontevideo(opcion.valor));
+          resaltarLugarDestino(window.buscarLugarFavorito?.(opcion.valor) || window.buscarLugarMontevideo(opcion.valor));
         }
       }
 
@@ -1704,7 +1725,10 @@
         const texto = input.value.trim();
         const clave = normalizar(texto);
         const palabras = clave.split(' ').filter(Boolean);
-        const resultados = lugares.map(item => {
+        const guardados = (window.obtenerLugaresFavoritos?.() || []).map(lugar => ({
+          lugar, nombres: [lugar.nombre, lugar.consulta].map(normalizar), categoria: 'favorito'
+        }));
+        const resultados = [...guardados, ...lugares].map(item => {
           const campos = [...item.nombres, item.categoria];
           const coincide = palabras.every(palabra => campos.some(campo => campo.includes(palabra)));
           const puntaje = item.nombres.includes(clave) ? 0
@@ -2278,10 +2302,10 @@
 
       // Los lugares con coordenadas verificadas se resuelven directamente.
       // El resto usa su nombre canónico antes de consultar Nominatim.
-      const lugarPredefinido =
+      const lugarPredefinido = window.buscarLugarFavorito?.(limpio) || (
         typeof window.buscarLugarMontevideo === 'function'
           ? window.buscarLugarMontevideo(limpio)
-          : null;
+          : null);
 
       if (
         Number.isFinite(lugarPredefinido?.lat) &&
@@ -5759,6 +5783,23 @@
 
   <script src="./horarios.js"></script>
   <script src="./recorridos.js?v=20261002-9"></script>
-  <h1>Beta V0.5</h1>
+
+  <dialog id="editorFavorito" class="mobile-dialog" aria-labelledby="tituloFavorito">
+    <form id="formFavorito">
+      <div class="mobile-dialog-heading"><h2 id="tituloFavorito">Guardar lugar</h2><button id="btnCerrarFavorito" class="mobile-close" type="button" aria-label="Cerrar">×</button></div>
+      <div class="route-field"><label for="nombreFavorito">Nombre</label><input id="nombreFavorito" maxlength="40" required placeholder="Ej: Casa, Trabajo o Gimnasio" autocomplete="off"></div>
+      <div class="route-field"><label for="lugarFavorito">Dirección o lugar</label><input id="lugarFavorito" maxlength="240" required placeholder="Ej: Hospital de Clínicas" autocomplete="off"></div>
+      <p id="errorFavorito" class="favorite-error" role="status"></p>
+      <div class="mobile-dialog-actions"><button id="btnEliminarFavorito" class="mobile-button favorite-delete" type="button" hidden>Eliminar</button><button id="btnConfirmarFavorito" class="mobile-button mobile-primary" type="submit">Guardar</button></div>
+      <p class="favorite-note">La dirección se guarda en este navegador.</p>
+    </form>
+  </dialog>
+  <dialog id="ayudaInstalacion" class="mobile-dialog" aria-labelledby="tituloInstalacion">
+    <div class="mobile-dialog-heading"><h2 id="tituloInstalacion">Agregar al inicio</h2><button id="btnCerrarInstalacion" class="mobile-close" type="button" aria-label="Cerrar">×</button></div>
+    <ol class="install-steps"><li>Abrí esta página en Safari.</li><li>Tocá <strong>Compartir</strong>. Según tu versión, puede estar dentro del menú de Safari.</li><li>Elegí <strong>Agregar a Inicio</strong> o <strong>Agregar a la pantalla de inicio</strong>.</li><li>Si aparece <strong>Abrir como app web</strong>, activalo. Luego tocá <strong>Agregar</strong>.</li></ol>
+    <p class="favorite-note">Las llegadas en vivo requieren conexión a internet.</p>
+  </dialog>
+  <script src="./mobile.js?v=20261008-1"></script>
+  <h1>Beta V0.6</h1>
 </body>
 </html>
