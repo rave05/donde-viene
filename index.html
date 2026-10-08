@@ -28,6 +28,10 @@
         </div>
         <button id="btnCerrarSelectorRuta" class="route-choice-close" type="button" aria-label="Cerrar">×</button>
       </div>
+      <div class="route-refresh-bar">
+        <p id="horaOpcionesRuta" class="extras-note" role="status"></p>
+        <button id="btnActualizarOpcionesRuta" class="extras-button" type="button">Actualizar opciones</button>
+      </div>
       <div id="selectorRutaContenido" class="route-choice-list"></div>
     </section>
   </div>
@@ -1421,7 +1425,7 @@
   <link rel="stylesheet" href="./mobile.css?v=20261008-1">
   <link rel="stylesheet" href="./patrocinios.css?v=20261008-2">
   <link rel="stylesheet" href="./viaje.css?v=20261008-8">
-  <link rel="stylesheet" href="./extras.css?v=20261008-1">
+  <link rel="stylesheet" href="./extras.css?v=20261008-2">
   <link rel="stylesheet" href="./bienvenida.css?v=20261008-1">
 </head>
 
@@ -2729,6 +2733,9 @@
       selectorRutaContenido.innerHTML = html;
       selectorRutaResumen.textContent =
         origenRuta.value.trim() + ' → ' + destinoRuta.value.trim();
+      window.dispatchEvent(new CustomEvent('donde-viene:opciones-listas', {
+        detail: { contexto: { ...contextoViajeActivo }, consultadoEn: new Date().toISOString() }
+      }));
 
       selectorRutaContenido
         .querySelectorAll('[data-route-index], [data-combo-index]')
@@ -5833,6 +5840,7 @@
   <script src="./caminatas.js?v=20261008-1"></script>
   <script src="./estimacion-viaje.js?v=20261008-2"></script>
   <script src="./proximos-viaje.js?v=20261008-1"></script>
+  <script src="./actualizar-opciones.js?v=20261008-1"></script>
   <script src="./viajes-habituales.js?v=20261008-1"></script>
   <script src="./compartir-viaje.js?v=20261008-1"></script>
   <script src="./ultimo-viaje.js?v=20261008-2"></script>

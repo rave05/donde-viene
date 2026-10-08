@@ -80,6 +80,8 @@ Agregar el objeto dentro de la lista. Solo se aceptan enlaces HTTPS, campañas a
 
 ## Verificación y publicación
 
+`actualizar-opciones.js` muestra la hora de la última comparación en Montevideo y permite repetirla manualmente con el mismo origen, destino, preferencia y fecha. Reutiliza el buscador, bloquea clics simultáneos y no consulta automáticamente mientras el usuario compara opciones.
+
 El orden predeterminado es `proximos` (Bus más próximo). La primera subida se compara por llegada estimada de la variante exacta, cuando alcanza el tiempo de caminar hasta la parada, y por horario programado como respaldo. La salida se conserva incluso si falta geometría o excede el límite de 90 minutos de la estimación total. Sin datos, la opción va después de las salidas conocidas. Las variantes siguen agrupadas y ordenadas internamente.
 
 `proximos-viaje.js` agrupa consultas por parada/variante, realiza hasta 24 con tres tareas y ocho segundos de límite global, y se detiene ante un 429. Las búsquedas para otra fecha no consultan buses actuales. No calcula ETAs a partir de distancias y no activa seguimiento. El orden corresponde a la consulta; al elegir una variante se actualizan sus llegadas. `ultimo-viaje.js` elimina la próxima salida al guardar instrucciones offline.

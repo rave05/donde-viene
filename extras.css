@@ -186,3 +186,18 @@
     flex-basis: 100%;
   }
 }
+.route-refresh-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 18px 12px;
+  flex-wrap: wrap;
+}
+.route-refresh-bar p {
+  flex: 1 1 200px;
+  margin: 0;
+}
+.route-refresh-bar button {
+  min-height: 44px;
+}
