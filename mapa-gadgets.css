@@ -1,0 +1,74 @@
+.map-card .map-pick-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 850;
+  padding: 0;
+  background: transparent;
+  pointer-events: none;
+}
+.map-gadget-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: auto;
+}
+.map-gadget-bar button {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid #c6d5e3;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px #142e4824;
+  font-size: 0;
+}
+.map-gadget-bar button::before {
+  content: attr(data-icon);
+  font:
+    700 22px/1 system-ui,
+    sans-serif;
+  color: #234a70;
+}
+.map-gadget-bar #elegirOrigenMapa::before {
+  color: #087b4b;
+}
+.map-gadget-bar #elegirDestinoMapa::before {
+  color: #b6283c;
+}
+.map-gadget-bar button[aria-pressed="true"] {
+  background: #e3f0ff;
+  border: 2px solid #196ac4;
+}
+.map-gadget-help {
+  position: absolute;
+  left: 12px;
+  bottom: 24px;
+  max-width: min(360px, calc(100% - 84px));
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 12px #142e4830;
+  pointer-events: auto;
+}
+.map-gadget-help .extras-status {
+  margin: 0;
+  line-height: 1.3;
+  font-size: 13px;
+}
+.map-gadget-help .extras-row {
+  margin-top: 8px;
+  gap: 6px;
+}
+.map-gadget-help .extras-button {
+  padding: 8px 10px;
+  min-height: 44px;
+  font-size: 13px;
+}
+.map-card.map-gadget-feedback .map-legend {
+  visibility: hidden;
+}

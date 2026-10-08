@@ -43,6 +43,12 @@
     window.DondeVieneApp.vistaPuntoMapa(null);
     document.getElementById("mapa").classList.remove("map-picking");
     acciones.hidden = true;
+    panel
+      .querySelector("#elegirOrigenMapa")
+      .setAttribute("aria-pressed", "false");
+    panel
+      .querySelector("#elegirDestinoMapa")
+      .setAttribute("aria-pressed", "false");
     campo = null;
     punto = null;
   }
@@ -58,21 +64,22 @@
     }
     terminar();
     campo = destino;
+    panel
+      .querySelector(
+        destino === "origen" ? "#elegirOrigenMapa" : "#elegirDestinoMapa",
+      )
+      .setAttribute("aria-pressed", "true");
     acciones.hidden = false;
     confirmar.disabled = true;
-    estado.textContent =
-      "Tocá el mapa para elegir el " +
-      campo +
-      ". Podés moverlo y acercarlo antes de confirmar.";
+    estado.textContent = "Tocá un punto para elegir el " + campo + ".";
     document.getElementById("mapa").classList.add("map-picking");
     liberar = window.DondeVieneApp.alElegirPuntoMapa((p) => {
       punto = valido(p) ? p : null;
       confirmar.disabled = !punto;
       window.DondeVieneApp.vistaPuntoMapa(punto);
       estado.textContent = punto
-        ? "Punto elegido para el " +
-          campo +
-          ". Tocá “Usar este punto” para confirmar, o elegí otro."
+        ? (campo === "origen" ? "Origen" : "Destino") +
+          " elegido. Confirmá o tocá otro punto."
         : "Elegí un punto dentro de Montevideo y su área cercana.";
     });
   }

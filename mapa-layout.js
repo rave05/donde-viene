@@ -21,7 +21,8 @@
     planner.querySelector(".favorite-section"),
     document.getElementById("btnGuardarHabitual")?.closest("details"),
     document.getElementById("btnAbrirUltimoViaje")?.closest("details"),
-  ]) if (node) saved.append(node);
+  ])
+    if (node) saved.append(node);
 
   const more = document.createElement("details");
   more.className = "route-more-options";
@@ -30,8 +31,9 @@
   more.append(summary);
   const preference = planner.querySelector(".trip-preference");
   const planned = document.getElementById("momentoViaje")?.closest("details");
-  const share = [...planner.querySelectorAll(".route-fields > button")]
-    .find(button => button.id !== "btnBuscarRuta");
+  const share = [...planner.querySelectorAll(".route-fields > button")].find(
+    (button) => button.id !== "btnBuscarRuta",
+  );
   const link = planner.querySelector(".extras-link");
   const status = link?.previousElementSibling;
   for (const node of [preference, planned, share, status, link])
@@ -39,19 +41,26 @@
   planner.append(more);
   workspace.append(planner, column, results, saved);
 
-  const updateResult = () => { results.hidden = !result.hasChildNodes(); };
+  const updateResult = () => {
+    results.hidden = !result.hasChildNodes();
+  };
   updateResult();
   new MutationObserver(updateResult).observe(result, { childList: true });
-  const resize = () => requestAnimationFrame(() => window.DondeVieneApp?.ajustarMapa?.());
+  const resize = () =>
+    requestAnimationFrame(() => window.DondeVieneApp?.ajustarMapa?.());
   const expand = document.createElement("button");
   expand.type = "button";
   expand.className = "extras-button map-expand-button";
   expand.textContent = "Ampliar mapa";
+  expand.setAttribute("aria-label", "Ampliar mapa");
   expand.setAttribute("aria-expanded", "false");
   expand.setAttribute("aria-controls", "mapa");
   expand.addEventListener("click", () => {
     const abierto = mapCard.classList.toggle("is-expanded");
     expand.textContent = abierto ? "Reducir mapa" : "Ampliar mapa";
+    expand.setAttribute("aria-label", expand.textContent);
+    expand.title = expand.textContent;
+    expand.dataset.icon = abierto ? "⤡" : "⤢";
     expand.setAttribute("aria-expanded", String(abierto));
     resize();
   });
@@ -59,5 +68,7 @@
   if (!expand.isConnected) mapCard.prepend(expand);
   resize();
   window.addEventListener("resize", resize);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) resize(); });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) resize();
+  });
 })();
