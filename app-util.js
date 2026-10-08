@@ -90,7 +90,9 @@
     value.destino.trim().length > 0 &&
     value.origen.length <= 240 &&
     value.destino.length <= 240 &&
-    ["transbordos", "caminar", "tiempo"].includes(value.preferencia);
+    ["proximos", "transbordos", "caminar", "tiempo"].includes(
+      value.preferencia,
+    );
   DV.tramosBus = (c) =>
     c.line1 && c.line2
       ? [

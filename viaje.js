@@ -42,12 +42,25 @@
     }
     return tramos.every(distanciaValida) ? tramos.reduce((s, v) => s + Number(v), 0) : Infinity;
   }
-  window.ordenarOpcionesViaje = function(opciones, preferencia = 'transbordos') {
+  function minutosSalida(c) {
+    const p = c.proximaSalida;
+    return p?.disponible && Number.isFinite(p.minutos) && p.minutos >= 0 ? p.minutos : Infinity;
+  }
+  function textoSalida(c) {
+    const minutos = minutosSalida(c);
+    if (!Number.isFinite(minutos)) return 'Próxima salida sin confirmar';
+    return (c.proximaSalida.fuente === 'estimado' ? 'Llegada estimada' : 'Programado') + ' · ' + minutos + ' min hasta la parada de subida';
+  }
+  window.ordenarOpcionesViaje = function(opciones, preferencia = 'proximos') {
     const transbordos = c => c.line1 && c.line2 ? 1 : 0;
     return [...opciones].sort((a, b) => {
       const caminar = caminataTotal(a) - caminataTotal(b);
       const combinar = transbordos(a) - transbordos(b);
       const puntaje = (Number(a.puntaje) || 0) - (Number(b.puntaje) || 0);
+      if (preferencia === 'proximos') {
+        const espera = minutosSalida(a) - minutosSalida(b);
+        if (espera) return espera;
+      }
       if (preferencia === 'tiempo') {
         const tiempo = (a.tiempo?.disponible ? a.tiempo.total : Infinity) - (b.tiempo?.disponible ? b.tiempo.total : Infinity);
         if (tiempo) return tiempo;
@@ -133,7 +146,7 @@
     }
     return [...grupos.values()];
   };
-  window.crearSelectorViajesAgrupados = function(grupos, preferencia = 'transbordos') {
+  window.crearSelectorViajesAgrupados = function(grupos, preferencia = 'proximos') {
     const candidatos = [];
     const html = grupos.map((grupo, numeroGrupo) => {
       const variantes = grupo.opciones;
@@ -143,7 +156,7 @@
       const transbordos = grupo.lineas.length > 1 ? '1 transbordo' : 'Sin transbordos';
       const recomendacion = numeroGrupo === 0 ?
         (preferencia === 'caminar' && distancias.length ? 'Menor caminata encontrada' :
-          preferencia === 'transbordos' ? 'Menos transbordos' : preferencia === 'tiempo' && variantes.some(c => c.tiempo?.disponible) ? 'Menor tiempo entre opciones estimadas' : '') : '';
+          preferencia === 'transbordos' ? 'Menos transbordos' : preferencia === 'proximos' && variantes.some(c => Number.isFinite(minutosSalida(c))) ? 'Bus más próximo entre opciones con datos' : preferencia === 'tiempo' && variantes.some(c => c.tiempo?.disponible) ? 'Menor tiempo entre opciones estimadas' : '') : '';
       function opcion(c, indiceVariante) {
         const indice = candidatos.push(c) - 1;
         const sentidos = c.line1 && c.line2 ?
@@ -155,6 +168,7 @@
           '<span class="trip-group-title">' + (variantes.length > 1 ? 'Variante ' + (indiceVariante + 1) : '🚌 ' + escapar(repetidas)) + '</span>' +
           '<span class="trip-variant-direction">' + escapar(sentidos) + '</span>' +
           '<span class="trip-group-metrics">' + transbordos + ' · 🚶 ' + (Number.isFinite(total) ? distancia(total) + ' aprox.' : 'Caminata sin confirmar') + '</span>' +
+          '<span class="trip-group-metrics">🕒 ' + escapar(textoSalida(c)) + '</span>' +
           (c.tiempo?.disponible ? '<span class="trip-group-metrics">🕒 ' + c.tiempo.min + '–' + c.tiempo.max + ' min orientativos</span>' : '<span class="trip-variant-stops">Tiempo total sin confirmar</span>') +
           (variantes.length > 1 ? '<span class="trip-variant-stops">Subí: ' + escapar(parada(c.origen)) + ' · Bajá: ' + escapar(parada(c.destino)) +
             (c.line1 && c.line2 ? ' · Combiná: ' + escapar(parada(c.combinacion)) +
@@ -167,6 +181,7 @@
         (recomendacion ? '<span class="trip-recommendation">' + escapar(recomendacion) + '</span>' : '') +
         '<span class="trip-group-title">🚌 ' + escapar(repetidas) + '</span>' +
         '<span class="trip-group-metrics">' + transbordos + ' · 🚶 ' + caminata + '</span>' +
+        '<span class="trip-group-metrics">🕒 ' + escapar(textoSalida(variantes[0])) + '</span>' +
         '<span class="trip-variant-action">' + variantes.length + ' variantes · Elegir variante</span></summary>' +
         '<div class="trip-variants">' + variantes.map(opcion).join('') + '</div></details>';
     }).join('');

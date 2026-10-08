@@ -32,6 +32,18 @@
         destination: tramo.destination,
         fechaReferencia: new Date(time).toISOString(),
       });
+      // La espera del primer bus sirve para ordenar aunque falte la geometría
+      // o la salida sea demasiado lejana para estimar el viaje completo.
+      if (i === 0 && next && Number.isFinite(next.secondsUntil)) {
+        c.proximaSalida = {
+          disponible: true,
+          fecha: next.date,
+          minutos: Math.ceil(
+            (time - salida.getTime()) / 60000 + next.secondsUntil / 60,
+          ),
+          fuente: "programado",
+        };
+      }
       const geometry = await window.obtenerTramoLineaViaje(
         tramo.linea,
         tramo.destination,

@@ -46,9 +46,11 @@
       : "Seleccioná un viaje para guardar sus instrucciones automáticamente.";
   }
   function guardar(c, ctx, geometria = []) {
+    const candidato = { ...c };
+    delete candidato.proximaSalida; // Nunca conservar llegadas actuales en la copia offline.
     const value = {
       version: 1,
-      candidato: c,
+      candidato,
       contexto: ctx,
       geometria,
       guardado: new Date().toISOString(),

@@ -1491,8 +1491,8 @@
 
       <div class="trip-preference">
         <label for="preferenciaViaje">¿Qué preferís para este viaje?</label>
-        <select id="preferenciaViaje"><option value="transbordos">Menos transbordos</option><option value="caminar">Caminar menos</option><option value="tiempo">Menor tiempo orientativo</option></select>
-        <p>Comparamos caminatas por calles cuando hay datos disponibles. Los tiempos totales son orientativos.</p>
+        <select id="preferenciaViaje"><option value="proximos">Bus más próximo</option><option value="transbordos">Menos transbordos</option><option value="caminar">Caminar menos</option><option value="tiempo">Menor tiempo orientativo</option></select>
+        <p>Por defecto, mostramos primero las próximas salidas que permiten llegar caminando a la parada. Distinguimos llegadas estimadas de horarios programados; pueden cambiar.</p>
       </div>
       <section class="favorite-section" aria-label="Lugares guardados">
         <div class="favorite-heading"><h3>Mis lugares</h3><button id="btnGuardarFavorito" class="mobile-button" type="button">+ Guardar lugar</button></div>
@@ -1609,8 +1609,8 @@
 
   <!-- Catálogo local de lugares conocidos -->
   <script src="./lugares.js?v=20261002-3"></script>
-  <script src="./app-util.js?v=20261008-1"></script>
-  <script src="./viaje.js?v=20261008-9"></script>
+  <script src="./app-util.js?v=20261008-2"></script>
+  <script src="./viaje.js?v=20261008-10"></script>
 
   <!-- Leaflet -->
 
@@ -3404,7 +3404,7 @@
         }
 
         let opciones = candidatos;
-        if (!candidatos.length || preferencia === 'caminar' || preferencia === 'tiempo') {
+        if (!candidatos.length || preferencia === 'caminar' || preferencia === 'tiempo' || preferencia === 'proximos') {
           resultadoRuta.innerHTML = '<div class="route-status">Comparando rutas y combinaciones...</div>';
           const combinaciones = typeof window.buscarCombinacionesRuta === 'function'
             ? await window.buscarCombinacionesRuta(paradasOrigen, paradasDestino, origen, destino)
@@ -3419,12 +3419,16 @@
           resultadoRuta.innerHTML = '<div class="route-status">Comparando caminatas y horarios programados...</div>';
           opciones = await window.DV.estimacion.enriquecer(opciones, contextoViajeActivo);
         }
+        if (window.DV?.proximosViaje) {
+          resultadoRuta.innerHTML = '<div class="route-status">Comparando próximas salidas...</div>';
+          opciones = await window.DV.proximosViaje.enriquecer(opciones, contextoViajeActivo);
+        }
         const ordenadas = window.ordenarOpcionesViaje(opciones, preferencia);
         const grupos = window.agruparOpcionesViaje(ordenadas).slice(0, 4);
         const selector = window.crearSelectorViajesAgrupados(grupos, preferencia);
         mostrarSelectorRuta('mixta', selector.candidatos, selector.html);
         selectorRutaResumen.textContent += fechaSalida ? ' · Salida: ' + window.DV.fechaTexto(fechaSalida) : '';
-        selectorRutaResumen.textContent += preferencia === 'caminar' ? ' · Caminar menos' : preferencia === 'tiempo' ? ' · Tiempo orientativo' : ' · Menos transbordos';
+        selectorRutaResumen.textContent += preferencia === 'proximos' ? ' · Bus más próximo' : preferencia === 'caminar' ? ' · Caminar menos' : preferencia === 'tiempo' ? ' · Tiempo orientativo' : ' · Menos transbordos';
 
       } catch (error) {
         console.error(error);
@@ -5756,6 +5760,7 @@
 
     // Contrato pequeño para los módulos de interfaz. Las variables del motor siguen privadas.
     window.DondeVieneApp = {
+      apiBase: API_BASE,
       leerBusqueda: () => ({ origen: origenRuta.value.trim(), destino: destinoRuta.value.trim(), preferencia: document.getElementById('preferenciaViaje').value }),
       aplicarBusqueda(receta) {
         for (const [input, valor] of [[origenRuta, receta.origen], [destinoRuta, receta.destino]]) {
@@ -5826,10 +5831,11 @@
   <script src="./guia-viaje.js?v=20261008-3"></script>
   <script src="./planificador.js?v=20261008-1"></script>
   <script src="./caminatas.js?v=20261008-1"></script>
-  <script src="./estimacion-viaje.js?v=20261008-1"></script>
+  <script src="./estimacion-viaje.js?v=20261008-2"></script>
+  <script src="./proximos-viaje.js?v=20261008-1"></script>
   <script src="./viajes-habituales.js?v=20261008-1"></script>
   <script src="./compartir-viaje.js?v=20261008-1"></script>
-  <script src="./ultimo-viaje.js?v=20261008-1"></script>
+  <script src="./ultimo-viaje.js?v=20261008-2"></script>
   <script src="./recargas-stm.js?v=20261008-1"></script>
   <script src="./patrocinios-locales.js?v=20261008-1"></script>
   <script src="./extras-viaje.js?v=20261008-1"></script>
