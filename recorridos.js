@@ -3,6 +3,7 @@
   let manifiestoRecorridos = null;
   let aliasesRecorridos = null;
   let redRecorridos = null;
+  let indiceConexionesCaminata = null;
   let lineaRecorridoMapa = null;
   let haloRecorridoMapa = null;
   let marcadorInicioRecorrido = null;
@@ -189,6 +190,41 @@
     }
 
     return mejorIndice;
+  }
+
+  function crearIndiceConexionesCaminata(red) {
+    const tamano = 0.004;
+    const celdas = new Map();
+    const cache = new Map();
+    let orden = 0;
+    for (const [stop2, coords] of Object.entries(red.coords || {})) {
+      const entradas = red.byStop?.[String(stop2)] || [];
+      if (!Array.isArray(coords) || !entradas.length) continue;
+      const lat = Number(coords[0]), lon = Number(coords[1]);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const clave = Math.floor(lat / tamano) + '|' + Math.floor(lon / tamano);
+      if (!celdas.has(clave)) celdas.set(clave, []);
+      celdas.get(clave).push({ stop2: String(stop2), lat, lon, entradas, orden: orden++ });
+    }
+    return (lat, lon) => {
+      const clave = lat + '|' + lon;
+      if (cache.has(clave)) return cache.get(clave);
+      const margenLat = 300 / 110000;
+      const margenLon = margenLat / Math.max(0.01, Math.abs(Math.cos(lat * Math.PI / 180)));
+      const cercanas = [];
+      for (let y = Math.floor((lat - margenLat) / tamano); y <= Math.floor((lat + margenLat) / tamano); y++) {
+        for (let x = Math.floor((lon - margenLon) / tamano); x <= Math.floor((lon + margenLon) / tamano); x++) {
+          for (const parada of celdas.get(y + '|' + x) || []) {
+            const caminata = distanciaMetrosCoords(lat, lon, parada.lat, parada.lon);
+            if (caminata <= 300) cercanas.push({ ...parada, caminata });
+          }
+        }
+      }
+      cercanas.sort((a, b) => a.caminata - b.caminata || a.orden - b.orden);
+      const resultado = cercanas.slice(0, 12);
+      cache.set(clave, resultado);
+      return resultado;
+    };
   }
 
   function normalizar(valor = '') {
@@ -1465,6 +1501,7 @@ window.buscarCombinacionesRuta = async function(
       // Si el primer bus recorre menos de 800 m hasta el trasbordo,
       // normalmente al usuario le conviene caminar ese tramo.
       const MIN_TRAMO_PRIMER_BUS_COMBINACION_METROS = 800;
+      if (!indiceConexionesCaminata) indiceConexionesCaminata = crearIndiceConexionesCaminata(red);
 
       for (const origen of origenes) {
         const entradasOrigen =
@@ -1522,44 +1559,11 @@ window.buscarCombinacionesRuta = async function(
             // Buscamos primero conexiones en la misma parada.
             // Si no alcanza, permitimos caminar hasta una parada GTFS
             // cercana (máximo 300 m) para tomar el segundo ómnibus.
-            const conexionesCercanas = [];
-
-            for (const [stop2, coords2] of Object.entries(red.coords)) {
-              if (!Array.isArray(coords2)) {
-                continue;
-              }
-
-              const entradas2 =
-                red.byStop?.[String(stop2)] || [];
-
-              if (!entradas2.length) {
-                continue;
-              }
-
-              const caminata =
-                distanciaMetrosLocal(
-                  Number(transferCoords[0]),
-                  Number(transferCoords[1]),
-                  Number(coords2[0]),
-                  Number(coords2[1])
-                );
-
-              if (caminata > 300) {
-                continue;
-              }
-
-              conexionesCercanas.push({
-                stop2: String(stop2),
-                caminata,
-                entradas: entradas2
-              });
-            }
-
-            conexionesCercanas.sort((a, b) =>
-              a.caminata - b.caminata
+            const conexionesCercanas = indiceConexionesCaminata(
+              Number(transferCoords[0]), Number(transferCoords[1])
             );
 
-            for (const grupo of conexionesCercanas.slice(0, 12)) {
+            for (const grupo of conexionesCercanas) {
               for (const conexion of grupo.entradas) {
                 const patron2Index =
                   Number(conexion?.[0]);
@@ -2570,3 +2574,4 @@ window.buscarCombinacionesRuta = async function(
     }
   };
 })();
+
