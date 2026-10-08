@@ -1,0 +1,40 @@
+.welcome-card {
+  grid-column: 1 / -1;
+  padding: 12px 18px;
+  border: 1px solid #d8e4ee;
+  border-radius: 16px;
+  background: #f5faff;
+  color: #233649;
+}
+.welcome-card summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 44px;
+  padding: 12px 0;
+}
+.welcome-card ol {
+  padding-left: 24px;
+  margin: 8px 0 16px;
+}
+.welcome-card li {
+  margin: 10px 0;
+  line-height: 1.5;
+}
+.welcome-card p {
+  line-height: 1.5;
+  font-size: 14px;
+}
+.welcome-card button {
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #195584;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+.welcome-card :focus-visible {
+  outline: 3px solid #247ad3;
+  outline-offset: 3px;
+}

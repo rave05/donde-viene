@@ -80,6 +80,10 @@ Agregar el objeto dentro de la lista. Solo se aceptan enlaces HTTPS, campañas a
 
 ## Verificación y publicación
 
+`bienvenida.js` y `bienvenida.css` controlan la ayuda de primer uso. Se muestra inicialmente y recuerda el cierre en este navegador; el resumen permite abrirla otra vez. No solicita permisos ni modifica búsquedas.
+
+Pendiente: probar un viaje real en iPhone/Safari, comprobando seguimiento del mapa, transbordos y aviso de bajada con GPS. Hasta entonces, esa verificación sigue cubierta solo por pruebas simuladas.
+
 `npm ci && npm test` verifica red peatonal, calendario, estimaciones, clasificación y límites. Revisar también viajes directos/combinados, sugerencias por toque, guía GPS y permisos en Safari antes de promover una versión a un público amplio.
 
 Al cambiar archivos del shell, incrementar `CACHE` en `sw.js` y las versiones de scripts/CSS de `index.html` en el mismo despliegue. Si se agrega un módulo, incorporarlo a `CORE`. Publicación: GitHub Pages del repositorio.

@@ -1422,6 +1422,7 @@
   <link rel="stylesheet" href="./patrocinios.css?v=20261008-2">
   <link rel="stylesheet" href="./viaje.css?v=20261008-8">
   <link rel="stylesheet" href="./extras.css?v=20261008-1">
+  <link rel="stylesheet" href="./bienvenida.css?v=20261008-1">
 </head>
 
 <body>
@@ -1445,6 +1446,19 @@
 
 
   <main class="app-shell">
+
+    <details id="bienvenida" class="welcome-card">
+      <summary>👋 Cómo usar ¿Dónde Viene?</summary>
+      <ol>
+        <li><strong>Buscá tu recorrido.</strong> Escribí el origen y el destino, elegí una sugerencia y tocá “Buscar ruta”. Podés elegir otra fecha en “Planificar para más tarde”.</li>
+        <li><strong>Elegí el bus y la variante.</strong> Compará las opciones y desplegá “Ver pasos y caminatas” para saber dónde subir y bajar.</li>
+        <li><strong>Guardá los viajes que repetís.</strong> Abrí “Viajes habituales” y tocá “Guardar este recorrido”. Al volver a usarlo se consultan los datos actuales.</li>
+        <li><strong>Acompañá tu viaje.</strong> Tocá “Empezar viaje” y seguí las indicaciones. Para seguir tu posición y avisarte cerca de la bajada, permití la ubicación y mantené la app abierta.</li>
+      </ol>
+      <p>Los horarios programados y los tiempos orientativos están identificados. Revisá las llegadas en vivo cuando estén disponibles.</p>
+      <button id="cerrarBienvenida" type="button">Entendido, empezar</button>
+      <p>Podés volver a abrir esta ayuda desde “Cómo usar ¿Dónde Viene?”.</p>
+    </details>
 
     <aside id="avisoInstalacion" class="install-card" hidden aria-label="Agregar al inicio">
       <div><strong>Tu viaje, a un toque</strong><p>Agregá ¿Dónde Viene? a la pantalla de inicio.</p></div>
@@ -5819,6 +5833,7 @@
   <script src="./recargas-stm.js?v=20261008-1"></script>
   <script src="./patrocinios-locales.js?v=20261008-1"></script>
   <script src="./extras-viaje.js?v=20261008-1"></script>
+  <script src="./bienvenida.js?v=20261008-1"></script>
   <h1>Beta V0.7</h1>
 </body>
 </html>
