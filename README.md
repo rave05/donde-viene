@@ -111,3 +111,5 @@ El botón flotante 💳 reutiliza la búsqueda de recargas STM: muestra u oculta
 ## Identidad y panel del viaje
 
 redisenio.css concentra colores, tipografía, tarjeta de salida y respuestas breves al toque; respeta reducir movimiento. redisenio.js conserva los nodos y listeners: en móvil el resumen está dentro de la columna del mapa, plegado al elegir viaje, y se abre por toque, teclado o arrastre del tirador. En escritorio permanece abierto en la columna de resultados. La tarjeta de salida en viaje.js usa la fecha ya calculada y distingue estimación de horario; no crea consultas ni una cuenta regresiva. Los datos offline sin salida no muestran tarjeta.
+
+buses-mapa-vista.js controla solo la cámara de los buses: encuadra una vez por selección de parada/variante. Al tocar un marcador, sigue su identificador de coche y empresa usando panTo, que conserva el zoom manual. Los refrescos sin coche seleccionado conservan también la cámara; si un coche no aparece en la consulta no sigue a otro. Cambiar de selección reinicia el encuadre y el vehículo elegido. La guía GPS mantiene prioridad.

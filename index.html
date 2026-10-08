@@ -1618,6 +1618,7 @@
   <script src="./lugares.js?v=20261002-3"></script>
   <script src="./app-util.js?v=20261008-2"></script>
   <script src="./viaje.js?v=20261008-6"></script>
+  <script src="./buses-mapa-vista.js?v=20261008-1"></script>
 
   <!-- Leaflet -->
 
@@ -4258,6 +4259,8 @@
     // BUSES EN VIVO EN EL MAPA
     // =========================================================
 
+    const vistaBusesMapa = window.crearVistaBusesMapa(mapa);
+
     function limpiarMarcadoresBusesVivos() {
 
       for (
@@ -4285,6 +4288,8 @@
       if (!Array.isArray(buses)) {
         return;
       }
+
+      vistaBusesMapa.iniciar(seleccion);
 
       const puntosParaEncuadrar = [];
 
@@ -4322,6 +4327,9 @@
         const latNumero = Number(lat);
         const lonNumero = Number(lon);
 
+        const puntoBus = [latNumero, lonNumero];
+        vistaBusesMapa.actualizar(bus, puntoBus);
+
         const marcador =
           L.marker(
             [latNumero, lonNumero],
@@ -4352,6 +4360,8 @@
           ${distanciaTexto}
         `);
 
+        marcador.on('click', () => vistaBusesMapa.seguir(bus, puntoBus));
+
         marcadoresBusesVivos.push(
           marcador
         );
@@ -4366,22 +4376,7 @@
         }
       }
 
-      if (puntosParaEncuadrar.length >= 2) {
-        mapa.fitBounds(
-          L.latLngBounds(puntosParaEncuadrar),
-          {
-            padding: [45, 45],
-            maxZoom: 15,
-            animate: true
-          }
-        );
-      } else if (puntosParaEncuadrar.length === 1) {
-        mapa.setView(
-          puntosParaEncuadrar[0],
-          15,
-          { animate: true }
-        );
-      }
+      vistaBusesMapa.encuadrar(puntosParaEncuadrar);
     }
 
 
@@ -4604,6 +4599,7 @@
 
       // Invalida de inmediato cualquier respuesta anterior.
       sesionProximos++;
+      vistaBusesMapa.reiniciar();
       seleccionLlegadasActiva = null;
       estadoConsultaLlegadas = null;
       proximaConsultaPermitida = 0;
