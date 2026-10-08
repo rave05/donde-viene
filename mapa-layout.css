@@ -1,0 +1,26 @@
+/* Móvil: buscador, mapa, resultado y guardados. Escritorio: mapa visible a la derecha. */
+.map-workspace { display: grid; grid-template-areas: "form" "map" "result" "saved"; gap: 12px; margin-bottom: 16px; }
+.map-workspace .route-planner { grid-area: form; margin-bottom: 0; }
+.map-column { grid-area: map; min-width: 0; }
+.route-results-panel { grid-area: result; }
+.route-results-panel[hidden] { display: none; }
+.route-saved-panel { grid-area: saved; }
+.route-results-panel, .route-saved-panel { padding: 14px; background: #fff; border: 1px solid #d8e4ee; border-radius: 18px; min-width: 0; }
+.route-more-options { margin-top: 8px; }
+.route-more-options > summary { padding: 10px 0; min-height: 44px; box-sizing: border-box; cursor: pointer; font-weight: 600; }
+.route-more-options .trip-preference { margin-top: 8px; }
+.route-more-options .extras-button { min-height: 44px; }
+.map-expand-button { margin-top: 8px; }
+body:not(.trip-tracking-active) .map-workspace #mapa { height: 40vh; height: 40svh; min-height: 230px; max-height: 430px; }
+body:not(.trip-tracking-active) .map-workspace .map-card.is-expanded #mapa { height: 70vh; height: 70svh; max-height: none; }
+@media (min-width: 1000px) {
+  .map-workspace { grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); grid-template-areas: "form map" "result map" "saved map"; gap: 16px; align-items: start; }
+  .map-column { position: sticky; top: 16px; }
+  .map-workspace .route-fields { grid-template-columns: 1fr; }
+  body:not(.trip-tracking-active) .map-workspace #mapa { height: 52vh; height: 52svh; min-height: 320px; max-height: 620px; }
+  .map-workspace .map-card { margin-bottom: 0; }
+}
+@media (max-width: 999px) {
+  .map-workspace .route-planner { padding: 12px; }
+  .map-workspace .route-planner-header p { margin-bottom: 8px; }
+}

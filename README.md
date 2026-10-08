@@ -95,3 +95,9 @@ Pendiente: probar un viaje real en iPhone/Safari, comprobando seguimiento del ma
 `npm ci && npm test` verifica red peatonal, calendario, estimaciones, clasificación y límites. Revisar también viajes directos/combinados, sugerencias por toque, guía GPS y permisos en Safari antes de promover una versión a un público amplio.
 
 Al cambiar archivos del shell, incrementar `CACHE` en `sw.js` y las versiones de scripts/CSS de `index.html` en el mismo despliegue. Si se agrega un módulo, incorporarlo a `CORE`. Publicación: GitHub Pages del repositorio.
+
+## Distribución del mapa
+
+`mapa-layout.js` mueve los nodos existentes, preservando sus listeners: buscador, mapa, resumen y guardados en móvil; columna de búsqueda/resultados junto al mapa en escritorio (1000 px). Preferencias, planificación y compartir quedan en Más opciones. El mapa ocupa 40 svh en móvil y se puede ampliar; invalidateSize mantiene Leaflet al cambiar de tamaño. El seguimiento GPS conserva sus estilos existentes.
+
+Validación automatizada: npm test cubre las funciones existentes tras reorganizar la interfaz, así como Más opciones plegado y ampliar/reducir el mapa. Verificación visual en la página publicada; la prueba de GPS en un viaje real en iPhone/Safari continúa pendiente.
