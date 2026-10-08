@@ -44,3 +44,8 @@
   .sponsor-formats { grid-template-columns: 1fr; }
   .sponsor-card h2 { font-size: 19px; }
 }
+
+.sponsor-email { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; box-sizing: border-box; border-radius: 12px; background: #164b8c; color: #fff; font-size: 15px; font-weight: 700; text-decoration: none; }
+.sponsor-email:hover { background: #103b70; }
+.sponsor-email:focus-visible { outline: 3px solid #2167bc; outline-offset: 3px; }
+.sponsor-card .sponsor-address { margin-top: 8px; overflow-wrap: anywhere; font-size: 14px; }
