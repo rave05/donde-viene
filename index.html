@@ -1722,6 +1722,7 @@
       input.setAttribute('aria-expanded', 'false');
       let opciones = [];
       let activa = -1;
+      let toqueOpcion = null;
 
       function cerrar() {
         lista.hidden = true;
@@ -1805,9 +1806,31 @@
           categoria.textContent = opcion.categoria;
           copia.append(nombre, categoria);
           elemento.append(icono, copia);
-          // Mantener el foco en el campo hasta que el clic seleccione el lugar.
-          elemento.addEventListener('pointerdown', event => event.preventDefault());
-          elemento.addEventListener('click', () => elegir(i));
+          // Safari puede desenfocar el campo antes del clic. Conservamos la lista
+          // hasta terminar el toque y distinguimos selección de desplazamiento.
+          let elegidoConPuntero = false;
+          elemento.addEventListener('pointerdown', event => {
+            if (event.button != null && event.button !== 0) return;
+            elegidoConPuntero = false;
+            toqueOpcion = { elemento, id: event.pointerId, x: event.clientX, y: event.clientY };
+            if (event.pointerType === 'mouse') event.preventDefault();
+          });
+          elemento.addEventListener('pointerup', event => {
+            const toque = toqueOpcion;
+            if (!toque || toque.elemento !== elemento || toque.id !== event.pointerId) return;
+            toqueOpcion = null;
+            elegidoConPuntero = true;
+            if (Math.hypot(event.clientX - toque.x, event.clientY - toque.y) > 10) {
+              if (document.activeElement !== input) cerrar();
+              return;
+            }
+            event.preventDefault();
+            elegir(i);
+          });
+          elemento.addEventListener('click', () => {
+            if (elegidoConPuntero) { elegidoConPuntero = false; return; }
+            elegir(i);
+          });
           lista.appendChild(elemento);
         });
         lista.hidden = !opciones.length;
@@ -1820,7 +1843,7 @@
       });
       input.addEventListener('focus', mostrar);
       input.addEventListener('click', () => { if (lista.hidden) mostrar(); });
-      input.addEventListener('blur', cerrar);
+      input.addEventListener('blur', () => { if (!toqueOpcion) cerrar(); });
       input.addEventListener('keydown', event => {
         if (event.isComposing) return;
         if (event.key === 'Escape' && !lista.hidden) {
@@ -1840,8 +1863,15 @@
         }
       });
       document.addEventListener('pointerdown', event => {
-        if (!input.parentElement.contains(event.target)) cerrar();
+        if (!input.parentElement.contains(event.target)) { toqueOpcion = null; cerrar(); }
       });
+      const terminarToque = event => {
+        if (!toqueOpcion || toqueOpcion.id !== event.pointerId) return;
+        toqueOpcion = null;
+        if (document.activeElement !== input) cerrar();
+      };
+      document.addEventListener('pointerup', terminarToque);
+      document.addEventListener('pointercancel', terminarToque);
     }
 
     [origenRuta, destinoRuta].forEach(iniciarSugerenciasLugares);
