@@ -107,3 +107,7 @@ Validación automatizada: npm test cubre las funciones existentes tras reorganiz
 El botón flotante 💳 reutiliza la búsqueda de recargas STM: muestra u oculta hasta ocho locales a 5 km del punto de referencia (destino del viaje, ubicación o centro del mapa). Comparte estado con los controles de la sección de recargas. El mapa muestra carga, resultado o error temporalmente; los marcadores conservan nombre, dirección y horario. No solicita GPS ni inicia una búsqueda de transporte. Las pruebas cubren ambos accesos, ocultar, error y reintento.
 
 `mapa-ubicacion.js` agrega centrar en mi ubicación debajo del zoom. Pide una posición puntual solo al tocarlo; acepta hasta 150 m de precisión y 30 segundos de antigüedad. Conserva los campos, la ruta y la búsqueda. Durante un viaje reutiliza Volver a seguirme y no abre otro seguimiento GPS. Si hay una selección de punto activa, espera confirmación o cancelación. La integración centrarUbicacionMapa reutiliza el marcador del usuario.
+
+## Identidad y panel del viaje
+
+redisenio.css concentra colores, tipografía, tarjeta de salida y respuestas breves al toque; respeta reducir movimiento. redisenio.js conserva los nodos y listeners: en móvil el resumen está dentro de la columna del mapa, plegado al elegir viaje, y se abre por toque, teclado o arrastre del tirador. En escritorio permanece abierto en la columna de resultados. La tarjeta de salida en viaje.js usa la fecha ya calculada y distingue estimación de horario; no crea consultas ni una cuenta regresiva. Los datos offline sin salida no muestran tarjeta.

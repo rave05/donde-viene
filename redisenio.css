@@ -1,0 +1,216 @@
+/* Identidad y jerarquía visual. Los colores no reemplazan las etiquetas de datos. */
+:root {
+  --bg: #f3f6fb;
+  --text: #14263f;
+  --primary: #155ce6;
+  --primary-dark: #1045ad;
+  --muted: #53657c;
+  --brand-yellow: #ffda45;
+}
+body {
+  background: linear-gradient(180deg, #10243f 0 190px, var(--bg) 190px 100%);
+}
+header h1 {
+  letter-spacing: -0.7px;
+  color: var(--brand-yellow);
+}
+.logo {
+  background: var(--brand-yellow);
+  color: #10243f;
+}
+.route-planner,
+.route-saved-panel,
+.map-workspace .map-card {
+  border-radius: 22px;
+  box-shadow: 0 8px 28px #14263f0d;
+}
+.route-planner-header h2 {
+  font-size: 25px;
+  letter-spacing: -0.7px;
+}
+.route-fields input {
+  background: #f8faff;
+  border: 1px solid #d2deed;
+  min-height: 48px;
+}
+.route-fields input:focus {
+  outline: 2px solid #155ce6;
+  outline-offset: 2px;
+}
+#btnBuscarRuta {
+  background: var(--brand-yellow);
+  color: #10243f;
+  box-shadow: 0 4px 12px #d5a91420;
+  min-height: 48px;
+}
+#btnBuscarRuta:hover {
+  background: #ffe472;
+}
+.route-choice-modal {
+  border-radius: 24px;
+}
+.route-line {
+  font-size: 23px;
+  letter-spacing: -0.4px;
+}
+.trip-group-title {
+  font-size: 22px;
+  letter-spacing: -0.4px;
+}
+.trip-recommendation {
+  background: #ffed98;
+  color: #493900;
+}
+.trip-heading h3 {
+  font-size: 24px;
+  letter-spacing: -0.5px;
+}
+.departure-card {
+  padding: 18px;
+  margin: 14px 0;
+  border: 1px solid #bdd3f6;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #edf4ff, #f9fbff);
+  color: #14263f;
+}
+.departure-card[data-source="programado"] {
+  background: #fff9e4;
+  border-color: #e4d18e;
+}
+.departure-source {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  background: #155ce6;
+  color: #fff;
+}
+.departure-card[data-source="programado"] .departure-source {
+  background: #705600;
+}
+.departure-time {
+  display: block;
+  margin: 8px 0 4px;
+  font-size: 42px;
+  font-weight: 850;
+  line-height: 1.05;
+  letter-spacing: -1.5px;
+  font-variant-numeric: tabular-nums;
+}
+.departure-caption {
+  margin: 0;
+  font-weight: 700;
+}
+.departure-note {
+  margin: 8px 0 0;
+  color: #53657c;
+  font-size: 12px;
+  line-height: 1.5;
+}
+#proximos .is-featured-bus {
+  border: 2px solid #155ce6;
+  background: #f0f6ff;
+  box-shadow: 0 5px 18px #155ce615;
+}
+#proximos .is-featured-bus .bus-eta {
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+}
+.journey-sheet-handle {
+  display: none;
+}
+.journey-sheet > #resultadoRuta {
+  margin-top: 0;
+}
+@media (max-width: 999px) {
+  .map-column > .route-results-panel {
+    padding: 0;
+    margin-top: 8px;
+    border-radius: 22px;
+    border: 1px solid #cddced;
+    box-shadow: 0 8px 24px #14263f12;
+  }
+  .journey-sheet-handle {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 16px 14px;
+    gap: 6px;
+    min-height: 68px;
+    cursor: pointer;
+    touch-action: none;
+    list-style: none;
+  }
+  .journey-sheet-handle::-webkit-details-marker {
+    display: none;
+  }
+  .journey-sheet-grip {
+    align-self: center;
+    width: 36px;
+    height: 4px;
+    border-radius: 4px;
+    background: #9aabc2;
+    margin-bottom: 4px;
+  }
+  .journey-sheet-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #14263f;
+  }
+  .journey-sheet-hint {
+    font-size: 12px;
+    font-weight: 600;
+    color: #53657c;
+  }
+  .journey-sheet > #resultadoRuta {
+    padding: 0 14px 14px;
+    max-height: 45vh;
+    max-height: 45svh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .trip-heading {
+    flex-wrap: wrap;
+  }
+  .trip-heading h3 {
+    font-size: 22px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #btnBuscarRuta,
+  .map-gadget-bar button,
+  .map-location-button {
+    transition:
+      background 0.15s ease,
+      transform 0.15s ease;
+  }
+  #btnBuscarRuta:active,
+  .map-gadget-bar button:active,
+  .map-location-button:active {
+    transform: scale(0.97);
+  }
+  .departure-card {
+    animation: journey-appear 0.2s ease-out;
+  }
+  @keyframes journey-appear {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .destination-pop,
+  .destination-halo,
+  .route-choice-modal {
+    animation: none;
+    transition: none;
+  }
+}

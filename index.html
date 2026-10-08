@@ -1428,6 +1428,7 @@
   <link rel="stylesheet" href="./extras.css?v=20261008-3">
   <link rel="stylesheet" href="./mapa-layout.css?v=20261008-1">
   <link rel="stylesheet" href="./mapa-gadgets.css?v=20261008-3">
+  <link rel="stylesheet" href="./redisenio.css?v=20261008-1">
   <link rel="stylesheet" href="./bienvenida.css?v=20261008-1">
 </head>
 
@@ -1616,7 +1617,7 @@
   <!-- Catálogo local de lugares conocidos -->
   <script src="./lugares.js?v=20261002-3"></script>
   <script src="./app-util.js?v=20261008-2"></script>
-  <script src="./viaje.js?v=20261008-10"></script>
+  <script src="./viaje.js?v=20261008-6"></script>
 
   <!-- Leaflet -->
 
@@ -3738,6 +3739,7 @@
       if (!elemento) {
         return;
       }
+      if (elemento.id === 'resultadoRuta') elemento = elemento.closest('.route-results-panel') || elemento;
 
 
       // scrollIntoView funciona de forma consistente tanto
@@ -5865,24 +5867,25 @@
     <p class="favorite-note">Las llegadas en vivo requieren conexión a internet.</p>
   </dialog>
   <script src="./mobile.js?v=20261008-1"></script>
-  <script src="./seguimiento-viaje.js?v=20261008-2"></script>
-  <script src="./guia-viaje.js?v=20261008-3"></script>
+  <script src="./seguimiento-viaje.js?v=20261008-6"></script>
+  <script src="./guia-viaje.js?v=20261008-6"></script>
   <script src="./planificador.js?v=20261008-1"></script>
   <script src="./caminatas.js?v=20261008-1"></script>
-  <script src="./estimacion-viaje.js?v=20261008-2"></script>
-  <script src="./proximos-viaje.js?v=20261008-1"></script>
+  <script src="./estimacion-viaje.js?v=20261008-6"></script>
+  <script src="./proximos-viaje.js?v=20261008-6"></script>
   <script src="./actualizar-opciones.js?v=20261008-1"></script>
   <script src="./mapa-puntos.js?v=20261008-3"></script>
   <script src="./viajes-habituales.js?v=20261008-1"></script>
-  <script src="./compartir-viaje.js?v=20261008-1"></script>
-  <script src="./ultimo-viaje.js?v=20261008-2"></script>
+  <script src="./compartir-viaje.js?v=20261008-6"></script>
+  <script src="./ultimo-viaje.js?v=20261008-6"></script>
   <script src="./recargas-stm.js?v=20261008-1"></script>
   <script src="./patrocinios-locales.js?v=20261008-1"></script>
-  <script src="./extras-viaje.js?v=20261008-1"></script>
+  <script src="./extras-viaje.js?v=20261008-6"></script>
   <script src="./bienvenida.js?v=20261008-1"></script>
   <script src="./mapa-layout.js?v=20261008-3"></script>
   <script src="./mapa-gadgets.js?v=20261008-2"></script>
   <script src="./mapa-ubicacion.js?v=20261008-1"></script>
+  <script src="./redisenio.js?v=20261008-1"></script>
   <h1>Beta V0.7</h1>
 </body>
 </html>

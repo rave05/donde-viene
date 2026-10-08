@@ -51,6 +51,16 @@
     if (!Number.isFinite(minutos)) return 'Próxima salida sin confirmar';
     return (c.proximaSalida.fuente === 'estimado' ? 'Llegada estimada' : 'Programado') + ' · ' + minutos + ' min hasta la parada de subida';
   }
+  function tarjetaSalida(c, contexto) {
+    const p = c.proximaSalida;
+    const fecha = new Date(p?.fecha);
+    if (!Number.isFinite(minutosSalida(c)) || !Number.isFinite(fecha.getTime()) || !['estimado','programado'].includes(p?.fuente) || (contexto.fechaSalida && p.fuente === 'estimado')) return '';
+    const estimada = p.fuente === 'estimado';
+    const hora = new Intl.DateTimeFormat('es-UY', {timeZone:'America/Montevideo', hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(fecha);
+    const etiqueta = estimada ? 'Llegada estimada' : 'Horario programado';
+    const nota = estimada ? 'Estimación de la consulta; puede cambiar. Revisá las llegadas actualizadas debajo del mapa.' : 'No es una llegada en vivo. El servicio puede sufrir modificaciones.';
+    return '<div class="departure-card" data-source="'+p.fuente+'"><span class="departure-source">'+etiqueta+'</span><strong class="departure-time">'+hora+'</strong><p class="departure-caption">En la parada de subida · '+escapar(parada(c.origen))+'</p><p class="departure-note">'+escapar(window.DV?.fechaTexto(p.fecha) || p.fecha)+' · '+nota+'</p></div>';
+  }
   window.ordenarOpcionesViaje = function(opciones, preferencia = 'proximos') {
     const transbordos = c => c.line1 && c.line2 ? 1 : 0;
     return [...opciones].sort((a, b) => {
@@ -126,6 +136,7 @@
       '<div class="trip-heading"><div><span class="trip-eyebrow">Tu viaje elegido</span><h3 id="tituloResumenViaje">' + escapar(titulo) + '</h3></div>' +
       '<button type="button" class="trip-change" id="btnAlternativasViaje">Cambiar ruta</button></div>' +
       '<p class="trip-endpoints">' + escapar(contexto.origen || 'Origen') + ' → ' + escapar(contexto.destino || 'Destino') + '</p>' +
+      tarjetaSalida(c, contexto) +
       (total != null ? '<p class="trip-walking">🚶 Caminata total aproximada: <strong>' + distancia(total) + '</strong></p>' : '') +
       (contexto.fechaSalida ? '<p class="trip-note">🕒 Salida planificada: ' + escapar(window.DV?.fechaTexto(contexto.fechaSalida) || contexto.fechaSalida) + '</p>' : '') +
       (c.tiempo?.disponible ? '<p class="trip-time">Tiempo total orientativo: ' + c.tiempo.min + '–' + c.tiempo.max + ' min</p><details class="trip-time-detail"><summary>Ver estimación del tiempo</summary><p>Caminata: ' + c.tiempo.caminata + ' min aprox.</p><ul>' + c.tiempo.partes.map(t => '<li>' + escapar(t.linea) + ': espera programada ' + t.espera + ' min + recorrido orientativo ' + t.recorrido + ' min.</li>').join('') + '</ul><p>No es una ETA en vivo. La espera puede cambiar y el recorrido no incluye el tránsito actual.</p></details>' : c.tiempo ? '<p class="trip-note">Tiempo total sin confirmar para esta hora.</p>' : '') +
