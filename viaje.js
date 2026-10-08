@@ -17,6 +17,50 @@
     return paso('🚌 Tomá el ' + linea + (sentido ? ' → ' + sentido : ''),
       'Subí en ' + parada(subida) + '. Bajá en ' + parada(bajada) + '.');
   }
+  function caminataTotal(c) {
+    const tramos = [c.origen?.distanciaRuta, c.destino?.distanciaRuta];
+    if (c.line1 && c.line2) {
+      const segunda = c.combinacion2 || c.combinacion;
+      const misma = c.combinacion?.busstopId != null && String(c.combinacion.busstopId) === String(segunda?.busstopId);
+      tramos.push(misma ? 0 : c.caminataCombinacion);
+    }
+    return tramos.every(distanciaValida) ? tramos.reduce((s, v) => s + Number(v), 0) : Infinity;
+  }
+  window.ordenarOpcionesViaje = function(opciones, preferencia = 'transbordos') {
+    const transbordos = c => c.line1 && c.line2 ? 1 : 0;
+    return [...opciones].sort((a, b) => {
+      const caminar = caminataTotal(a) - caminataTotal(b);
+      const combinar = transbordos(a) - transbordos(b);
+      const puntaje = (Number(a.puntaje) || 0) - (Number(b.puntaje) || 0);
+      return preferencia === 'caminar' ? (caminar || combinar || puntaje) : (combinar || caminar || puntaje);
+    });
+  };
+  window.crearTarjetasViaje = function(opciones, preferencia = 'transbordos') {
+    return opciones.map((c, indice) => {
+      const combinada = Boolean(c.line1 && c.line2);
+      const lineas = combinada ? c.line1 + ' + ' + c.line2 : c.line;
+      const caminata = caminataTotal(c);
+      const recomendacion = indice === 0 ?
+        (preferencia === 'caminar' && Number.isFinite(caminata) ? 'Menor caminata entre las opciones encontradas' :
+          preferencia === 'transbordos' ? 'Menos transbordos entre las opciones encontradas' : '') : '';
+      const sentidos = combinada ?
+        c.line1 + (c.destination1 ? ' → ' + c.destination1 : '') + ' · ' + c.line2 + (c.destination2 ? ' → ' + c.destination2 : '') :
+        (c.destination ? 'Hacia ' + c.destination : 'Confirmá el sentido antes de subir');
+      return '<button type="button" class="route-result route-result-button" data-route-index="' + indice + '">' +
+        (recomendacion ? '<span class="trip-recommendation">' + escapar(recomendacion) + '</span>' : '') +
+        '<div class="route-line">🚌 ' + escapar(lineas) + '</div>' +
+        '<div class="route-meta">' + escapar(sentidos) + '</div>' +
+        '<div class="trip-option-metrics">' + (combinada ? '1 transbordo' : 'Sin transbordos') + ' · 🚶 ' +
+          (Number.isFinite(caminata) ? distancia(caminata) + ' en total aprox.' : 'Caminata sin confirmar') + '</div>' +
+        '<div><strong>Subí en:</strong> ' + escapar(parada(c.origen)) + '</div>' +
+        (combinada ? '<div><strong>Combiná en:</strong> ' + escapar(parada(c.combinacion)) +
+          (c.combinacion2 && String(c.combinacion2.busstopId) !== String(c.combinacion?.busstopId) ?
+            ' · Caminá ' + distancia(c.caminataCombinacion) + ' hasta ' + escapar(parada(c.combinacion2)) : '') + '</div>' : '') +
+        '<div><strong>Bajá en:</strong> ' + escapar(parada(c.destino)) + '</div>' +
+        (c.coincidenciaAproximada ? '<div class="route-meta">Confirmá el sentido: coincidencia por número de línea.</div>' : '') +
+        '<div class="route-result-action">Ver viaje paso a paso →</div></button>';
+    }).join('');
+  };
   window.crearResumenViaje = function(c, contexto = {}) {
     if (!c?.origen || !c?.destino) return '';
     const combinada = Boolean(c.line1 && c.line2);

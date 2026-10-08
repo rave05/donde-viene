@@ -1420,7 +1420,7 @@
   </style>
   <link rel="stylesheet" href="./mobile.css?v=20261008-1">
   <link rel="stylesheet" href="./patrocinios.css?v=20261008-2">
-  <link rel="stylesheet" href="./viaje.css?v=20261008-1">
+  <link rel="stylesheet" href="./viaje.css?v=20261008-2">
 </head>
 
 <body>
@@ -1474,6 +1474,11 @@
       </div>
 
 
+      <div class="trip-preference">
+        <label for="preferenciaViaje">¿Qué preferís para este viaje?</label>
+        <select id="preferenciaViaje"><option value="transbordos">Menos transbordos</option><option value="caminar">Caminar menos</option></select>
+        <p>La caminata se compara en línea recta. Las calles pueden alargar el trayecto.</p>
+      </div>
       <section class="favorite-section" aria-label="Lugares guardados">
         <div class="favorite-heading"><h3>Mis lugares</h3><button id="btnGuardarFavorito" class="mobile-button" type="button">+ Guardar lugar</button></div>
         <div class="favorite-target"><label for="campoFavorito">Usar como</label><select id="campoFavorito"><option value="destino">Destino</option><option value="origen">Origen</option></select></div>
@@ -1589,7 +1594,7 @@
 
   <!-- Catálogo local de lugares conocidos -->
   <script src="./lugares.js?v=20261002-3"></script>
-  <script src="./viaje.js?v=20261008-1"></script>
+  <script src="./viaje.js?v=20261008-2"></script>
 
   <!-- Leaflet -->
 
@@ -2679,7 +2684,7 @@
             scrollSuaveA(resultadoRuta);
             const version = ++versionViajeElegido;
 
-            if (tipo === 'combinacion') {
+            if (candidato.line1 && candidato.line2) {
               abrirOpcionCombinacion(candidato, version);
             } else {
               abrirOpcionRuta(candidato, version);
@@ -2868,6 +2873,7 @@
 
       const destinoTexto =
         destinoRuta.value.trim();
+      const preferencia = document.getElementById('preferenciaViaje').value;
 
       if (!origenTexto || !destinoTexto) {
         resultadoRuta.innerHTML =
@@ -2882,6 +2888,7 @@
       }
 
       btnBuscarRuta.disabled = true;
+      document.getElementById('preferenciaViaje').disabled = true;
       versionViajeElegido++;
       suprimirScrollAutomatico = false;
       btnBuscarRuta.textContent = 'Buscando...';
@@ -3376,236 +3383,38 @@
           }
         }
 
-        if (!candidatos.length) {
-          resultadoRuta.innerHTML =
-            '<div class="route-status">No hay una línea directa razonable. Buscando una combinación...</div>';
-
-          const buscarCombinaciones =
-            typeof window.buscarCombinacionesRuta === 'function'
-              ? window.buscarCombinacionesRuta
-              : null;
-
-          const combinaciones =
-            buscarCombinaciones
-              ? await buscarCombinaciones(
-                  paradasOrigen,
-                  paradasDestino,
-                  origen,
-                  destino
-                )
-              : [];
-
-          if (!combinaciones.length) {
-            const diag =
-              window.ultimoDiagnosticoCombinacion || {
-                error:
-                  buscarCombinaciones
-                    ? 'El motor cargó, pero no llegó a generar diagnóstico.'
-                    : 'El motor de combinaciones (recorridos.js) no está cargado.'
-              };
-
-            resultadoRuta.innerHTML =
-              '<div class="route-empty">' +
-                '<strong>No encontramos una ruta directa ni una combinación simple.</strong><br>' +
-                'Probamos una combinación de hasta dos ómnibus usando los recorridos GTFS disponibles.' +
-                '<div style="margin-top:10px;padding:10px;border-radius:10px;background:#f5f7fa;font-size:12px;line-height:1.5;text-align:left">' +
-                  '<strong>Diagnóstico temporal</strong><br>' +
-                  'Paradas entrada origen: ' + (diag.paradasOrigenEntrada ?? 0) + ' (' + (diag.tipoOrigenEntrada || '?') + ')<br>' +
-                  'Paradas entrada destino: ' + (diag.paradasDestinoEntrada ?? 0) + ' (' + (diag.tipoDestinoEntrada || '?') + ')<br>' +
-                  'Origen coords: ' + (Number.isFinite(diag.origenLat) ? diag.origenLat.toFixed(5) : 'NaN') + ', ' + (Number.isFinite(diag.origenLon) ? diag.origenLon.toFixed(5) : 'NaN') + '<br>' +
-                  'Destino coords: ' + (Number.isFinite(diag.destinoLat) ? diag.destinoLat.toFixed(5) : 'NaN') + ', ' + (Number.isFinite(diag.destinoLon) ? diag.destinoLon.toFixed(5) : 'NaN') + '<br>' +
-                  'Red GTFS cargada: ' + (diag.redCargada ? 'sí' : 'no') + '<br>' +
-                  'Patrones en red: ' + (diag.patronesRed ?? 0) + '<br>' +
-                  'Coordenadas en red: ' + (diag.coordsRed ?? 0) + '<br>' +
-                  'Paradas indexadas en red: ' + (diag.paradasIndexadasRed ?? 0) + '<br>' +
-                  'Paradas GTFS origen: ' + (diag.paradasGTFSOrigen ?? 0) + '<br>' +
-                  'Paradas GTFS destino: ' + (diag.paradasGTFSDestino ?? 0) + '<br>' +
-                  'Patrones desde origen: ' + (diag.entradasOrigen ?? 0) + '<br>' +
-                  'Patrones hacia destino: ' + (diag.entradasDestino ?? 0) + '<br>' +
-                  'Posibles combinaciones detectadas: ' + (diag.candidatosCombinacion ?? 0) + '<br>' +
-                  'Resultados finales: ' + (diag.resultadoFinal ?? 0) +
-                  (
-                    diag.error
-                      ? '<br><strong>Error:</strong> ' + escaparHTML(diag.error)
-                      : ''
-                  ) +
-                '</div>' +
-              '</div>';
-            return;
-          }
-
-          const combinacionesMostradas =
-            combinaciones.slice(0, 4);
-
-          const htmlCombinaciones =
-            combinacionesMostradas
-              .map((candidato, indice) => {
-                const subir =
-                  escaparHTML(
-                    nombreParadaRuta(
-                      candidato.origen
-                    )
-                  );
-
-                const combinar =
-                  escaparHTML(
-                    nombreParadaRuta(
-                      candidato.combinacion
-                    )
-                  );
-
-                const bajar =
-                  escaparHTML(
-                    nombreParadaRuta(
-                      candidato.destino
-                    )
-                  );
-
-                const destino1 =
-                  candidato.destination1
-                    ? ' → ' +
-                      escaparHTML(
-                        candidato.destination1
-                      )
-                    : '';
-
-                const destino2 =
-                  candidato.destination2
-                    ? ' → ' +
-                      escaparHTML(
-                        candidato.destination2
-                      )
-                    : '';
-
-                return (
-                  '<button type="button" class="route-result route-result-button route-combination" data-combo-index="' +
-                    indice +
-                  '">' +
-                    '<div class="route-line">🔁 1 combinación</div>' +
-                    '<div><strong>🚌 ' +
-                      escaparHTML(candidato.line1) +
-                      destino1 +
-                    '</strong></div>' +
-                    '<div><strong>Subí en:</strong> ' +
-                      subir +
-                    '</div>' +
-                    '<div><strong>Combiná en:</strong> ' +
-                      combinar +
-                    '</div>' +
-                    '<div style="margin-top:8px"><strong>🚌 ' +
-                      escaparHTML(candidato.line2) +
-                      destino2 +
-                    '</strong></div>' +
-                    '<div><strong>Bajá en:</strong> ' +
-                      bajar +
-                    '</div>' +
-                    '<div class="route-meta">' +
-                      'Azul: primer ómnibus · Violeta: segundo ómnibus' +
-                    '</div>' +
-                    '<div class="route-result-action">Ver combinación →</div>' +
-                  '</button>'
-                );
-              })
-              .join('');
-
-          mostrarSelectorRuta(
-            'combinacion',
-            combinacionesMostradas,
-            htmlCombinaciones
-          );
-
+        let opciones = candidatos;
+        if (!candidatos.length || preferencia === 'caminar') {
+          resultadoRuta.innerHTML = '<div class="route-status">Comparando rutas y combinaciones...</div>';
+          const combinaciones = typeof window.buscarCombinacionesRuta === 'function'
+            ? await window.buscarCombinacionesRuta(paradasOrigen, paradasDestino, origen, destino)
+            : [];
+          opciones = [...candidatos, ...combinaciones];
+        }
+        if (!opciones.length) {
+          resultadoRuta.innerHTML = '<div class="route-empty"><strong>No encontramos un viaje directo ni una combinación de dos buses.</strong><br>Probá con un lugar más preciso o una parada cercana. Tu origen y destino siguen guardados en los campos.</div>';
           return;
         }
-
-        // Priorizamos variedad de líneas públicas. Distintos
-        // recorridos internos de la misma línea no deben ocupar los
-        // cuatro lugares y ocultar alternativas directas como la 494.
-        const candidatosMostrados = [];
-        const lineasYaMostradas = new Set();
-
-        for (const candidato of candidatos) {
-          const numero =
-            String(candidato.line || '')
-              .trim()
-              .toUpperCase();
-
-          if (
-            numero &&
-            !lineasYaMostradas.has(numero)
-          ) {
-            candidatosMostrados.push(candidato);
-            lineasYaMostradas.add(numero);
+        const ordenadas = window.ordenarOpcionesViaje(opciones, preferencia);
+        const mostradas = [];
+        const lineasMostradas = new Set();
+        for (const candidato of ordenadas) {
+          const clave = candidato.line1 && candidato.line2
+            ? candidato.line1 + '+' + candidato.line2 : String(candidato.line);
+          if (!lineasMostradas.has(clave)) {
+            mostradas.push(candidato);
+            lineasMostradas.add(clave);
           }
-
-          if (candidatosMostrados.length >= 4) {
-            break;
+          if (mostradas.length === 4) break;
+        }
+        if (mostradas.length < 4) {
+          for (const candidato of ordenadas) {
+            if (!mostradas.includes(candidato)) mostradas.push(candidato);
+            if (mostradas.length === 4) break;
           }
         }
-
-        if (candidatosMostrados.length < 4) {
-          for (const candidato of candidatos) {
-            if (
-              candidatosMostrados.includes(candidato)
-            ) {
-              continue;
-            }
-
-            candidatosMostrados.push(candidato);
-
-            if (candidatosMostrados.length >= 4) {
-              break;
-            }
-          }
-        }
-
-        const htmlRutasDirectas =
-          candidatosMostrados
-            .map((candidato, indice) => {
-              const subir =
-                escaparHTML(nombreParadaRuta(candidato.origen));
-
-              const bajar =
-                escaparHTML(nombreParadaRuta(candidato.destino));
-
-              const destinoLinea =
-                candidato.destination
-                  ? ' → ' + escaparHTML(candidato.destination)
-                  : '';
-
-              return (
-                '<button type="button" class="route-result route-result-button" data-route-index="' +
-                  indice +
-                '">' +
-                  '<div class="route-line">🚌 ' +
-                    escaparHTML(candidato.line) +
-                    destinoLinea +
-                  '</div>' +
-                  '<div><strong>Subí en:</strong> ' + subir + '</div>' +
-                  '<div><strong>Bajá en:</strong> ' + bajar + '</div>' +
-                  '<div class="route-meta">' +
-                    'Caminata aprox.: ' +
-                    formatearDistancia(candidato.origen.distanciaRuta) +
-                    ' al subir · ' +
-                    formatearDistancia(candidato.destino.distanciaRuta) +
-                    ' al bajar' +
-                  '</div>' +
-                  (
-                    candidato.coincidenciaAproximada
-                      ? '<div class="route-meta">Coincidencia por número de línea; confirmamos el sentido al abrirla.</div>'
-                      : ''
-                  ) +
-                  '<div class="route-result-action">Ver esta línea →</div>' +
-                '</button>'
-              );
-            })
-            .join('');
-
-
-        mostrarSelectorRuta(
-          'directa',
-          candidatosMostrados,
-          htmlRutasDirectas
-        );
+        mostrarSelectorRuta('mixta', mostradas, window.crearTarjetasViaje(mostradas, preferencia));
+        selectorRutaResumen.textContent += preferencia === 'caminar' ? ' · Caminar menos' : ' · Menos transbordos';
 
       } catch (error) {
         console.error(error);
@@ -3617,6 +3426,7 @@
 
       } finally {
         btnBuscarRuta.disabled = false;
+        document.getElementById('preferenciaViaje').disabled = false;
         btnBuscarRuta.textContent = 'Buscar ruta';
       }
     }

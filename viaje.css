@@ -22,3 +22,10 @@
 .arrival-status p { margin: 4px 0 0; color: #53677e; font-size: 12px; line-height: 1.5; }
 .arrival-status[data-mode="error"], .arrival-status[data-stale="true"] { background: #fff7ed; border-color: #fed7aa; }
 @media (max-width: 640px) { .trip-summary { padding: 16px; } .trip-heading { flex-wrap: wrap; } .trip-heading h3 { font-size: 18px; } .arrival-status-row { flex-wrap: wrap; } }
+.trip-preference { margin-top: 16px; display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
+.trip-preference label { font-size: 14px; font-weight: 700; color: #21364f; }
+.trip-preference select { min-height: 44px; padding: 10px 12px; font: inherit; font-size: 16px; color: #21364f; background: #fff; border: 1px solid #b9c9dc; border-radius: 10px; max-width: 100%; }
+.trip-preference select:focus-visible { outline: 3px solid #2167bc; outline-offset: 3px; }
+.trip-preference p { width: 100%; margin: 0; color: #53677e; font-size: 12px; line-height: 1.5; }
+.trip-recommendation { display: inline-block; margin-bottom: 8px; padding: 5px 8px; border-radius: 8px; background: #e7f4ec; color: #24603c; font-size: 12px; font-weight: 700; }
+.trip-option-metrics { margin: 8px 0; font-weight: 700; color: #21364f; font-size: 14px; }
