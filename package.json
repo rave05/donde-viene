@@ -1,0 +1,15 @@
+{
+  "name": "donde-viene",
+  "private": true,
+  "version": "0.7.0",
+  "description": "App estática de transporte para Montevideo",
+  "scripts": {
+    "test": "node tests/funciones-nuevas.cjs && node tests/interfaz.cjs",
+    "format:extras": "prettier --write app-util.js planificador.js viajes-habituales.js compartir-viaje.js caminatas.js caminatas-worker.js estimacion-viaje.js ultimo-viaje.js recargas-stm.js patrocinios-locales.js extras-viaje.js sw.js extras.css tests/*.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0",
+    "prettier": "3.6.2"
+  },
+  "engines": { "node": ">=20" }
+}

@@ -106,7 +106,7 @@
         minute: '2-digit',
         second: '2-digit',
         weekday: 'short',
-        hour12: false
+        hourCycle: 'h23'
       }
     );
 
@@ -249,7 +249,9 @@
       destinos = coincidencias;
     }
 
-    const ahora = partesFechaMontevideo();
+    const referencia = seleccion.fechaReferencia ? new Date(seleccion.fechaReferencia) : new Date();
+    if (!Number.isFinite(referencia.getTime())) return null;
+    const ahora = partesFechaMontevideo(referencia);
 
     const segundosAhora =
       Number(ahora.hour) * 3600 +
@@ -300,6 +302,8 @@
 
     return {
       found: true,
+      secondsUntil: mejor.diferencia,
+      date: new Date(referencia.getTime() + mejor.diferencia * 1000).toISOString(),
       time: segundosAHora(mejor.segundos),
       minutesUntil: Math.max(
         0,
@@ -308,6 +312,8 @@
       destination: mejor.destino
     };
   }
+
+  window.obtenerSalidaProgramada = obtenerProximoProgramado;
 
   window.agregarProximoProgramado = async function(seleccion) {
     if (

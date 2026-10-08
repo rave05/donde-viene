@@ -1420,7 +1420,8 @@
   </style>
   <link rel="stylesheet" href="./mobile.css?v=20261008-1">
   <link rel="stylesheet" href="./patrocinios.css?v=20261008-2">
-  <link rel="stylesheet" href="./viaje.css?v=20261008-7">
+  <link rel="stylesheet" href="./viaje.css?v=20261008-8">
+  <link rel="stylesheet" href="./extras.css?v=20261008-1">
 </head>
 
 <body>
@@ -1476,8 +1477,8 @@
 
       <div class="trip-preference">
         <label for="preferenciaViaje">¿Qué preferís para este viaje?</label>
-        <select id="preferenciaViaje"><option value="transbordos">Menos transbordos</option><option value="caminar">Caminar menos</option></select>
-        <p>La caminata se compara en línea recta. Las calles pueden alargar el trayecto.</p>
+        <select id="preferenciaViaje"><option value="transbordos">Menos transbordos</option><option value="caminar">Caminar menos</option><option value="tiempo">Menor tiempo orientativo</option></select>
+        <p>Comparamos caminatas por calles cuando hay datos disponibles. Los tiempos totales son orientativos.</p>
       </div>
       <section class="favorite-section" aria-label="Lugares guardados">
         <div class="favorite-heading"><h3>Mis lugares</h3><button id="btnGuardarFavorito" class="mobile-button" type="button">+ Guardar lugar</button></div>
@@ -1594,7 +1595,8 @@
 
   <!-- Catálogo local de lugares conocidos -->
   <script src="./lugares.js?v=20261002-3"></script>
-  <script src="./viaje.js?v=20261008-8"></script>
+  <script src="./app-util.js?v=20261008-1"></script>
+  <script src="./viaje.js?v=20261008-9"></script>
 
   <!-- Leaflet -->
 
@@ -2021,6 +2023,10 @@
 
     let destinoRutaActivo = null;
     let contextoViajeActivo = null;
+    let candidatoViajeActivo = null;
+    let capasExtrasViaje = null;
+    let capaRecorridoGuardado = null;
+    let capaRecargas = null;
 
     let ultimaUbicacionUsuario = null;
 
@@ -2722,7 +2728,10 @@
             cerrarSelectorRuta();
             btnCambiarRuta.hidden = false;
             window.dispatchEvent(new Event('donde-viene:viaje-cambio'));
+            candidatoViajeActivo = candidato;
+            contextoViajeActivo.fechaSalidaParada = candidato.tiempo?.fechaEnParada || contextoViajeActivo.fechaSalida;
             resultadoRuta.innerHTML = window.crearResumenViaje(candidato, contextoViajeActivo);
+            window.dispatchEvent(new CustomEvent('donde-viene:viaje-elegido', { detail: { candidato, contexto: { ...contextoViajeActivo } } }));
             document.getElementById('btnAlternativasViaje')?.addEventListener('click', abrirSelectorRuta);
             scrollSuaveA(resultadoRuta);
             const version = ++versionViajeElegido;
@@ -2799,7 +2808,10 @@
         );
       }
       } finally {
-        if (version === versionViajeElegido) suprimirScrollAutomatico = false;
+        if (version === versionViajeElegido) {
+          suprimirScrollAutomatico = false;
+          window.dispatchEvent(new CustomEvent('donde-viene:mapa-viaje-listo', { detail: { candidato, contexto: { ...contextoViajeActivo } } }));
+        }
       }
     }
 
@@ -2847,7 +2859,10 @@
           );
         }
       } finally {
-        if (version === versionViajeElegido) suprimirScrollAutomatico = false;
+        if (version === versionViajeElegido) {
+          suprimirScrollAutomatico = false;
+          window.dispatchEvent(new CustomEvent('donde-viene:mapa-viaje-listo', { detail: { candidato, contexto: { ...contextoViajeActivo } } }));
+        }
       }
     }
 
@@ -2859,6 +2874,10 @@
       const destinoTexto =
         destinoRuta.value.trim();
       const preferencia = document.getElementById('preferenciaViaje').value;
+      let fechaSalida = null;
+      try { fechaSalida = window.DV?.planificador?.leerFecha() || null; }
+      catch (error) { resultadoRuta.innerHTML = '<div class="route-empty">' + escaparHTML(error.message) + '</div>'; return; }
+      if (navigator.onLine === false) { resultadoRuta.innerHTML = '<div class="route-empty">Sin conexión. Podés consultar el último viaje guardado debajo del buscador.</div>'; return; }
 
       if (!origenTexto || !destinoTexto) {
         resultadoRuta.innerHTML =
@@ -2921,7 +2940,7 @@
           lon: Number(destino.lon),
           nombre: destino.nombre || destinoTexto
         };
-        contextoViajeActivo = { origen: origenTexto, destino: destinoTexto };
+        contextoViajeActivo = { origen: origenTexto, destino: destinoTexto, preferencia, fechaSalida, puntoOrigen: {lat:Number(origen.lat),lon:Number(origen.lon)}, puntoDestino: {...destinoRutaActivo} };
 
         mostrarPuntosRuta(origen, destino);
 
@@ -3371,7 +3390,7 @@
         }
 
         let opciones = candidatos;
-        if (!candidatos.length || preferencia === 'caminar') {
+        if (!candidatos.length || preferencia === 'caminar' || preferencia === 'tiempo') {
           resultadoRuta.innerHTML = '<div class="route-status">Comparando rutas y combinaciones...</div>';
           const combinaciones = typeof window.buscarCombinacionesRuta === 'function'
             ? await window.buscarCombinacionesRuta(paradasOrigen, paradasDestino, origen, destino)
@@ -3382,11 +3401,16 @@
           resultadoRuta.innerHTML = '<div class="route-empty"><strong>No encontramos un viaje directo ni una combinación de dos buses.</strong><br>Probá con un lugar más preciso o una parada cercana. Tu origen y destino siguen guardados en los campos.</div>';
           return;
         }
+        if (window.DV?.estimacion) {
+          resultadoRuta.innerHTML = '<div class="route-status">Comparando caminatas y horarios programados...</div>';
+          opciones = await window.DV.estimacion.enriquecer(opciones, contextoViajeActivo);
+        }
         const ordenadas = window.ordenarOpcionesViaje(opciones, preferencia);
         const grupos = window.agruparOpcionesViaje(ordenadas).slice(0, 4);
         const selector = window.crearSelectorViajesAgrupados(grupos, preferencia);
         mostrarSelectorRuta('mixta', selector.candidatos, selector.html);
-        selectorRutaResumen.textContent += preferencia === 'caminar' ? ' · Caminar menos' : ' · Menos transbordos';
+        selectorRutaResumen.textContent += fechaSalida ? ' · Salida: ' + window.DV.fechaTexto(fechaSalida) : '';
+        selectorRutaResumen.textContent += preferencia === 'caminar' ? ' · Caminar menos' : preferencia === 'tiempo' ? ' · Tiempo orientativo' : ' · Menos transbordos';
 
       } catch (error) {
         console.error(error);
@@ -4361,6 +4385,24 @@
         limpiarRecorridoSeleccionado();
       }
 
+
+      if (contextoViajeActivo?.fechaSalida && resultadoRuta.querySelector('.trip-summary')) {
+        cancelarActualizacionProximos();
+        lineaActual = linea.line; variantActual = null;
+        const sesion = sesionProximos;
+        proximos.innerHTML = '<div class="cargando">Consultando la salida programada...</div>';
+        try {
+          const horario = await window.obtenerSalidaProgramada({ linea: linea.line, stopId: paradaActual.busstopId, destination: linea.destination, fechaReferencia: contextoViajeActivo.fechaSalidaParada || contextoViajeActivo.fechaSalida });
+          if (sesion !== sesionProximos) return;
+          proximos.innerHTML = horario
+            ? '<div class="aviso-info"><strong>🕒 Salida programada: ' + escaparHTML(window.DV.fechaTexto(horario.date)) + '</strong><br>' + escaparHTML(linea.line + ' → ' + (horario.destination || '')) + '<br><small>Planificación para otra fecha. No es una llegada en vivo; puede cambiar.</small></div>'
+            : '<div class="aviso-info">No hay horarios programados disponibles para esta fecha y sentido.</div>';
+          informarLlegadas('programado');
+        } catch (_) {
+          if (sesion === sesionProximos) { proximos.innerHTML = '<div class="error">No pudimos consultar el horario programado para esa fecha.</div>'; informarLlegadas('error'); }
+        }
+        return;
+      }
 
       const variantId =
         linea.lineVariantId;
@@ -5383,7 +5425,8 @@
     // GEOLOCALIZACIÓN
     // =========================================================
 
-    function obtenerUbicacion() {
+    function obtenerUbicacion(event) {
+      if (!event && origenRuta.value.trim() && !/^mi ubicaci[oó]n$/i.test(origenRuta.value.trim())) return;
 
       if (
         !navigator.geolocation
@@ -5413,6 +5456,9 @@
       navigator.geolocation.getCurrentPosition(
 
         function(position) {
+          if (!event && origenRuta.value.trim() && !/^mi ubicaci[oó]n$/i.test(origenRuta.value.trim())) {
+            btnUbicacion.disabled = false; btnUbicacion.textContent = '📍 Usar mi ubicación'; return;
+          }
 
           const lat =
             position.coords.latitude;
@@ -5694,12 +5740,57 @@
     }
 
 
+    // Contrato pequeño para los módulos de interfaz. Las variables del motor siguen privadas.
+    window.DondeVieneApp = {
+      leerBusqueda: () => ({ origen: origenRuta.value.trim(), destino: destinoRuta.value.trim(), preferencia: document.getElementById('preferenciaViaje').value }),
+      aplicarBusqueda(receta) {
+        for (const [input, valor] of [[origenRuta, receta.origen], [destinoRuta, receta.destino]]) {
+          input.value = valor; input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        }
+        document.getElementById('preferenciaViaje').value = receta.preferencia;
+      },
+      buscar: async () => { if (btnBuscarRuta.disabled) return false; await buscarRutaSimple(); return true; },
+      centro: () => destinoRutaActivo || ultimaUbicacionUsuario || { lat: mapa.getCenter().lat, lon: mapa.getCenter().lng },
+      dibujarCaminatas(tramos) {
+        if (capasExtrasViaje) mapa.removeLayer(capasExtrasViaje);
+        if (tramos.some(t => t.tipo === 'calles')) window.ocultarCaminatasAproximadas?.();
+        capasExtrasViaje = L.layerGroup();
+        for (const t of tramos) if (Array.isArray(t.puntos) && t.puntos.length > 1) {
+          L.polyline(t.puntos, { color: t.tipo === 'calles' ? '#176cb0' : '#6b7280', weight: 4, dashArray: '6,8' }).bindPopup(t.tipo === 'calles' ? '🚶 Caminata por calles · Accesos orientativos' : '🚶 Distancia en línea recta; trayecto por calles sin confirmar').addTo(capasExtrasViaje);
+        }
+        capasExtrasViaje.addTo(mapa);
+      },
+      mostrarRecargas(locales) {
+        if (capaRecargas) mapa.removeLayer(capaRecargas);
+        capaRecargas = L.layerGroup();
+        for (const p of locales) L.marker([p.lat, p.lon], { icon: L.divIcon({className:'recharge-marker',html:'💳',iconSize:[28,28]}) }).bindPopup('<strong>' + escaparHTML(p.nombre) + '</strong><br>' + escaparHTML(p.direccion) + '<br>' + escaparHTML(p.horarios || 'Horario sin confirmar')).addTo(capaRecargas);
+        capaRecargas.addTo(mapa);
+      },
+      ocultarRecargas() { if (capaRecargas) { mapa.removeLayer(capaRecargas); capaRecargas = null; } },
+      enfocar(p) { mapa.setView([p.lat, p.lon], 16); document.getElementById('mapa').scrollIntoView({behavior:'auto',block:'center'}); },
+      restaurarViaje(c, ctx, geometria) {
+        window.dispatchEvent(new Event('donde-viene:viaje-cambio')); cancelarActualizacionProximos();
+        window.limpiarRecorridoSeleccionado?.(); this.aplicarBusqueda(ctx);
+        contextoViajeActivo = ctx; candidatoViajeActivo = c; destinoRutaActivo = ctx.puntoDestino;
+        resultadoRuta.innerHTML = window.crearResumenViaje(c, ctx);
+        document.getElementById('btnAlternativasViaje')?.addEventListener('click', () => { if (navigator.onLine) buscarRutaSimple(); else alert('Reconectate para buscar otras opciones.'); });
+        document.getElementById('estadoLlegadas').hidden = true;
+        proximos.innerHTML = '<div class="aviso-info">Copia guardada del viaje. No contiene llegadas ni posiciones en vivo.</div>';
+        const puntos = geometria.flat();
+        capaRecorridoGuardado = L.layerGroup(geometria.map(p => L.polyline(p, {color:'#164b8c',weight:5}))).addTo(mapa);
+        if (puntos.length > 1) mapa.fitBounds(puntos, {padding:[30,30],maxZoom:15});
+        window.dispatchEvent(new CustomEvent('donde-viene:viaje-restaurado', { detail:{candidato:c,contexto:ctx} }));
+      }
+    };
+    window.addEventListener('donde-viene:viaje-cambio', () => { if (capaRecorridoGuardado) { mapa.removeLayer(capaRecorridoGuardado); capaRecorridoGuardado = null; } if (capasExtrasViaje) { mapa.removeLayer(capasExtrasViaje); capasExtrasViaje = null; } });
+
     iniciar();
 
   </script>
 
-  <script src="./horarios.js?v=20261008-1"></script>
-  <script src="./recorridos.js?v=20261008-2"></script>
+  <script src="./horarios.js?v=20261008-2"></script>
+  <script src="./recorridos.js?v=20261008-3"></script>
 
   <dialog id="editorFavorito" class="mobile-dialog" aria-labelledby="tituloFavorito">
     <form id="formFavorito">
@@ -5719,6 +5810,15 @@
   <script src="./mobile.js?v=20261008-1"></script>
   <script src="./seguimiento-viaje.js?v=20261008-2"></script>
   <script src="./guia-viaje.js?v=20261008-3"></script>
-  <h1>Beta V0.6</h1>
+  <script src="./planificador.js?v=20261008-1"></script>
+  <script src="./caminatas.js?v=20261008-1"></script>
+  <script src="./estimacion-viaje.js?v=20261008-1"></script>
+  <script src="./viajes-habituales.js?v=20261008-1"></script>
+  <script src="./compartir-viaje.js?v=20261008-1"></script>
+  <script src="./ultimo-viaje.js?v=20261008-1"></script>
+  <script src="./recargas-stm.js?v=20261008-1"></script>
+  <script src="./patrocinios-locales.js?v=20261008-1"></script>
+  <script src="./extras-viaje.js?v=20261008-1"></script>
+  <h1>Beta V0.7</h1>
 </body>
 </html>

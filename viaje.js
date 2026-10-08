@@ -48,6 +48,10 @@
       const caminar = caminataTotal(a) - caminataTotal(b);
       const combinar = transbordos(a) - transbordos(b);
       const puntaje = (Number(a.puntaje) || 0) - (Number(b.puntaje) || 0);
+      if (preferencia === 'tiempo') {
+        const tiempo = (a.tiempo?.disponible ? a.tiempo.total : Infinity) - (b.tiempo?.disponible ? b.tiempo.total : Infinity);
+        if (tiempo) return tiempo;
+      }
       return preferencia === 'caminar' ? (caminar || combinar || puntaje) : (combinar || caminar || puntaje);
     });
   };
@@ -100,6 +104,7 @@
     }
     pasos += paso('🚶 Llegá a tu destino', distancia(c.destino.distanciaRuta) + ' desde la parada de bajada hasta ' + (contexto.destino || 'el destino') + '.');
     const total = caminatas.every(distanciaValida) ? caminatas.reduce((s, v) => s + Number(v), 0) : null;
+    const calles = c.caminos?.length && c.caminos.every(t => t.tipo === 'calles');
     const titulo = combinada ? c.line1 + ' + ' + c.line2 + ' · 1 transbordo' : c.line + ' · Sin transbordos';
     const coordenadas = c.destino.location?.coordinates || [];
     const lat = Number(coordenadas[1]), lon = Number(coordenadas[0]);
@@ -109,10 +114,12 @@
       '<button type="button" class="trip-change" id="btnAlternativasViaje">Cambiar ruta</button></div>' +
       '<p class="trip-endpoints">' + escapar(contexto.origen || 'Origen') + ' → ' + escapar(contexto.destino || 'Destino') + '</p>' +
       (total != null ? '<p class="trip-walking">🚶 Caminata total aproximada: <strong>' + distancia(total) + '</strong></p>' : '') +
+      (contexto.fechaSalida ? '<p class="trip-note">🕒 Salida planificada: ' + escapar(window.DV?.fechaTexto(contexto.fechaSalida) || contexto.fechaSalida) + '</p>' : '') +
+      (c.tiempo?.disponible ? '<p class="trip-time">Tiempo total orientativo: ' + c.tiempo.min + '–' + c.tiempo.max + ' min</p><details class="trip-time-detail"><summary>Ver estimación del tiempo</summary><p>Caminata: ' + c.tiempo.caminata + ' min aprox.</p><ul>' + c.tiempo.partes.map(t => '<li>' + escapar(t.linea) + ': espera programada ' + t.espera + ' min + recorrido orientativo ' + t.recorrido + ' min.</li>').join('') + '</ul><p>No es una ETA en vivo. La espera puede cambiar y el recorrido no incluye el tránsito actual.</p></details>' : c.tiempo ? '<p class="trip-note">Tiempo total sin confirmar para esta hora.</p>' : '') +
       '<button type="button" class="trip-start" id="btnEmpezarViaje">Empezar viaje</button><p class="trip-guide-note" id="estadoGuiaViaje" role="status" hidden></p>' +
       '<details class="trip-detail"><summary><span class="trip-detail-closed">Ver pasos y caminatas</span><span class="trip-detail-open">Ocultar pasos y caminatas</span></summary>' +
       '<ol class="trip-steps">' + pasos + '</ol>' +
-      '<p class="trip-note">Las distancias de caminata son en línea recta. El recorrido por calles puede ser más largo. Consultá las llegadas del bus debajo del mapa.</p></details>' +
+      '<p class="trip-note">' + (calles ? 'Caminatas orientativas por calles. Confirmá accesos y cruces; respetá la señalización.' : 'Uno o más tramos son en línea recta: el trayecto por calles puede ser más largo.') + ' Consultá las llegadas del bus debajo del mapa.</p></details>' +
       (c.coincidenciaAproximada ? '<p class="trip-note">Confirmá el sentido de la línea antes de subir: esta opción coincide por número de línea.</p>' : '') + '</section>';
   };
   window.agruparOpcionesViaje = function(opciones) {
@@ -136,7 +143,7 @@
       const transbordos = grupo.lineas.length > 1 ? '1 transbordo' : 'Sin transbordos';
       const recomendacion = numeroGrupo === 0 ?
         (preferencia === 'caminar' && distancias.length ? 'Menor caminata encontrada' :
-          preferencia === 'transbordos' ? 'Menos transbordos' : '') : '';
+          preferencia === 'transbordos' ? 'Menos transbordos' : preferencia === 'tiempo' && variantes.some(c => c.tiempo?.disponible) ? 'Menor tiempo entre opciones estimadas' : '') : '';
       function opcion(c, indiceVariante) {
         const indice = candidatos.push(c) - 1;
         const sentidos = c.line1 && c.line2 ?
@@ -148,6 +155,7 @@
           '<span class="trip-group-title">' + (variantes.length > 1 ? 'Variante ' + (indiceVariante + 1) : '🚌 ' + escapar(repetidas)) + '</span>' +
           '<span class="trip-variant-direction">' + escapar(sentidos) + '</span>' +
           '<span class="trip-group-metrics">' + transbordos + ' · 🚶 ' + (Number.isFinite(total) ? distancia(total) + ' aprox.' : 'Caminata sin confirmar') + '</span>' +
+          (c.tiempo?.disponible ? '<span class="trip-group-metrics">🕒 ' + c.tiempo.min + '–' + c.tiempo.max + ' min orientativos</span>' : '<span class="trip-variant-stops">Tiempo total sin confirmar</span>') +
           (variantes.length > 1 ? '<span class="trip-variant-stops">Subí: ' + escapar(parada(c.origen)) + ' · Bajá: ' + escapar(parada(c.destino)) +
             (c.line1 && c.line2 ? ' · Combiná: ' + escapar(parada(c.combinacion)) +
               (c.combinacion2 && String(c.combinacion2.busstopId) !== String(c.combinacion?.busstopId) ? ' → ' + escapar(parada(c.combinacion2)) : '') : '') + '</span>' : '') +

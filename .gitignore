@@ -1,0 +1,4 @@
+node_modules/
+*.osm.pbf
+.DS_Store
+datos/caminatas.json

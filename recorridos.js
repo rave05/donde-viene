@@ -2335,6 +2335,18 @@ window.buscarCombinacionesRuta = async function(
   };
 
 
+  // Adaptadores de lectura para estimación y copia del último viaje.
+  window.obtenerTramoLineaViaje = tramoParaLinea;
+  window.obtenerGeometriaViajeActual = () => {
+    const capas = lineaRecorridoMapa ? [lineaRecorridoMapa] : capasCombinacion;
+    return capas.filter(c => typeof c.getLatLngs === 'function' && c.options?.color !== '#ffffff' && !c.options?.dashArray)
+      .map(c => c.getLatLngs().filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng)).map(p => [p.lat, p.lng])).filter(p => p.length > 1);
+  };
+  window.ocultarCaminatasAproximadas = () => {
+    if (lineaCaminataFinal) mapa.removeLayer(lineaCaminataFinal);
+    for (const c of capasCombinacion) if (c.options?.dashArray && typeof c.getLatLngs === 'function') mapa.removeLayer(c);
+  };
+
   window.dibujarCombinacionRuta = async function(
     candidato,
     destinoRuta = null
