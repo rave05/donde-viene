@@ -241,15 +241,12 @@
         const n = normalizarHorarioTexto(destino);
 
         return (
-          n === objetivo ||
-          n.includes(objetivo) ||
-          objetivo.includes(n)
+          n === objetivo
         );
       });
 
-      if (coincidencias.length) {
-        destinos = coincidencias;
-      }
+      if (!coincidencias.length) return null;
+      destinos = coincidencias;
     }
 
     const ahora = partesFechaMontevideo();
@@ -381,3 +378,4 @@
     }
   };
 })();
+

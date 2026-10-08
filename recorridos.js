@@ -1947,8 +1947,10 @@ window.buscarCombinacionesRuta = async function(
 
       const destinoObjetivo =
         normalizar(destinoTexto || '');
+      if (!destinoObjetivo) return false;
 
       for (const patron of patrones) {
+        if (normalizar(patron.destination) !== destinoObjetivo) continue;
         if (
           !Array.isArray(patron.shape) ||
           patron.shape.length < 2
@@ -2014,20 +2016,9 @@ window.buscarCombinacionesRuta = async function(
           mejorDistanciaDestino <=
             Number(radioDestino)
         ) {
-          // Si el headsign coincide, excelente; si no coincide igual
-          // aceptamos la línea porque el shape demuestra que pasa
-          // por el destino en el sentido correcto.
           return true;
         }
 
-        if (
-          destinoObjetivo &&
-          normalizar(patron.destination) ===
-            destinoObjetivo &&
-          mejorDistanciaDestino <= 1200
-        ) {
-          return true;
-        }
       }
 
       return false;

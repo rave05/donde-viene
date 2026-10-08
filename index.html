@@ -1594,7 +1594,7 @@
 
   <!-- Catálogo local de lugares conocidos -->
   <script src="./lugares.js?v=20261002-3"></script>
-  <script src="./viaje.js?v=20261008-5"></script>
+  <script src="./viaje.js?v=20261008-6"></script>
 
   <!-- Leaflet -->
 
@@ -2737,65 +2737,17 @@
       const botones =
         [...listaLineas.querySelectorAll('.linea')];
 
-      const destinoObjetivo =
-        String(candidato.destination || '')
-          .trim()
-          .toUpperCase();
+      const compatible = window.buscarVarianteCompatibleViaje(
+        botones.map(boton => boton._lineaData).filter(Boolean),
+        candidato.line, candidato.destination, candidato.lineVariantId
+      );
+      const botonLinea = compatible ? botones.find(boton => boton._lineaData === compatible) : document.createElement('button');
+      if (!compatible) botonLinea.className = 'linea seleccionada';
+      seleccionarLinea(compatible || {
+        line: candidato.line, destination: candidato.destination || '',
+        lineVariantId: null, sentidoSinVarianteViva: true
+      }, botonLinea).catch(error => console.warn('No se pudo consultar el sentido elegido:', error));
 
-      let botonLinea =
-        botones.find(boton => {
-          const info = boton._lineaData;
-
-          return (
-            String(info?.line || '') === String(candidato.line) &&
-            String(info?.destination || '')
-              .trim()
-              .toUpperCase() === destinoObjetivo
-          );
-        });
-
-      // Si el destino cambia de nombre entre GTFS y tiempo real,
-      // priorizamos igualmente la misma línea.
-      if (!botonLinea) {
-        botonLinea =
-          botones.find(boton =>
-            String(boton._lineaData?.line || '') ===
-              String(candidato.line)
-          );
-      }
-
-      if (
-        botonLinea &&
-        botonLinea._lineaData
-      ) {
-        // No usamos .click() acá: el click del panel inferior también
-        // dibuja su propio shape y duplicaría marcadores/rutas.
-        seleccionarLinea(
-          botonLinea._lineaData,
-          botonLinea
-        ).catch(error =>
-          console.warn(
-            'No se pudo abrir la línea elegida:',
-            error
-          )
-        );
-      } else {
-        // Último fallback: abre la versión programada de esa línea.
-        const botonTemporal =
-          document.createElement('button');
-
-        botonTemporal.className =
-          'linea seleccionada';
-
-        await seleccionarLinea(
-          {
-            line: candidato.line,
-            destination: candidato.destination || '',
-            lineVariantId: null
-          },
-          botonTemporal
-        );
-      }
       if (
         typeof dibujarRecorridoSeleccionado === 'function'
       ) {
@@ -2834,26 +2786,16 @@
         const botones =
           [...listaLineas.querySelectorAll('.linea')];
 
-        const botonPrimeraLinea =
-          botones.find(boton =>
-            String(boton._lineaData?.line || '') ===
-              String(candidato.line1)
-          );
-
-        if (
-          botonPrimeraLinea &&
-          botonPrimeraLinea._lineaData
-        ) {
-          seleccionarLinea(
-            botonPrimeraLinea._lineaData,
-            botonPrimeraLinea
-          ).catch(error =>
-            console.warn(
-              'No se pudo abrir la primera línea de la combinación:',
-              error
-            )
-          );
-        }
+        const compatible = window.buscarVarianteCompatibleViaje(
+          botones.map(boton => boton._lineaData).filter(Boolean),
+          candidato.line1, candidato.destination1, candidato.lineVariantId1
+        );
+        const botonPrimeraLinea = compatible ? botones.find(boton => boton._lineaData === compatible) : document.createElement('button');
+        if (!compatible) botonPrimeraLinea.className = 'linea seleccionada';
+        seleccionarLinea(compatible || {
+          line: candidato.line1, destination: candidato.destination1 || '',
+          lineVariantId: null, sentidoSinVarianteViva: true
+        }, botonPrimeraLinea).catch(error => console.warn('No se pudo consultar el primer sentido de la combinación:', error));
 
         if (
           typeof dibujarCombinacionRuta === 'function'
@@ -3124,6 +3066,7 @@
 
                     const candidato = {
                       line: lineaOrigen.line,
+                      lineVariantId: lineaOrigen.lineVariantId || null,
                       destination:
                         lineaOrigen.destination ||
                         coincide.destination ||
@@ -4424,7 +4367,7 @@
         proximos.innerHTML = `
           <h3>${linea.line}${linea.destination ? ` → ${linea.destination}` : ''}</h3>
           <div class="aviso-info">
-            <strong>Sin vehículo en vivo asociado por ahora.</strong><br>
+            <strong>${linea.sentidoSinVarianteViva ? "Sin variante en vivo confirmada para este sentido." : "Sin vehículo en vivo asociado por ahora."}</strong><br>
             Esta línea aparece por su horario programado en esta parada.
           </div>
         `;
@@ -5713,8 +5656,8 @@
 
   </script>
 
-  <script src="./horarios.js"></script>
-  <script src="./recorridos.js?v=20261008-1"></script>
+  <script src="./horarios.js?v=20261008-1"></script>
+  <script src="./recorridos.js?v=20261008-2"></script>
 
   <dialog id="editorFavorito" class="mobile-dialog" aria-labelledby="tituloFavorito">
     <form id="formFavorito">

@@ -15,8 +15,20 @@
   }
   function bus(linea, sentido, subida, bajada) {
     return paso('🚌 Tomá el ' + linea + (sentido ? ' → ' + sentido : ''),
+      (sentido ? 'Buscá en el cartel: ' + sentido + '. ' : 'Confirmá el destino en el cartel antes de subir. ') +
       'Subí en ' + parada(subida) + '. Bajá en ' + parada(bajada) + '.');
   }
+  window.buscarVarianteCompatibleViaje = function(opciones, linea, destino, variantId) {
+    const normalizar = valor => String(valor ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+    const numero = normalizar(linea);
+    const mismaLinea = opciones.filter(opcion => normalizar(opcion.line) === numero);
+    if (variantId != null && String(variantId).trim()) {
+      return mismaLinea.find(opcion => String(opcion.lineVariantId ?? '') === String(variantId)) || null;
+    }
+    const sentido = normalizar(destino);
+    if (!sentido) return null;
+    return mismaLinea.find(opcion => normalizar(opcion.destination) === sentido) || null;
+  };
   function caminataTotal(c) {
     const tramos = [c.origen?.distanciaRuta, c.destino?.distanciaRuta];
     if (c.line1 && c.line2) {
@@ -122,7 +134,7 @@
         const indice = candidatos.push(c) - 1;
         const sentidos = c.line1 && c.line2 ?
           c.line1 + (c.destination1 ? ' → ' + c.destination1 : '') + ' · ' + c.line2 + (c.destination2 ? ' → ' + c.destination2 : '') :
-          (c.destination ? 'Hacia ' + c.destination : 'Sentido sin confirmar');
+          (c.destination ? 'Sentido: hacia ' + c.destination : 'Sentido sin confirmar');
         const total = caminataTotal(c);
         return '<button type="button" class="route-result-button trip-variant' + (variantes.length === 1 ? ' trip-single route-result' : '') + '" data-route-index="' + indice + '">' +
           (variantes.length === 1 && recomendacion ? '<span class="trip-recommendation">' + escapar(recomendacion) + '</span>' : '') +
