@@ -43,3 +43,8 @@
 .trip-route-group .trip-variant:last-child { border-bottom: 0; }
 .trip-route-group .trip-variant.is-current-route { background: #e7f4ec; }
 .trip-single { padding: 12px 14px; }
+.trip-detail { margin-top: 12px; }
+.trip-detail > summary { min-height: 44px; box-sizing: border-box; padding: 12px 14px; border: 1px solid #b9c9dc; border-radius: 10px; background: #fff; color: #164b8c; font-size: 14px; font-weight: 700; cursor: pointer; }
+.trip-detail > summary:focus-visible { outline: 3px solid #2167bc; outline-offset: 3px; }
+.trip-detail-open, .trip-detail[open] .trip-detail-closed { display: none; }
+.trip-detail[open] .trip-detail-open { display: inline; }
