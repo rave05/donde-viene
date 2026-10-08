@@ -29,6 +29,66 @@
   const acciones = document.getElementById("accionesPuntoMapa");
   help.append(estado, acciones);
   panel.append(toolbar, help);
+  // Reutiliza la búsqueda y la capa existentes: un solo estado para ambos accesos.
+  const buscarRecargas = document.getElementById("btnBuscarRecargas");
+  const ocultarRecargas = document.getElementById("btnOcultarRecargas");
+  const estadoRecargas = document.getElementById("estadoRecargas");
+  if (buscarRecargas && ocultarRecargas && estadoRecargas) {
+    const recargas = document.createElement("button");
+    recargas.type = "button";
+    recargas.id = "mapaToggleRecargas";
+    recargas.setAttribute("aria-controls", "mapa");
+    toolbar.append(recargas);
+    const aviso = document.createElement("p");
+    aviso.className = "map-gadget-help map-recharge-help";
+    aviso.setAttribute("role", "status");
+    panel.append(aviso);
+    let avisoTimer;
+    function sincronizarRecargas() {
+      const visibles = !ocultarRecargas.hidden;
+      const cargando = buscarRecargas.disabled;
+      const label = visibles
+        ? "Ocultar puntos de recarga STM"
+        : "Mostrar puntos de recarga STM";
+      recargas.textContent = label;
+      recargas.setAttribute("aria-label", label);
+      recargas.title = label;
+      recargas.setAttribute("aria-pressed", String(visibles));
+      recargas.disabled = cargando;
+      recargas.dataset.icon = cargando ? "⌛" : "💳";
+    }
+    function mostrarAvisoRecargas() {
+      clearTimeout(avisoTimer);
+      aviso.textContent = estadoRecargas.textContent;
+      aviso.hidden = !aviso.textContent;
+      const card = panel.closest(".map-card");
+      card.classList.toggle("map-recharge-feedback", !aviso.hidden);
+      if (!buscarRecargas.disabled)
+        avisoTimer = setTimeout(() => {
+          aviso.hidden = true;
+          card.classList.remove("map-recharge-feedback");
+        }, 5000);
+    }
+    recargas.addEventListener("click", () => {
+      if (ocultarRecargas.hidden) buscarRecargas.click();
+      else ocultarRecargas.click();
+    });
+    const observer = new MutationObserver(sincronizarRecargas);
+    observer.observe(buscarRecargas, {
+      attributes: true,
+      attributeFilter: ["disabled"],
+    });
+    observer.observe(ocultarRecargas, {
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
+    new MutationObserver(mostrarAvisoRecargas).observe(estadoRecargas, {
+      childList: true,
+      subtree: true,
+    });
+    sincronizarRecargas();
+    mostrarAvisoRecargas();
+  }
   let timer;
   function actualizar() {
     clearTimeout(timer);

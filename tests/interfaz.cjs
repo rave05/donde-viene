@@ -12,6 +12,7 @@ function preparar(hash = "") {
   const w = dom.window,
     d = w.document;
   let searches = 0,
+    recargas = [],
     shared = "",
     restored = null;
   w.HTMLDialogElement.prototype.showModal = function () {
@@ -51,8 +52,12 @@ function preparar(hash = "") {
       searches++;
     },
     centro: () => ({ lat: -34.89383, lon: -56.16657 }),
-    mostrarRecargas() {},
-    ocultarRecargas() {},
+    mostrarRecargas(puntos) {
+      recargas = puntos;
+    },
+    ocultarRecargas() {
+      recargas = [];
+    },
     enfocar() {},
     restaurarViaje: (...a) => {
       restored = a;
@@ -68,7 +73,9 @@ function preparar(hash = "") {
   ])
     w.eval(src(n + ".js"));
   w.requestAnimationFrame = (fn) => fn();
+  w.eval(src("mapa-puntos.js"));
   w.eval(src("mapa-layout.js"));
+  w.eval(src("mapa-gadgets.js"));
   assert.ok(d.querySelector(".map-column #mapa"));
   assert.ok(d.querySelector(".route-saved-panel #habitualesLista"));
   assert.ok(d.querySelector(".route-more-options #preferenciaViaje"));
@@ -83,6 +90,7 @@ function preparar(hash = "") {
     w,
     d,
     searches: () => searches,
+    recargas: () => recargas,
     shared: () => shared,
     restored: () => restored,
   };
@@ -172,8 +180,42 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
   await flush();
   assert.ok(d.getElementById("listaRecargas").children.length > 0);
   assert.ok(d.getElementById("listaRecargas").children.length <= 8);
+  const toggle = d.getElementById("mapaToggleRecargas");
+  assert.equal(toggle.getAttribute("aria-pressed"), "true");
+  assert.ok(x.recargas().length > 0);
   d.getElementById("btnOcultarRecargas").click();
+  await flush();
   assert.equal(d.getElementById("listaRecargas").children.length, 0);
+  assert.equal(toggle.getAttribute("aria-pressed"), "false");
+  toggle.click();
+  await flush();
+  assert.equal(toggle.getAttribute("aria-pressed"), "true");
+  assert.ok(x.recargas().length > 0 && x.recargas().length <= 8);
+  toggle.click();
+  await flush();
+  assert.equal(toggle.getAttribute("aria-pressed"), "false");
+  assert.equal(x.recargas().length, 0);
+  const z = preparar();
+  z.w.fetch = async () => {
+    throw Error("sin conexión");
+  };
+  z.d.getElementById("mapaToggleRecargas").click();
+  await flush();
+  assert.equal(z.d.getElementById("mapaToggleRecargas").disabled, false);
+  assert.equal(
+    z.d.getElementById("mapaToggleRecargas").getAttribute("aria-pressed"),
+    "false",
+  );
+  assert.match(
+    z.d.querySelector(".map-recharge-help").textContent,
+    /No pudimos cargar/,
+  );
+  z.w.fetch = w.fetch;
+  z.d.getElementById("mapaToggleRecargas").click();
+  await flush();
+  assert.ok(z.recargas().length > 0);
+  assert.equal(z.searches(), 0);
+  z.dom.window.close();
   assert.equal(
     d.querySelector('[aria-label="Publicidad cerca del destino"]').hidden,
     true,

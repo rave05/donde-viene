@@ -69,6 +69,16 @@
   min-height: 44px;
   font-size: 13px;
 }
-.map-card.map-gadget-feedback .map-legend {
+.map-card.map-gadget-feedback .map-legend,
+.map-card.map-recharge-feedback .map-legend {
   visibility: hidden;
+}
+.map-recharge-help {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.3;
+  pointer-events: none;
+}
+.map-card.map-gadget-feedback .map-recharge-help {
+  display: none;
 }
