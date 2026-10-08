@@ -5782,6 +5782,7 @@
       },
       marcarPuntoBusqueda(campo, punto) {
         const origen = campo === 'origen';
+        if (!origen) limpiarVistaDestino();
         const anterior = origen ? marcadorOrigenRuta : marcadorDestinoRuta;
         if (anterior) mapa.removeLayer(anterior);
         const icono = origen ? L.divIcon({ className: '', html: '<div class="route-pin route-pin-origin"><span>A</span></div>', iconSize: [34,34], iconAnchor: [17,30] }) : crearIconoDestino();
