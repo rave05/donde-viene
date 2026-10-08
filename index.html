@@ -1420,6 +1420,7 @@
   </style>
   <link rel="stylesheet" href="./mobile.css?v=20261008-1">
   <link rel="stylesheet" href="./patrocinios.css?v=20261008-2">
+  <link rel="stylesheet" href="./viaje.css?v=20261008-1">
 </head>
 
 <body>
@@ -1549,6 +1550,12 @@
         <summary>
           <span class="section-label">Próximos buses</span>
         </summary>
+        <div id="estadoLlegadas" class="arrival-status" hidden>
+          <div class="arrival-status-row">
+            <div><strong id="tipoLlegadas" role="status"></strong><p id="horaLlegadas"></p></div>
+            <button id="btnActualizarLlegadas" class="arrival-refresh" type="button">Actualizar</button>
+          </div>
+        </div>
         <div id="proximos"></div>
       </details>
 
@@ -1582,6 +1589,7 @@
 
   <!-- Catálogo local de lugares conocidos -->
   <script src="./lugares.js?v=20261002-3"></script>
+  <script src="./viaje.js?v=20261008-1"></script>
 
   <!-- Leaflet -->
 
@@ -1966,6 +1974,7 @@
     let marcadorVistaDestino = null;
 
     let destinoRutaActivo = null;
+    let contextoViajeActivo = null;
 
     let ultimaUbicacionUsuario = null;
 
@@ -1983,6 +1992,56 @@
     // Cada cambio de parada o línea crea una nueva sesión.
     // Las respuestas de sesiones anteriores se ignoran.
     let sesionProximos = 0;
+    let seleccionLlegadasActiva = null;
+    let estadoConsultaLlegadas = null;
+    let proximaConsultaPermitida = 0;
+    const estadoLlegadas = document.getElementById('estadoLlegadas');
+    const tipoLlegadas = document.getElementById('tipoLlegadas');
+    const horaLlegadas = document.getElementById('horaLlegadas');
+    const btnActualizarLlegadas = document.getElementById('btnActualizarLlegadas');
+
+    function refrescarEstadoLlegadas() {
+      if (!estadoConsultaLlegadas) return;
+      const { tipo, hora } = estadoConsultaLlegadas;
+      const antiguo = !['consultando', 'error', 'programado'].includes(tipo) && Date.now() - hora > 90000;
+      const etiquetas = {
+        consultando: 'Consultando llegadas…', eta: 'Llegadas en vivo · estimadas',
+        posicion: 'Posiciones de vehículos · sin ETA oficial',
+        'sin-eta': 'Sin llegada en vivo confirmada',
+        programado: 'Horario programado · no es una llegada en vivo',
+        error: 'La consulta en vivo falló'
+      };
+      estadoLlegadas.hidden = false;
+      estadoLlegadas.dataset.mode = tipo;
+      estadoLlegadas.dataset.stale = String(antiguo);
+      tipoLlegadas.textContent = antiguo ? 'Consulta anterior · actualización pendiente' : etiquetas[tipo];
+      horaLlegadas.textContent = (hora ? 'Consulta: ' + new Date(hora).toLocaleTimeString('es-UY', {
+        timeZone: 'America/Montevideo', hour: '2-digit', minute: '2-digit', second: '2-digit'
+      }) + '. ' : '') + (tipo === 'programado' ? 'El horario puede sufrir cambios.' :
+        tipo === 'error' ? 'Podés reintentar sin perder tu viaje.' :
+        antiguo ? 'Estas estimaciones pueden haber cambiado.' : 'Se consulta automáticamente cada 30 segundos.');
+      btnActualizarLlegadas.hidden = !seleccionLlegadasActiva?.variantId;
+      const espera = Math.max(0, Math.ceil((proximaConsultaPermitida - Date.now()) / 1000));
+      btnActualizarLlegadas.disabled = Boolean(abortControllerProximos) || espera > 0;
+      btnActualizarLlegadas.textContent = tipo === 'error' ? 'Reintentar' : 'Actualizar';
+      if (tipo === 'error' && espera > 0) horaLlegadas.textContent += ' Nueva consulta disponible en ' + espera + ' s.';
+    }
+
+    function informarLlegadas(tipo, hora = Date.now()) {
+      estadoConsultaLlegadas = { tipo, hora };
+      refrescarEstadoLlegadas();
+    }
+
+    setInterval(refrescarEstadoLlegadas, 1000);
+    btnActualizarLlegadas.addEventListener('click', async () => {
+      const seleccion = seleccionLlegadasActiva;
+      if (!seleccion?.variantId || seleccion.sesionId !== sesionProximos ||
+          abortControllerProximos || Date.now() < proximaConsultaPermitida) return;
+      clearTimeout(temporizadorProximos);
+      temporizadorProximos = null;
+      await cargarProximos(seleccion);
+      if (seleccion.sesionId === sesionProximos) programarActualizacionProximos(seleccion);
+    });
 
     let consultaLineasActual = 0;
 
@@ -1991,6 +2050,7 @@
     let alternativasRutaActuales = null;
 
     let indiceRutaSeleccionada = null;
+    let versionViajeElegido = 0;
 
     const cacheLineas =
       new Map();
@@ -2614,11 +2674,15 @@
             marcarRutaSeleccionada(indice);
             cerrarSelectorRuta();
             btnCambiarRuta.hidden = false;
+            resultadoRuta.innerHTML = window.crearResumenViaje(candidato, contextoViajeActivo);
+            document.getElementById('btnAlternativasViaje')?.addEventListener('click', abrirSelectorRuta);
+            scrollSuaveA(resultadoRuta);
+            const version = ++versionViajeElegido;
 
             if (tipo === 'combinacion') {
-              abrirOpcionCombinacion(candidato);
+              abrirOpcionCombinacion(candidato, version);
             } else {
-              abrirOpcionRuta(candidato);
+              abrirOpcionRuta(candidato, version);
             }
           });
         });
@@ -2648,10 +2712,12 @@
     });
 
 
-    async function abrirOpcionRuta(candidato) {
+    async function abrirOpcionRuta(candidato, version = versionViajeElegido) {
       if (!candidato?.origen || !candidato?.line) {
         return;
       }
+      suprimirScrollAutomatico = true;
+      try {
 
       // Reutilizamos exactamente el flujo normal de la app:
       // primero seleccionamos la parada de subida y después la línea.
@@ -2659,6 +2725,7 @@
         candidato.origen,
         true
       );
+      if (version !== versionViajeElegido) return;
 
       const botones =
         [...listaLineas.querySelectorAll('.linea')];
@@ -2725,16 +2792,19 @@
       if (
         typeof dibujarRecorridoSeleccionado === 'function'
       ) {
+        if (version !== versionViajeElegido) return;
         await dibujarRecorridoSeleccionado(
           candidato,
           destinoRutaActivo
         );
       }
-
+      } finally {
+        if (version === versionViajeElegido) suprimirScrollAutomatico = false;
+      }
     }
 
 
-    async function abrirOpcionCombinacion(candidato) {
+    async function abrirOpcionCombinacion(candidato, version = versionViajeElegido) {
       if (
         !candidato?.origen ||
         !candidato?.line1 ||
@@ -2752,6 +2822,7 @@
           candidato.origen,
           true
         );
+        if (version !== versionViajeElegido) return;
 
         const botones =
           [...listaLineas.querySelectorAll('.linea')];
@@ -2786,7 +2857,7 @@
           );
         }
       } finally {
-        suprimirScrollAutomatico = false;
+        if (version === versionViajeElegido) suprimirScrollAutomatico = false;
       }
     }
 
@@ -2811,6 +2882,8 @@
       }
 
       btnBuscarRuta.disabled = true;
+      versionViajeElegido++;
+      suprimirScrollAutomatico = false;
       btnBuscarRuta.textContent = 'Buscando...';
       btnCambiarRuta.hidden = true;
       cerrarSelectorRuta();
@@ -2855,6 +2928,7 @@
           lon: Number(destino.lon),
           nombre: destino.nombre || destinoTexto
         };
+        contextoViajeActivo = { origen: origenTexto, destino: destinoTexto };
 
         mostrarPuntosRuta(origen, destino);
 
@@ -3865,7 +3939,13 @@
     ) {
 
       if (!conservarRuta) {
+        versionViajeElegido++;
+        suprimirScrollAutomatico = false;
         destinoRutaActivo = null;
+        contextoViajeActivo = null;
+        if (resultadoRuta.querySelector('.trip-summary')) resultadoRuta.innerHTML = '';
+        alternativasRutaActuales = null;
+        btnCambiarRuta.hidden = true;
       }
 
       paradaActual =
@@ -4482,6 +4562,10 @@
         return;
       }
 
+      if (!suprimirScrollAutomatico && resultadoRuta.querySelector('.trip-summary')) {
+        resultadoRuta.innerHTML = '';
+      }
+
       setSeccionColapsada(seccionLineas, true);
       setSeccionColapsada(seccionProximos, false);
 
@@ -4555,6 +4639,9 @@
         await agregarProximoProgramado(
           seleccionProgramada
         );
+        if (seleccionProgramada.sesionId === sesionProximos) {
+          informarLlegadas('programado');
+        }
 
         return;
       }
@@ -4659,6 +4746,10 @@
 
       // Invalida de inmediato cualquier respuesta anterior.
       sesionProximos++;
+      seleccionLlegadasActiva = null;
+      estadoConsultaLlegadas = null;
+      proximaConsultaPermitida = 0;
+      estadoLlegadas.hidden = true;
 
       // Al cambiar de parada o línea, quitamos del mapa
       // los vehículos de la selección anterior.
@@ -4795,6 +4886,14 @@
 
       abortControllerProximos =
         controller;
+      seleccionLlegadasActiva = seleccion;
+      proximaConsultaPermitida = Date.now() + INTERVALO_PROXIMOS_MS;
+      informarLlegadas('consultando', null);
+      let consultaAgotada = false;
+      const limiteConsulta = setTimeout(() => {
+        consultaAgotada = true;
+        controller.abort();
+      }, 20000);
 
 
       try {
@@ -4868,11 +4967,12 @@
             linea,
             seleccion.destination
           );
+          informarLlegadas('eta');
 
         } else {
 
           await mostrarBusesLejanos(
-            seleccion
+            seleccion, controller.signal
           );
         }
 
@@ -4880,7 +4980,7 @@
 
         if (
           error.name ===
-          'AbortError'
+          'AbortError' && !consultaAgotada
         ) {
 
           return;
@@ -4902,12 +5002,14 @@
               No se pudieron consultar los próximos buses.
               <br>
               <small>
-                ${error.message}
+                ${escaparHTML(consultaAgotada ? 'La consulta tardó demasiado. Podés reintentar.' : error.message)}
               </small>
             </div>`;
+          informarLlegadas('error');
         }
 
       } finally {
+        clearTimeout(limiteConsulta);
 
         // Solo limpia el controlador si sigue siendo el de ESTA petición.
         // Así una petición vieja nunca borra el controlador de una nueva.
@@ -4918,13 +5020,14 @@
 
           abortControllerProximos =
             null;
+          refrescarEstadoLlegadas();
         }
       }
     }
 
 
 
-    async function obtenerBusesEnVivo() {
+    async function obtenerBusesEnVivo(signal) {
 
       if (
         Date.now() -
@@ -4937,7 +5040,7 @@
 
       const respuesta =
         await fetch(
-          `${API_BASE}/buses`
+          `${API_BASE}/buses`, { signal }
         );
 
       if (!respuesta.ok) {
@@ -5011,7 +5114,7 @@
 
 
     async function mostrarBusesLejanos(
-      seleccion
+      seleccion, signal
     ) {
 
       if (
@@ -5037,7 +5140,7 @@
 
       try {
         const buses =
-          await obtenerBusesEnVivo();
+          await obtenerBusesEnVivo(signal);
 
         if (
           seleccion.sesionId !==
@@ -5048,6 +5151,7 @@
 
         const ahora =
           Date.now();
+        informarLlegadas('posicion', cacheBusesEnVivo.timestamp || ahora);
 
         // Limpiar observaciones demasiado antiguas.
         for (
@@ -5193,6 +5297,7 @@
         if (
           !busesMismaVariante.length
         ) {
+          informarLlegadas('sin-eta', cacheBusesEnVivo.timestamp || ahora);
           limpiarMarcadoresBusesVivos();
 
           proximos.innerHTML = `
@@ -5213,6 +5318,7 @@
         if (
           !busesAcercandose.length
         ) {
+          informarLlegadas('sin-eta', cacheBusesEnVivo.timestamp || ahora);
           limpiarMarcadoresBusesVivos();
 
           proximos.innerHTML = `
@@ -5307,6 +5413,7 @@
               No pudimos consultar la ubicación de los vehículos en circulación.
             </div>
           `;
+          informarLlegadas('error');
 
           await agregarProximoProgramado(
             seleccion
@@ -5323,6 +5430,7 @@
     function formatearETA(
       segundos
     ) {
+      if (segundos == null || segundos === '' || Number(segundos) < 0) return 'Sin información';
 
       const numero =
         Number(
@@ -5396,10 +5504,10 @@
         [...buses].sort(
           (a, b) =>
             Number(
-              a.eta || 999999
+              a.eta == null || a.eta === '' || Number(a.eta) < 0 ? Infinity : a.eta
             ) -
             Number(
-              b.eta || 999999
+              b.eta == null || b.eta === '' || Number(b.eta) < 0 ? Infinity : b.eta
             )
         );
 

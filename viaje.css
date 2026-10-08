@@ -1,0 +1,24 @@
+.trip-summary { margin-top: 18px; padding: 20px; background: #f4f8fe; border: 1px solid #cbdcf0; border-radius: 16px; color: #21364f; }
+.trip-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.trip-eyebrow { color: #53677e; font-size: 12px; font-weight: 700; }
+.trip-heading h3 { margin: 5px 0 0; font-size: 20px; }
+.trip-change, .arrival-refresh { min-height: 44px; padding: 10px 14px; border: 1px solid #b9c9dc; border-radius: 10px; background: #fff; color: #164b8c; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.trip-change:focus-visible, .arrival-refresh:focus-visible { outline: 3px solid #2167bc; outline-offset: 3px; }
+.arrival-refresh:disabled { opacity: .6; cursor: wait; }
+.trip-endpoints { margin: 14px 0 8px; overflow-wrap: anywhere; font-size: 14px; }
+.trip-walking { margin: 0; font-size: 14px; }
+.trip-steps { list-style: none; counter-reset: paso; margin: 20px 0; padding: 0; }
+.trip-steps li { counter-increment: paso; position: relative; padding: 0 0 18px 40px; border-left: 2px solid #cad9eb; margin-left: 13px; }
+.trip-steps li:last-child { padding-bottom: 0; border-color: transparent; }
+.trip-steps li::before { content: counter(paso); position: absolute; left: -15px; top: -2px; display: grid; place-items: center; width: 28px; height: 28px; background: #164b8c; color: #fff; border-radius: 50%; font-size: 13px; font-weight: 700; }
+.trip-steps strong, .trip-steps span { display: block; }
+.trip-steps strong { font-size: 15px; line-height: 1.5; }
+.trip-steps span { margin-top: 4px; color: #53677e; font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.trip-note { margin: 10px 0 0; color: #53677e; font-size: 12px; line-height: 1.6; }
+.arrival-status { margin: 8px 0 14px; padding: 14px; border: 1px solid #d8e2eb; border-radius: 12px; background: #f4f8fe; }
+.arrival-status[hidden] { display: none; }
+.arrival-status-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.arrival-status strong { font-size: 14px; }
+.arrival-status p { margin: 4px 0 0; color: #53677e; font-size: 12px; line-height: 1.5; }
+.arrival-status[data-mode="error"], .arrival-status[data-stale="true"] { background: #fff7ed; border-color: #fed7aa; }
+@media (max-width: 640px) { .trip-summary { padding: 16px; } .trip-heading { flex-wrap: wrap; } .trip-heading h3 { font-size: 18px; } .arrival-status-row { flex-wrap: wrap; } }
