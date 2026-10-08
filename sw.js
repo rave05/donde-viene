@@ -1,5 +1,5 @@
 /* Cachea la interfaz y datos estáticos. Nunca guarda respuestas de la API de transporte. */
-const CACHE = "dv-shell-20261008-v8";
+const CACHE = "dv-shell-20261008-v9";
 const CORE = [
   "index.html",
   "app-util.js",
@@ -22,6 +22,7 @@ const CORE = [
   "mapa-puntos.js",
   "mapa-layout.js",
   "mapa-gadgets.js",
+  "mapa-ubicacion.js",
   "mapa-gadgets.css",
   "mapa-layout.css",
   "viajes-habituales.js",

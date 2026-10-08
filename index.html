@@ -1427,7 +1427,7 @@
   <link rel="stylesheet" href="./viaje.css?v=20261008-8">
   <link rel="stylesheet" href="./extras.css?v=20261008-3">
   <link rel="stylesheet" href="./mapa-layout.css?v=20261008-1">
-  <link rel="stylesheet" href="./mapa-gadgets.css?v=20261008-2">
+  <link rel="stylesheet" href="./mapa-gadgets.css?v=20261008-3">
   <link rel="stylesheet" href="./bienvenida.css?v=20261008-1">
 </head>
 
@@ -5802,6 +5802,13 @@
       },
       buscar: async () => { if (btnBuscarRuta.disabled) return false; await buscarRutaSimple(); return true; },
       centro: () => destinoRutaActivo || ultimaUbicacionUsuario || { lat: mapa.getCenter().lat, lon: mapa.getCenter().lng },
+      centrarUbicacionMapa(p) {
+        ultimaUbicacionUsuario = p;
+        if (marcadorUsuario) marcadorUsuario.setLatLng([p.lat, p.lon]);
+        else marcadorUsuario = L.marker([p.lat, p.lon], { icon: iconoUsuario, zIndexOffset: 1000 }).addTo(mapa).bindPopup('📍 TU UBICACIÓN');
+        if (circuloUsuario) circuloUsuario.setLatLng([p.lat, p.lon]);
+        mapa.setView([p.lat, p.lon], Math.max(mapa.getZoom(), 15));
+      },
       dibujarCaminatas(tramos) {
         if (capasExtrasViaje) mapa.removeLayer(capasExtrasViaje);
         if (tramos.some(t => t.tipo === 'calles')) window.ocultarCaminatasAproximadas?.();
@@ -5875,6 +5882,7 @@
   <script src="./bienvenida.js?v=20261008-1"></script>
   <script src="./mapa-layout.js?v=20261008-3"></script>
   <script src="./mapa-gadgets.js?v=20261008-2"></script>
+  <script src="./mapa-ubicacion.js?v=20261008-1"></script>
   <h1>Beta V0.7</h1>
 </body>
 </html>
