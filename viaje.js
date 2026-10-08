@@ -97,7 +97,10 @@
     pasos += paso('🚶 Llegá a tu destino', distancia(c.destino.distanciaRuta) + ' desde la parada de bajada hasta ' + (contexto.destino || 'el destino') + '.');
     const total = caminatas.every(distanciaValida) ? caminatas.reduce((s, v) => s + Number(v), 0) : null;
     const titulo = combinada ? c.line1 + ' + ' + c.line2 + ' · 1 transbordo' : c.line + ' · Sin transbordos';
-    return '<section class="trip-summary" aria-labelledby="tituloResumenViaje">' +
+    const coordenadas = c.destino.location?.coordinates || [];
+    const lat = Number(coordenadas[1]), lon = Number(coordenadas[0]);
+    const destinoGPS = coordenadas.length >= 2 && Number.isFinite(lat) && Number.isFinite(lon) ? ' data-bajada-lat="' + lat + '" data-bajada-lon="' + lon + '"' : '';
+    return '<section class="trip-summary" aria-labelledby="tituloResumenViaje"' + destinoGPS + '>' +
       '<div class="trip-heading"><div><span class="trip-eyebrow">Tu viaje elegido</span><h3 id="tituloResumenViaje">' + escapar(titulo) + '</h3></div>' +
       '<button type="button" class="trip-change" id="btnAlternativasViaje">Cambiar ruta</button></div>' +
       '<p class="trip-endpoints">' + escapar(contexto.origen || 'Origen') + ' → ' + escapar(contexto.destino || 'Destino') + '</p>' +

@@ -6,9 +6,10 @@
   panel.id = 'guiaViaje';
   panel.className = 'trip-guide';
   panel.hidden = true;
-  panel.setAttribute('aria-label', 'Guía del viaje con avance manual');
+  panel.setAttribute('aria-label', 'Guía y seguimiento del viaje');
   panel.innerHTML = '<div class="trip-guide-header"><div><span id="progresoGuiaViaje" class="trip-guide-progress"></span><strong id="accionGuiaViaje" role="status"></strong></div><button id="btnSalirGuiaViaje" class="trip-guide-exit" type="button" aria-label="Salir del modo viaje">×</button></div>' +
     '<div class="trip-guide-controls"><button id="btnAnteriorGuiaViaje" class="trip-change" type="button">Anterior</button><button id="btnSiguienteGuiaViaje" class="trip-guide-next" type="button">Paso completado</button></div>' +
+    '<button id="btnSeguirViaje" class="trip-start" type="button">Ya subí · seguir mi viaje</button><p id="estadoSeguimientoViaje" class="trip-tracking-status" role="status" hidden></p><button id="btnCentrarViaje" class="trip-change" type="button" hidden>Volver a seguirme</button><p class="trip-note">El seguimiento usa el GPS del teléfono. Mantené la app abierta y la pantalla encendida.</p>' +
     '<details id="detalleGuiaViaje"><summary>Detalles de este paso</summary><p id="descripcionGuiaViaje"></p><button id="btnMapaGuiaViaje" class="trip-change" type="button">Ver mapa</button></details>';
   document.body.appendChild(panel);
   const progreso = document.getElementById('progresoGuiaViaje');
@@ -31,6 +32,7 @@
     if (boton) boton.textContent = 'Viaje en curso';
   }
   function cerrar(terminado = false) {
+    window.seguimientoViaje?.detener();
     activa = false;
     pasos = [];
     indice = 0;
@@ -60,6 +62,12 @@
     indice = 0;
     detalle.open = false;
     renderizar();
+  });
+  document.getElementById('btnSeguirViaje').addEventListener('click', () => {
+    if (!activa) return;
+    const bus = pasos.findIndex(paso => paso.titulo.startsWith('🚌'));
+    if (indice < bus) { indice = bus; renderizar(); }
+    window.seguimientoViaje?.iniciar();
   });
   siguiente.addEventListener('click', () => {
     if (!activa) return;

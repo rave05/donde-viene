@@ -1420,7 +1420,7 @@
   </style>
   <link rel="stylesheet" href="./mobile.css?v=20261008-1">
   <link rel="stylesheet" href="./patrocinios.css?v=20261008-2">
-  <link rel="stylesheet" href="./viaje.css?v=20261008-5">
+  <link rel="stylesheet" href="./viaje.css?v=20261008-6">
 </head>
 
 <body>
@@ -1594,7 +1594,7 @@
 
   <!-- Catálogo local de lugares conocidos -->
   <script src="./lugares.js?v=20261002-3"></script>
-  <script src="./viaje.js?v=20261008-6"></script>
+  <script src="./viaje.js?v=20261008-7"></script>
 
   <!-- Leaflet -->
 
@@ -1964,6 +1964,17 @@
 
     let todasLasParadas = [];
 
+    window.mapaSeguimientoViaje = {
+      actualizar(lat, lon, precision, centrar) {
+        if (!marcadorUsuario) marcadorUsuario = L.marker([lat, lon], { icon: iconoUsuario, zIndexOffset: 1000 }).addTo(mapa);
+        marcadorUsuario.setLatLng([lat, lon]).bindPopup('📍 Tu ubicación durante el viaje');
+        if (!circuloUsuario) circuloUsuario = L.circle([lat, lon], { radius: precision, color: '#2167bc', weight: 1, fillOpacity: 0.08 }).addTo(mapa);
+        circuloUsuario.setLatLng([lat, lon]).setRadius(precision);
+        if (centrar) mapa.setView([lat, lon], Math.max(mapa.getZoom(), 16), { animate: false });
+      },
+      preparar() { mapa.invalidateSize(); if (document.body.classList.contains('trip-tracking-active')) limpiarMarcadoresBusesVivos(); },
+      alMover(callback) { mapa.on('dragstart', callback); }
+    };
     let marcadorUsuario = null;
 
     let circuloUsuario = null;
@@ -4184,6 +4195,7 @@
     ) {
 
       limpiarMarcadoresBusesVivos();
+      if (document.body.classList.contains('trip-tracking-active')) return;
 
       if (!Array.isArray(buses)) {
         return;
@@ -5675,7 +5687,8 @@
     <p class="favorite-note">Las llegadas en vivo requieren conexión a internet.</p>
   </dialog>
   <script src="./mobile.js?v=20261008-1"></script>
-  <script src="./guia-viaje.js?v=20261008-1"></script>
+  <script src="./seguimiento-viaje.js?v=20261008-1"></script>
+  <script src="./guia-viaje.js?v=20261008-2"></script>
   <h1>Beta V0.6</h1>
 </body>
 </html>
