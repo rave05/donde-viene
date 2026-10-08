@@ -90,6 +90,7 @@
       '<button type="button" class="trip-change" id="btnAlternativasViaje">Cambiar ruta</button></div>' +
       '<p class="trip-endpoints">' + escapar(contexto.origen || 'Origen') + ' → ' + escapar(contexto.destino || 'Destino') + '</p>' +
       (total != null ? '<p class="trip-walking">🚶 Caminata total aproximada: <strong>' + distancia(total) + '</strong></p>' : '') +
+      '<button type="button" class="trip-start" id="btnEmpezarViaje">Empezar viaje</button><p class="trip-guide-note" id="estadoGuiaViaje" role="status" hidden></p>' +
       '<details class="trip-detail"><summary><span class="trip-detail-closed">Ver pasos y caminatas</span><span class="trip-detail-open">Ocultar pasos y caminatas</span></summary>' +
       '<ol class="trip-steps">' + pasos + '</ol>' +
       '<p class="trip-note">Las distancias de caminata son en línea recta. El recorrido por calles puede ser más largo. Consultá las llegadas del bus debajo del mapa.</p></details>' +

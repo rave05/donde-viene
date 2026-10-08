@@ -1420,7 +1420,7 @@
   </style>
   <link rel="stylesheet" href="./mobile.css?v=20261008-1">
   <link rel="stylesheet" href="./patrocinios.css?v=20261008-2">
-  <link rel="stylesheet" href="./viaje.css?v=20261008-4">
+  <link rel="stylesheet" href="./viaje.css?v=20261008-5">
 </head>
 
 <body>
@@ -1594,7 +1594,7 @@
 
   <!-- Catálogo local de lugares conocidos -->
   <script src="./lugares.js?v=20261002-3"></script>
-  <script src="./viaje.js?v=20261008-4"></script>
+  <script src="./viaje.js?v=20261008-5"></script>
 
   <!-- Leaflet -->
 
@@ -2680,6 +2680,7 @@
             marcarRutaSeleccionada(indiceCandidato);
             cerrarSelectorRuta();
             btnCambiarRuta.hidden = false;
+            window.dispatchEvent(new Event('donde-viene:viaje-cambio'));
             resultadoRuta.innerHTML = window.crearResumenViaje(candidato, contextoViajeActivo);
             document.getElementById('btnAlternativasViaje')?.addEventListener('click', abrirSelectorRuta);
             scrollSuaveA(resultadoRuta);
@@ -2889,6 +2890,7 @@
       }
 
       btnBuscarRuta.disabled = true;
+      window.dispatchEvent(new Event('donde-viene:viaje-cambio'));
       document.getElementById('preferenciaViaje').disabled = true;
       versionViajeElegido++;
       suprimirScrollAutomatico = false;
@@ -3735,6 +3737,7 @@
     ) {
 
       if (!conservarRuta) {
+        window.dispatchEvent(new Event('donde-viene:viaje-cambio'));
         versionViajeElegido++;
         suprimirScrollAutomatico = false;
         destinoRutaActivo = null;
@@ -4359,6 +4362,7 @@
       }
 
       if (!suprimirScrollAutomatico && resultadoRuta.querySelector('.trip-summary')) {
+        window.dispatchEvent(new Event('donde-viene:viaje-cambio'));
         resultadoRuta.innerHTML = '';
       }
 
@@ -5728,6 +5732,7 @@
     <p class="favorite-note">Las llegadas en vivo requieren conexión a internet.</p>
   </dialog>
   <script src="./mobile.js?v=20261008-1"></script>
+  <script src="./guia-viaje.js?v=20261008-1"></script>
   <h1>Beta V0.6</h1>
 </body>
 </html>
