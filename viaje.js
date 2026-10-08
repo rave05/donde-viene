@@ -94,4 +94,53 @@
       '<p class="trip-note">Las distancias de caminata son en línea recta. El recorrido por calles puede ser más largo. Consultá las llegadas del bus debajo del mapa.</p>' +
       (c.coincidenciaAproximada ? '<p class="trip-note">Confirmá el sentido de la línea antes de subir: esta opción coincide por número de línea.</p>' : '') + '</section>';
   };
+  window.agruparOpcionesViaje = function(opciones) {
+    const grupos = new Map();
+    const numero = valor => String(valor ?? '').trim().toUpperCase();
+    for (const c of opciones) {
+      const lineas = c.line1 && c.line2 ? [numero(c.line1), numero(c.line2)] : [numero(c.line)];
+      const clave = JSON.stringify(lineas);
+      if (!grupos.has(clave)) grupos.set(clave, { lineas, opciones: [] });
+      grupos.get(clave).opciones.push(c);
+    }
+    return [...grupos.values()];
+  };
+  window.crearSelectorViajesAgrupados = function(grupos, preferencia = 'transbordos') {
+    const candidatos = [];
+    const html = grupos.map((grupo, numeroGrupo) => {
+      const variantes = grupo.opciones;
+      const repetidas = grupo.lineas.map(linea => variantes.map(() => linea).join('/')).join(' + ');
+      const distancias = variantes.map(caminataTotal).filter(Number.isFinite);
+      const caminata = distancias.length ? (variantes.length > 1 ? 'Desde ' : '') + distancia(Math.min(...distancias)) + ' de caminata aprox.' : 'Caminata sin confirmar';
+      const transbordos = grupo.lineas.length > 1 ? '1 transbordo' : 'Sin transbordos';
+      const recomendacion = numeroGrupo === 0 ?
+        (preferencia === 'caminar' && distancias.length ? 'Menor caminata encontrada' :
+          preferencia === 'transbordos' ? 'Menos transbordos' : '') : '';
+      function opcion(c, indiceVariante) {
+        const indice = candidatos.push(c) - 1;
+        const sentidos = c.line1 && c.line2 ?
+          c.line1 + (c.destination1 ? ' → ' + c.destination1 : '') + ' · ' + c.line2 + (c.destination2 ? ' → ' + c.destination2 : '') :
+          (c.destination ? 'Hacia ' + c.destination : 'Sentido sin confirmar');
+        const total = caminataTotal(c);
+        return '<button type="button" class="route-result-button trip-variant' + (variantes.length === 1 ? ' trip-single route-result' : '') + '" data-route-index="' + indice + '">' +
+          (variantes.length === 1 && recomendacion ? '<span class="trip-recommendation">' + escapar(recomendacion) + '</span>' : '') +
+          '<span class="trip-group-title">' + (variantes.length > 1 ? 'Variante ' + (indiceVariante + 1) : '🚌 ' + escapar(repetidas)) + '</span>' +
+          '<span class="trip-variant-direction">' + escapar(sentidos) + '</span>' +
+          '<span class="trip-group-metrics">' + transbordos + ' · 🚶 ' + (Number.isFinite(total) ? distancia(total) + ' aprox.' : 'Caminata sin confirmar') + '</span>' +
+          (variantes.length > 1 ? '<span class="trip-variant-stops">Subí: ' + escapar(parada(c.origen)) + ' · Bajá: ' + escapar(parada(c.destino)) +
+            (c.line1 && c.line2 ? ' · Combiná: ' + escapar(parada(c.combinacion)) +
+              (c.combinacion2 && String(c.combinacion2.busstopId) !== String(c.combinacion?.busstopId) ? ' → ' + escapar(parada(c.combinacion2)) : '') : '') + '</span>' : '') +
+          (c.coincidenciaAproximada ? '<span class="trip-variant-stops">Confirmá el sentido antes de subir.</span>' : '') +
+          '<span class="trip-variant-action">' + (variantes.length > 1 ? 'Elegir esta variante' : 'Ver viaje paso a paso') + ' →</span></button>';
+      }
+      if (variantes.length === 1) return opcion(variantes[0], 0);
+      return '<details class="route-result trip-route-group"><summary>' +
+        (recomendacion ? '<span class="trip-recommendation">' + escapar(recomendacion) + '</span>' : '') +
+        '<span class="trip-group-title">🚌 ' + escapar(repetidas) + '</span>' +
+        '<span class="trip-group-metrics">' + transbordos + ' · 🚶 ' + caminata + '</span>' +
+        '<span class="trip-variant-action">' + variantes.length + ' variantes · Elegir variante</span></summary>' +
+        '<div class="trip-variants">' + variantes.map(opcion).join('') + '</div></details>';
+    }).join('');
+    return { html, candidatos };
+  };
 })();

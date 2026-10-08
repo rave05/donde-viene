@@ -29,3 +29,17 @@
 .trip-preference p { width: 100%; margin: 0; color: #53677e; font-size: 12px; line-height: 1.5; }
 .trip-recommendation { display: inline-block; margin-bottom: 8px; padding: 5px 8px; border-radius: 8px; background: #e7f4ec; color: #24603c; font-size: 12px; font-weight: 700; }
 .trip-option-metrics { margin: 8px 0; font-weight: 700; color: #21364f; font-size: 14px; }
+.trip-route-group { padding: 0; overflow: hidden; }
+.trip-route-group > summary { padding: 12px 14px; cursor: pointer; min-height: 44px; list-style-position: inside; }
+.trip-route-group > summary:focus-visible { outline: 3px solid #2167bc; outline-offset: -3px; }
+.trip-group-title, .trip-variant-direction, .trip-group-metrics, .trip-variant-action, .trip-variant-stops { display: block; }
+.trip-group-title { margin: 2px 0 5px; font-size: 16px; font-weight: 800; color: #164b8c; overflow-wrap: anywhere; }
+.trip-group-metrics { color: #344054; font-size: 13px; line-height: 1.5; }
+.trip-variant-direction { margin: 4px 0; color: #53677e; font-size: 13px; line-height: 1.45; }
+.trip-variant-action { margin-top: 6px; color: #164b8c; font-size: 12px; font-weight: 700; }
+.trip-variant-stops { margin-top: 6px; color: #53677e; font-size: 12px; line-height: 1.5; }
+.trip-variants { border-top: 1px solid #d7e7fb; }
+.trip-route-group .trip-variant { border: 0; border-bottom: 1px solid #d7e7fb; border-radius: 0; box-shadow: none; background: #fff; margin: 0; padding: 12px 14px; }
+.trip-route-group .trip-variant:last-child { border-bottom: 0; }
+.trip-route-group .trip-variant.is-current-route { background: #e7f4ec; }
+.trip-single { padding: 12px 14px; }

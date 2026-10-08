@@ -1420,7 +1420,7 @@
   </style>
   <link rel="stylesheet" href="./mobile.css?v=20261008-1">
   <link rel="stylesheet" href="./patrocinios.css?v=20261008-2">
-  <link rel="stylesheet" href="./viaje.css?v=20261008-2">
+  <link rel="stylesheet" href="./viaje.css?v=20261008-3">
 </head>
 
 <body>
@@ -1594,7 +1594,7 @@
 
   <!-- Catálogo local de lugares conocidos -->
   <script src="./lugares.js?v=20261002-3"></script>
-  <script src="./viaje.js?v=20261008-2"></script>
+  <script src="./viaje.js?v=20261008-3"></script>
 
   <!-- Leaflet -->
 
@@ -2673,10 +2673,11 @@
         .querySelectorAll('[data-route-index], [data-combo-index]')
         .forEach((boton, indice) => {
           boton.addEventListener('click', () => {
-            const candidato = candidatos[indice];
+            const indiceCandidato = Number(boton.dataset.routeIndex ?? boton.dataset.comboIndex ?? indice);
+            const candidato = candidatos[indiceCandidato];
             if (!candidato) return;
 
-            marcarRutaSeleccionada(indice);
+            marcarRutaSeleccionada(indiceCandidato);
             cerrarSelectorRuta();
             btnCambiarRuta.hidden = false;
             resultadoRuta.innerHTML = window.crearResumenViaje(candidato, contextoViajeActivo);
@@ -3396,24 +3397,9 @@
           return;
         }
         const ordenadas = window.ordenarOpcionesViaje(opciones, preferencia);
-        const mostradas = [];
-        const lineasMostradas = new Set();
-        for (const candidato of ordenadas) {
-          const clave = candidato.line1 && candidato.line2
-            ? candidato.line1 + '+' + candidato.line2 : String(candidato.line);
-          if (!lineasMostradas.has(clave)) {
-            mostradas.push(candidato);
-            lineasMostradas.add(clave);
-          }
-          if (mostradas.length === 4) break;
-        }
-        if (mostradas.length < 4) {
-          for (const candidato of ordenadas) {
-            if (!mostradas.includes(candidato)) mostradas.push(candidato);
-            if (mostradas.length === 4) break;
-          }
-        }
-        mostrarSelectorRuta('mixta', mostradas, window.crearTarjetasViaje(mostradas, preferencia));
+        const grupos = window.agruparOpcionesViaje(ordenadas).slice(0, 4);
+        const selector = window.crearSelectorViajesAgrupados(grupos, preferencia);
+        mostrarSelectorRuta('mixta', selector.candidatos, selector.html);
         selectorRutaResumen.textContent += preferencia === 'caminar' ? ' · Caminar menos' : ' · Menos transbordos';
 
       } catch (error) {
