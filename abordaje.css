@@ -1,0 +1,12 @@
+.boarding-card { margin: 12px 0; padding: 12px 14px; border: 1px solid #d2deed; border-radius: 14px; background: #f5f8fc; color: #14263f; }
+.boarding-title { display: block; margin-top: 4px; font-size: 17px; }
+.boarding-message, .boarding-card p { font-size: 14px; line-height: 1.5; margin: 6px 0; }
+.boarding-card[data-estado="margen"] { background: #edf8f2; border-color: #b4d9c4; }
+.boarding-card[data-estado="justo"] { background: #fff9e4; border-color: #e4d18e; }
+.boarding-card[data-estado="tarde"] { background: #fff2ef; border-color: #f2c8bd; }
+.boarding-card summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-size: 14px; font-weight: 700; }
+.boarding-card summary::before { content: '▸'; margin-right: 8px; }
+.boarding-card details[open] summary::before { content: '▾'; }
+.boarding-card [hidden] { display: none; }
+.boarding-card :focus-visible { outline: 3px solid #1769e0; outline-offset: 2px; }
+body.trip-guide-active .boarding-card { display: none; }

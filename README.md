@@ -129,3 +129,9 @@ Los módulos de horarios y recorridos comparten las descargas en curso y permite
 `actualizacion-buses.js` usa 20 s como intervalo normal entre consultas completadas; el tiempo de red se suma. En segundo plano se detiene el seguimiento de buses; al volver respeta el tiempo mínimo pendiente. Los errores duplican la espera hasta 120 s; HTTP 429 exige al menos 60 s y respeta `Retry-After` si pide más. Una respuesta satisfactoria restablece el ritmo normal.
 
 La comparación conserva todas las rutas candidatas. La estimación adicional tiene un presupuesto de 12 s y las consultas de próximas salidas de 6 s. Si falta información se etiqueta como sin confirmar; esos límites no representan un tiempo total garantizado para una búsqueda.
+
+## Antes de subir
+
+`abordaje.js` y `abordaje.css` agregan una tarjeta compacta al viaje elegido. Compara la caminata por calles desde el origen consultado (velocidad de `DV.config.velocidadCaminata`) con una llegada estimada en vivo de hasta 90 s de antigüedad. Un margen menor de 2 min se marca como justo; un margen negativo aconseja considerar el siguiente. No usa horarios programados, copias guardadas ni distancias en línea recta para recomendar que el usuario alcanza el bus. No agrega peticiones de red: escucha las llegadas de la parada/variante seleccionada y actualiza el cálculo local cada 10 s.
+
+El desplegable identifica la parada por calle/ID y el cartel de destino esperado, permite centrar la parada en el mapa y muestra la segunda línea si hay combinación. No infiere vereda ni lado de la calle. Al iniciar el modo viaje se oculta la orientación de primera subida.

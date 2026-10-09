@@ -1431,6 +1431,7 @@
   <link rel="stylesheet" href="./redisenio.css?v=20261008-1">
   <link rel="stylesheet" href="./bienvenida.css?v=20261008-1">
   <link rel="stylesheet" href="./beta.css?v=20261009-1">
+  <link rel="stylesheet" href="./abordaje.css?v=20261009-1">
 </head>
 
 <body>
@@ -4828,9 +4829,11 @@
             seleccion.destination
           );
           informarLlegadas('eta');
+          window.dispatchEvent(new CustomEvent('donde-viene:llegadas-recibidas', {detail: {stopId, variantId, buses: datos, timestamp: Date.now()}}));
 
         } else {
 
+          window.dispatchEvent(new CustomEvent('donde-viene:llegadas-recibidas', {detail: {stopId, variantId, buses: [], timestamp: Date.now()}}));
           await mostrarBusesLejanos(
             seleccion, controller.signal
           );
@@ -5853,5 +5856,6 @@
     <p class="favorite-note">Si no se abre el correo, copiá el reporte y enviálo a dondevieneadvertisement@gmail.com.</p>
   </dialog>
   <script src="./beta.js?v=20261009-1"></script>
+  <script src="./abordaje.js?v=20261009-1"></script>
 </body>
 </html>

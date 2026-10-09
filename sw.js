@@ -1,5 +1,5 @@
 /* Cachea la interfaz y datos estáticos. Nunca guarda respuestas de la API de transporte. */
-const CACHE = "dv-shell-20261009-v14";
+const CACHE = "dv-shell-20261009-v15";
 const CORE = [
   "index.html",
   "app-util.js",
@@ -41,6 +41,8 @@ const CORE = [
   "bienvenida.css",
   "beta.js",
   "beta.css",
+  "abordaje.js",
+  "abordaje.css",
   "manifest.webmanifest",
   "icons/icon-192.png",
   "icons/icon-512.png",
