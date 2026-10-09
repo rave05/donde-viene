@@ -1,0 +1,53 @@
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const { JSDOM } = require('jsdom');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const dom = new JSDOM(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), {url: 'https://example.test', runScripts: 'outside-only'});
+const w = dom.window, d = w.document;
+w.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+w.HTMLDialogElement.prototype.close = function () { this.open = false; };
+let copied, rejected = false;
+Object.defineProperty(w.navigator, 'clipboard', {value: {writeText: async t => { if (rejected) throw Error('denied'); copied = t; }}});
+let lineas = '127 → ADUANA / 185 → POCITOS';
+w.DondeVieneApp = {
+  leerBusqueda: () => ({origen: 'Punto en el mapa (-34.123, -56.789)', destino: 'Montevideo Shopping'}),
+  leerContextoReporte: () => ({lineas, subida: 'AV LUIS BATLLE BERRES (ID 123)', stopLat: -34.123, stopLon: -56.789})
+};
+w.eval(fs.readFileSync(path.join(root, 'beta.js'), 'utf8'));
+const texto = d.getElementById('textoReporte'), check = d.getElementById('incluirContextoReporte');
+d.getElementById('btnReportarProblema').click();
+assert(d.getElementById('reporteProblema').open);
+assert(texto.value.includes(lineas));
+assert(texto.value.includes('Montevideo Shopping'));
+assert(!texto.value.includes('-34.123'));
+assert(!texto.value.includes('-56.789'));
+texto.value = 'No viene hacia mi parada.' + texto.value;
+check.click();
+assert(texto.value.startsWith('No viene hacia mi parada.'));
+assert(!texto.value.includes('AV LUIS'));
+assert(!texto.value.includes('Montevideo Shopping'));
+check.click();
+assert.equal(texto.value.split('Recorrido consultado:').length, 2);
+texto.value = 'Texto elegido con ñ & +';
+texto.dispatchEvent(new w.Event('input'));
+const link = new URL(d.getElementById('correoReporte').href);
+assert.equal(link.searchParams.get('body'), texto.value);
+assert.equal(link.pathname, 'dondevieneadvertisement@gmail.com');
+(async () => {
+  d.getElementById('copiarReporte').click();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(copied, texto.value);
+  rejected = true;
+  d.getElementById('copiarReporte').click();
+  await new Promise(resolve => setImmediate(resolve));
+  assert(d.getElementById('estadoReporte').textContent.includes('Seleccionamos'));
+  d.getElementById('cerrarReporte').click();
+  assert(!d.getElementById('reporteProblema').open);
+  lineas = '494 → BUCEO';
+  d.getElementById('btnReportarProblema').click();
+  assert(texto.value.includes(lineas));
+  assert(!texto.value.includes('127'));
+  dom.window.close();
+  console.log('Beta: reporte editable, contexto actual, privacidad y copia OK');
+})();

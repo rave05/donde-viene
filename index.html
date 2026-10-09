@@ -1430,6 +1430,7 @@
   <link rel="stylesheet" href="./mapa-gadgets.css?v=20261008-3">
   <link rel="stylesheet" href="./redisenio.css?v=20261008-1">
   <link rel="stylesheet" href="./bienvenida.css?v=20261008-1">
+  <link rel="stylesheet" href="./beta.css?v=20261009-1">
 </head>
 
 <body>
@@ -1453,6 +1454,11 @@
 
 
   <main class="app-shell">
+
+    <aside class="beta-notice" aria-label="Versión beta">
+      <div><strong>Beta · Probala y ayudanos a mejorar</strong><p>En vivo: llegada estimada. Programado: horario previsto, puede cambiar.</p></div>
+      <button id="btnReportarProblema" class="mobile-button" type="button">Reportar un problema</button>
+    </aside>
 
     <details id="bienvenida" class="welcome-card">
       <summary>👋 Cómo usar ¿Dónde Viene?</summary>
@@ -5710,6 +5716,19 @@
         const marker = L.marker([punto.lat, punto.lon], { icon: icono, zIndexOffset: 1400 }).addTo(mapa).bindPopup(origen ? 'Origen elegido en el mapa' : 'Destino elegido en el mapa').openPopup();
         if (origen) marcadorOrigenRuta = marker; else marcadorDestinoRuta = marker;
       },
+      leerContextoReporte() {
+        const nombre = p => p ? ([p.street1, p.street2].filter(Boolean).join(' y ') || 'Parada ' + p.busstopId) + ' (ID ' + p.busstopId + ')' : '';
+        const c = resultadoRuta.querySelector('.trip-summary') ? candidatoViajeActivo : null;
+        return {
+          lineas: c ? (c.line1 && c.line2 ? c.line1 + ' → ' + (c.destination1 || '') + ' / ' + c.line2 + ' → ' + (c.destination2 || '') : c.line + ' → ' + (c.destination || '')) : seleccionLlegadasActiva ? seleccionLlegadasActiva.linea + ' → ' + seleccionLlegadasActiva.destination : '',
+          subida: nombre(c?.origen || paradaActual),
+          combinacion: nombre(c?.combinacion),
+          segundaParada: nombre(c?.combinacion2),
+          bajada: nombre(c?.destino),
+          variante: seleccionLlegadasActiva?.variantId || '',
+          estado: document.getElementById('tipoLlegadas').textContent
+        };
+      },
       leerBusqueda: () => ({ origen: origenRuta.value.trim(), destino: destinoRuta.value.trim(), preferencia: document.getElementById('preferenciaViaje').value }),
       aplicarBusqueda(receta) {
         for (const [input, valor] of [[origenRuta, receta.origen], [destinoRuta, receta.destino]]) {
@@ -5802,6 +5821,17 @@
   <script src="./mapa-gadgets.js?v=20261008-2"></script>
   <script src="./mapa-ubicacion.js?v=20261008-1"></script>
   <script src="./redisenio.js?v=20261008-1"></script>
-  <h1>Beta V0.7</h1>
+  <dialog id="reporteProblema" class="mobile-dialog" aria-labelledby="tituloReporte">
+    <div class="mobile-dialog-heading"><h2 id="tituloReporte">Reportar un problema</h2><button id="cerrarReporte" class="mobile-close" type="button" aria-label="Cerrar reporte">×</button></div>
+    <p>Contanos qué esperabas y qué pasó. Podés editar los datos antes de enviarlos.</p>
+    <label class="report-context"><input id="incluirContextoReporte" type="checkbox" checked> Incluir recorrido y paradas consultadas</label>
+    <label for="textoReporte">Tu reporte</label>
+    <textarea id="textoReporte" rows="9" maxlength="3000"></textarea>
+    <p class="favorite-note">No agregamos coordenadas GPS. El correo se abre como borrador: vos decidís si enviarlo. Podés adjuntar una captura desde tu correo.</p>
+    <div class="mobile-dialog-actions"><button id="copiarReporte" class="mobile-button" type="button">Copiar reporte</button><a id="correoReporte" class="mobile-button mobile-primary" href="mailto:dondevieneadvertisement@gmail.com">Abrir correo</a></div>
+    <p id="estadoReporte" role="status"></p>
+    <p class="favorite-note">Si no se abre el correo, copiá el reporte y enviálo a dondevieneadvertisement@gmail.com.</p>
+  </dialog>
+  <script src="./beta.js?v=20261009-1"></script>
 </body>
 </html>

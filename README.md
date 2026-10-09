@@ -117,3 +117,7 @@ buses-mapa-vista.js controla solo la cámara de los buses: encuadra una vez por 
 ## Buses GPS sin ETA
 
 buses-sentido.js reemplaza la comparación radial por proyección y avance sobre los patrones de la línea que contienen la parada y coinciden exactamente con el destino del sentido. Requiere dos muestras frescas del mismo coche/empresa, ubicado antes de la parada y avanzando sobre la ruta. Omite posiciones fuera del recorrido, ramas ambiguas, saltos incompatibles y datos antiguos o cacheados. Sin geometría o avance confirmado muestra el horario programado disponible, sin fabricar ETA. Las llegadas oficiales siguen usando el endpoint de próximas llegadas. La fixture tests/fixtures/127-aduana.json proviene de recorridos/127.json del repositorio y cubre el coche ya pasado.
+
+## Beta pública
+
+`beta.js` y `beta.css` ofrecen un aviso compacto y reportes voluntarios por correo, con contexto textual editable y sin coordenadas GPS. El proceso y las verificaciones pendientes en la calle están en `BETA.md`.
