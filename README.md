@@ -135,3 +135,7 @@ La comparación conserva todas las rutas candidatas. La estimación adicional ti
 `abordaje.js` y `abordaje.css` agregan una tarjeta compacta al viaje elegido. Compara la caminata por calles desde el origen consultado (velocidad de `DV.config.velocidadCaminata`) con una llegada estimada en vivo de hasta 90 s de antigüedad. Un margen menor de 2 min se marca como justo; un margen negativo aconseja considerar el siguiente. No usa horarios programados, copias guardadas ni distancias en línea recta para recomendar que el usuario alcanza el bus. No agrega peticiones de red: escucha las llegadas de la parada/variante seleccionada y actualiza el cálculo local cada 10 s.
 
 El desplegable identifica la parada por calle/ID y el cartel de destino esperado, permite centrar la parada en el mapa y muestra la segunda línea si hay combinación. No infiere vereda ni lado de la calle. Al iniciar el modo viaje se oculta la orientación de primera subida.
+
+## Reconsultar si el bus no llegó
+
+`alternativas-ahora.js` agrega una acción al viaje elegido para buscar de nuevo desde el origen elegido o desde una ubicación GPS reciente (hasta 30 s, precisión hasta 150 m). Se conserva el destino y la preferencia, y se cambia la salida planificada a ahora explícitamente. No afirma que el servicio haya sido cancelado. Cancelación, falta de permiso, ubicación imprecisa/antigua o desconexión conservan el viaje previo. Impide acciones simultáneas y aplica 30 s entre reconsultas iniciadas. En el modo viaje se oculta esta acción de la primera subida.

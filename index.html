@@ -1432,6 +1432,7 @@
   <link rel="stylesheet" href="./bienvenida.css?v=20261008-1">
   <link rel="stylesheet" href="./beta.css?v=20261009-1">
   <link rel="stylesheet" href="./abordaje.css?v=20261009-1">
+  <link rel="stylesheet" href="./alternativas-ahora.css?v=20261009-1">
 </head>
 
 <body>
@@ -5857,5 +5858,14 @@
   </dialog>
   <script src="./beta.js?v=20261009-1"></script>
   <script src="./abordaje.js?v=20261009-1"></script>
+  <dialog id="alternativasAhora" class="mobile-dialog" aria-labelledby="tituloAlternativasAhora">
+    <div class="mobile-dialog-heading"><h2 id="tituloAlternativasAhora">Buscar alternativas</h2><button id="cerrarAlternativasAhora" class="mobile-close" type="button" aria-label="Cerrar alternativas">×</button></div>
+    <p id="destinoAlternativasAhora"></p>
+    <p>Volvemos a consultar para <strong>salir ahora</strong>, conservando tu destino y preferencia. No confirma que el bus haya cancelado su servicio.</p>
+    <div class="mobile-dialog-actions"><button id="alternativasDesdeAqui" class="mobile-button mobile-primary" type="button">Buscar desde mi ubicación actual</button><button id="alternativasMismoOrigen" class="mobile-button" type="button">Repetir desde el origen elegido</button></div>
+    <p class="favorite-note">La primera opción pide una ubicación reciente. Si cancelás o no se obtiene, conservamos el viaje elegido.</p>
+    <p id="estadoAlternativasAhora" role="status"></p>
+  </dialog>
+  <script src="./alternativas-ahora.js?v=20261009-1"></script>
 </body>
 </html>

@@ -1,0 +1,6 @@
+.alternatives-trigger { display: block; width: 100%; margin: 10px 0; min-height: 44px; text-align: center; }
+body.trip-guide-active .alternatives-trigger { display: none; }
+#alternativasAhora { box-sizing: border-box; }
+#alternativasAhora p { font-size: 14px; line-height: 1.5; }
+#alternativasAhora .mobile-dialog-actions { flex-direction: column; }
+#alternativasAhora .mobile-button { font-size: 16px; }
