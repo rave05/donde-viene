@@ -67,6 +67,7 @@
     let mejor = null;
     for (let day = -1; day <= 7; day++) {
       const fecha = new Date(base.getTime() + day * 86400000);
+      if (mejor && fecha.getTime() >= mejor.salida) break;
       const servicios = Object.fromEntries(
         Object.keys(d.services).map((id) => [id, activo(d, id, fecha)]),
       );
@@ -91,9 +92,13 @@
       Number(p.lon) <= -56.15
     );
   }
-  function directas(d, origen, destino, referencia, radio = 800) {
+  function directas(d, origen, destino, referencia, radio = 800, horarios = new Map()) {
     const candidates = [];
+    const base = fechaLocal(referencia);
+    const serviciosActivos = new Set(Object.keys(d.services).filter(service=>
+      Array.from({length:8},(_,day)=>new Date(base.getTime()+day*86400000)).some(f=>activo(d,service,f))));
     for (const p of d.patterns) {
+      if (!p.trips.some(t=>serviciosActivos.has(t.service))) continue;
       const cercaA = p.stops
         .map((id, i) => ({
           i,
@@ -117,18 +122,10 @@
         for (const b of cercaB) {
           if (b.i <= a.i) continue;
           const ref = new Date(referencia.getTime() + (a.metros / 1.25) * 1000);
-          const horario = proximo(d, p, a.i, b.i, ref);
-          // Un calendario vencido no se ofrece como servicio vigente.
-          const base = fechaLocal(ref);
-          if (
-            !p.trips.some((t) =>
-              Array.from(
-                { length: 8 },
-                (_, day) => new Date(base.getTime() + day * 86400000),
-              ).some((f) => activo(d, t.service, f)),
-            )
-          )
-            continue;
+          if (!horarios.has(p)) horarios.set(p,new Map());
+          const cache = horarios.get(p), key = [a.i,b.i,ref.getTime()].join(':');
+          if (!cache.has(key)) cache.set(key,proximo(d,p,a.i,b.i,ref));
+          const horario = cache.get(key);
           const score = a.metros + b.metros + (horario ? 0 : 1500);
           const c = {
             p,
@@ -186,6 +183,8 @@
     const origenesUrbanos = urbanaCerca(origen, 800);
     const output = [];
     const conexionesUrbanas = new Map();
+    const horarios = new Map();
+    let puntosProcesados = 0;
     async function urbanasEn(punto) {
       const key = punto.lat + ':' + punto.lon;
       if (!conexionesUrbanas.has(key)) conexionesUrbanas.set(key,
@@ -195,11 +194,13 @@
       return conexionesUrbanas.get(key);
     }
     for (const punto of puntos) {
+      // Ceder al navegador durante búsquedas amplias para mantener la UI activa.
+      if (++puntosProcesados % 8 === 0) await new Promise(resolve=>setTimeout(resolve,0));
       if (!(await urbanasEn(punto)).length) continue;
       const metros = (
         saliendo
-          ? directas(d, origen, punto, referencia)
-          : directas(d, punto, destino, referencia)
+          ? directas(d, origen, punto, referencia,800,horarios)
+          : directas(d, punto, destino, referencia,800,horarios)
       ).filter(c => distancia(saliendo ? c.bajada : c.subida, punto) <= 300);
       for (const metro of metros) {
         const intercambio = saliendo ? metro.bajada : metro.subida;

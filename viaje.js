@@ -163,7 +163,7 @@
     const candidatos = [];
     const html = grupos.map((grupo, numeroGrupo) => {
       const variantes = grupo.opciones;
-      const repetidas = grupo.lineas.map(linea => variantes.map(() => linea).join('/')).join(' + ');
+      const repetidas = grupo.lineas.join(' + ');
       const distancias = variantes.map(caminataTotal).filter(Number.isFinite);
       const caminata = distancias.length ? (variantes.length > 1 ? 'Desde ' : '') + distancia(Math.min(...distancias)) + ' de caminata aprox.' : 'Caminata sin confirmar';
       const transbordos = grupo.lineas.length > 1 ? '1 transbordo' : 'Sin transbordos';
