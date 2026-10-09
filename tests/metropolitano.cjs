@@ -20,6 +20,7 @@ w.fetch = async (url) => {
 w.eval(src("app-util.js"));
 w.eval(src("recorridos.js"));
 w.eval(src("horarios.js"));
+w.eval(src("viaje.js"));
 w.eval(src("metropolitano.js"));
 const d = JSON.parse(src("metropolitano/corredor.json")),
   metro = w.DV.metro;
@@ -80,24 +81,54 @@ const a = d.stops["24204"],
     fechaSalida: f.toISOString(),
     fechaLlegadaLimite: f.toISOString(),
   });
-  assert(h.includes("no son llegadas en vivo"));
+  assert(h.html.includes("no son llegadas en vivo"));
   assert(h.includes("no están verificadas para ese límite"));
   assert(h.includes("Elegir este viaje"));
   const shape = await metro.tramoMetro(direct.find(c=>c.p.line==="230"));
   assert(shape.length > 20, "geometría oficial con curvas, no unión de paradas");
   const reverseShape = await metro.tramoMetro(metro.directas(d,b,a,f).find(c=>c.p.line==="230"));
   assert(reverseShape.length > 20, "geometría en sentido inverso");
-  let dibujado;
-  w.DondeVieneApp = {mostrarParadasMetropolitanas: (points,tramos) => {dibujado={points,tramos};},limpiarMetropolitano:()=>{dibujado=null;}};
-  w.document.getElementById("resultadoRuta").innerHTML=h;
-  w.document.querySelector("[data-metro-elegir]").click();
-  await new Promise(r=>setTimeout(r,20));
-  assert(dibujado?.tramos.length===1, "seleccionar dibuja geometría");
-  assert(w.document.querySelector("[data-metro-volver]"));
-  assert.equal([...w.document.querySelectorAll("[data-metro-opcion]")].filter(el=>!el.hidden).length,1);
-  w.document.querySelector("[data-metro-volver]").click();
-  assert.equal(dibujado,null);
-  assert([...w.document.querySelectorAll("[data-metro-opcion]")].every(el=>!el.hidden));
+  const layers=[];
+  const layer=(coords,options={})=>({coords,options,addTo(){layers.push(this);return this;},getLatLngs(){return (coords||[]).map(p=>({lat:p[0],lng:p[1]}));}});
+  w.L={polyline:layer,marker:(coords,options)=>{const m=layer(coords,options);delete m.getLatLngs;return m;},divIcon:o=>o,latLngBounds:p=>({points:p,extend(){}})};
+  w.mapa={removeLayer:l=>{const i=layers.indexOf(l);if(i>=0)layers.splice(i,1);},fitBounds(){},invalidateSize(){}};
+  const c=h.candidatos.find(c=>c.line==="230"), ctx={origen:"Las Piedras",destino:"Montevideo",puntoOrigen:{lat:a.lat+.002,lon:a.lon},puntoDestino:{lat:b.lat-.002,lon:b.lon},fechaLlegadaLimite:f.toISOString()};
+  const summary=w.crearResumenViaje(c,ctx);
+  assert(summary.includes('class="trip-summary"') && summary.includes('id="btnEmpezarViaje"'));
+  assert(summary.includes('data-bajada-lat') && summary.includes('no son llegadas en vivo'));
+  assert(!summary.includes("Estimación con margen"),"no promete hora límite metropolitana");
+  w.document.getElementById("resultadoRuta").innerHTML=summary;
+  await metro.seleccionar(c,ctx);
+  assert(layers.some(l=>l.options.color==="#1769e0" && l.options.weight===7));
+  assert(layers.some(l=>l.options.color==="#ffffff" && l.options.weight===11));
+  assert(layers.some(l=>l.options.icon?.html.includes("SUBIR")));
+  assert(layers.some(l=>l.options.icon?.html.includes("BAJAR")));
+  assert(layers.some(l=>l.options.icon?.html.includes("🚶")));
+  assert(layers.filter(l=>l.options.dashArray).length===2,"caminatas origen y destino");
+  assert(w.obtenerGeometriaViajeActual().length===1,"copia guardada incluye shape oficial");
+  w.limpiarRecorridoSeleccionado();
+  assert.equal(layers.length,0,"limpieza del viaje urbano también limpia metropolitano");
+  const index=src("index.html"), from=index.indexOf("    function mostrarSelectorRuta("), until=index.indexOf("    btnCerrarSelectorRuta.addEventListener",from);
+  assert(from>=0 && until>from);
+  w.document.body.insertAdjacentHTML("beforeend",'<div id="testSelector"></div><button id="testCambiar"></button>');
+  const harness=[
+    '(()=>{let alternativasRutaActuales, indiceRutaSeleccionada, candidatoViajeActivo, versionViajeElegido=0, seleccionLlegadasActiva; const contextoViajeActivo='+JSON.stringify(ctx)+';',
+    'const selectorRutaContenido=document.getElementById("testSelector"), selectorRutaResumen=document.createElement("p"),btnCambiarRuta=document.getElementById("testCambiar"),',
+    'resultadoRuta=document.getElementById("resultadoRuta"), origenRuta={value:"Las Piedras"},destinoRuta={value:"Montevideo"},listaLineas=document.createElement("div"),proximos=document.createElement("div");',
+    'const marcarRutaSeleccionada=()=>{},cerrarSelectorRuta=()=>{window.testModalOpen=false;},abrirSelectorRuta=()=>{window.testModalOpen=true;},scrollSuaveA=()=>{},cancelarActualizacionProximos=()=>{};',
+    'const abrirOpcionRuta=()=>{throw Error("No enviar parada MTOP a API urbana");},abrirOpcionCombinacion=abrirOpcionRuta;',
+    index.slice(from,until),
+    'window.testMostrar=mostrarSelectorRuta;})();'
+  ].join('\n');
+  w.eval(harness);
+  w.testMostrar("metropolitano",h.candidatos,h.html);
+  assert(w.testModalOpen);
+  w.document.querySelector("#testSelector [data-route-index]").click();
+  await new Promise(r=>setTimeout(r,30));
+  assert(!w.testModalOpen && w.document.querySelector(".trip-summary"));
+  assert(w.document.querySelector("#btnAlternativasViaje"),"mismo botón Cambiar ruta");
+  w.document.querySelector("#btnAlternativasViaje").click();
+  assert(w.testModalOpen,"reabre mismo pop up");
   // Red urbana real: comprobamos continuidad geométrica, no una conexión horaria inventada.
   const red = JSON.parse(src("recorridos/red.json"));
   w.todasLasParadas = Object.entries(red.coords).map(([id, coords]) => ({
@@ -109,14 +140,30 @@ const a = d.stops["24204"],
     fechaSalida: f.toISOString(),
   });
   assert(
-    combinado.includes("1 transbordo"),
+    combinado.html.includes("1 transbordo"),
     "Las Piedras a Tres Cruces conecta red urbana",
   );
   assert(combinado.includes("conexión horaria sin confirmar"));
   const vuelta = await metro.intentar(destino, a, {
     fechaSalida: f.toISOString(),
   });
-  assert(vuelta.includes("1 transbordo"), "Tres Cruces a Las Piedras");
+  assert(vuelta.html.includes("1 transbordo"), "Tres Cruces a Las Piedras");
+  const co=combinado.candidatos.find(c=>c.line1 && c.line2), cv=vuelta.candidatos.find(c=>c.line1 && c.line2);
+  assert(co.origen.busstopId.startsWith("mtop:") && !co.destino.busstopId.startsWith("mtop:"));
+  assert(!cv.origen.busstopId.startsWith("mtop:") && cv.destino.busstopId.startsWith("mtop:"));
+  assert(!cv.proximaSalida,"horario MTOP de segundo tramo no se presenta como salida del primer urbano");
+  const saved=w.obtenerTramoLineaViaje, calls=[];
+  w.obtenerTramoLineaViaje=async(line,destination,subida,bajada)=>{
+    calls.push([subida.busstopId,bajada.busstopId]);
+    return [w.DV.coord(subida),w.DV.coord(bajada)].map(p=>[p.lat,p.lon]);
+  };
+  await metro.seleccionar(co,{puntoOrigen:a,puntoDestino:destino});
+  assert(layers.some(l=>l.options.color==="#7c3aed"));
+  assert(layers.some(l=>l.options.icon?.html.includes("COMBINAR")));
+  assert(layers.some(l=>l.options.icon?.html.includes("2° BUS")));
+  await metro.seleccionar(cv,{puntoOrigen:destino,puntoDestino:a});
+  assert(calls.every(ids=>ids.every(id=>!String(id).startsWith("mtop:"))),"solo shape urbano consulta IDs urbanos");
+  w.obtenerTramoLineaViaje=saved;
   assert(
     fetches.every((u) => u.startsWith("./")),
     "no consulta MTOP IDs en API urbana",

@@ -2570,5 +2570,41 @@ window.buscarCombinacionesRuta = async function(
       return false;
     }
   };
+  // Geometrías externas verificadas: usa los mismos trazos, etiquetas y capas del mapa urbano.
+  window.dibujarViajeConGeometrias = function(c, ctx, tramos) {
+    window.limpiarRecorridoSeleccionado();
+    const puntos=[], combinar=Boolean(c.line1 && c.line2);
+    const coord=s=>{const p=window.DV.coord(s);return p?[p.lat,p.lon]:null;};
+    const etiqueta=(s,texto,fondo,ancho)=>{
+      const p=coord(s); if(!p)return;
+      puntos.push(p);
+      capasCombinacion.push(L.marker(p,{icon:iconoEtiqueta(texto,fondo,ancho),zIndexOffset:2300}).addTo(mapa));
+    };
+    for(const [i,tramo] of tramos.entries()) {
+      if(!Array.isArray(tramo)||tramo.length<2)continue;
+      puntos.push(...tramo);
+      capasCombinacion.push(
+        L.polyline(tramo,{color:'#ffffff',weight:11,opacity:0.92,lineCap:'round',lineJoin:'round'}).addTo(mapa),
+        L.polyline(tramo,{color:i===0?'#1769e0':'#7c3aed',weight:7,opacity:0.96,lineCap:'round',lineJoin:'round'}).addTo(mapa)
+      );
+    }
+    etiqueta(c.origen,'SUBIR','#18a66a',58);
+    if(combinar) {
+      etiqueta(c.combinacion,'COMBINAR','#d79b00',78);
+      if(String(c.combinacion.busstopId)!==String((c.combinacion2||c.combinacion).busstopId))
+        etiqueta(c.combinacion2,'2° BUS','#7c3aed',68);
+    }
+    etiqueta(c.destino,'BAJAR','#e54b4b',62);
+    for(const t of window.DV.tramosPie(c,ctx)) {
+      const walk=crearTramoCaminataFinal([t.desde.lat,t.desde.lon],t.hasta);
+      if(walk)capasCombinacion.push(walk.linea,walk.marcador);
+      puntos.push([t.desde.lat,t.desde.lon],[t.hasta.lat,t.hasta.lon]);
+    }
+    if(puntos.length>1)mapa.fitBounds(L.latLngBounds(puntos),{
+      paddingTopLeft:[45,55],paddingBottomRight:[45,55],maxZoom:15,animate:true
+    });
+    mapa.invalidateSize();
+    return tramos.every(t=>Array.isArray(t)&&t.length>1);
+  };
 })();
 
