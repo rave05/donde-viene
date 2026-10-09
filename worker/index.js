@@ -4,7 +4,7 @@ import {
   validarSuscripcion,
   validarPreferencias,
 } from "./validacion.js";
-import { procesarAvisos } from "./push.js";
+import { procesarAvisos, enviarPush } from "./push.js";
 import { withSharedTransitCache, recursoCacheable } from "./transport-cache.js";
 export default {
   async fetch(request, env, ctx) {
@@ -93,7 +93,7 @@ export default {
     }
     if (
       request.method !== "POST" ||
-      !["/subscriptions", "/unsubscribe", "/reports"].includes(url.pathname)
+      !["/subscriptions", "/unsubscribe", "/reports", "/test-push"].includes(url.pathname)
     )
       return json({ error: "No encontrado" }, 404);
     if (origin !== env.APP_ORIGIN)
@@ -132,6 +132,17 @@ export default {
           .bind(id, body.categoria, body.texto.trim(), Date.now())
           .run();
         return json({ id }, 201);
+      }
+      if (url.pathname === "/test-push") {
+        if (typeof body.token !== "string" || !/^[a-f0-9]{64}$/.test(body.token))
+          return json({ error: "Primero activá los avisos en este dispositivo." }, 400);
+        const row = await env.DB.prepare("SELECT subscription FROM subscriptions WHERE token=?").bind(body.token).first();
+        if (!row) return json({ error: "La suscripción ya no está activa. Desactivá y volvé a activar los avisos." }, 404);
+        let status;
+        try { status = await enviarPush(JSON.parse(row.subscription), { body: "Esta es una prueba de tus avisos de ¿Dónde Viene?.", tag: "prueba-" + Date.now() }, env); }
+        catch (_) { return json({ error: "No pudimos contactar al proveedor de notificaciones. Reintentá." }, 502); }
+        if (status >= 200 && status < 300) return json({ aceptado: true }, 202);
+        return json({ error: status === 404 || status === 410 ? "La suscripción venció. Desactivá y volvé a activar los avisos." : "El proveedor rechazó el envío de prueba (código " + status + ").", proveedorStatus: status }, 502);
       }
       if (url.pathname === "/unsubscribe") {
         if (

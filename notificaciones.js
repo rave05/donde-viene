@@ -4,9 +4,10 @@
     panel = document.createElement("details");
   panel.className = "extras-block";
   panel.innerHTML =
-    '<summary>🔔 Avisos y recordatorios</summary><p class="extras-note">Elegí líneas para avisos de servicio. El recordatorio solo te invita a consultar tu viaje; no confirma la llegada de un bus. No compartimos tu ubicación ni tus destinos.</p><div class="extras-row"><label for="lineasAvisos">Líneas (separadas por coma)</label><input id="lineasAvisos" maxlength="120" placeholder="127, 185"><label><input id="usarRecordatorio" type="checkbox"> Recordarme de lunes a viernes</label><label for="horaRecordatorio">Hora (Montevideo)</label><input id="horaRecordatorio" type="time" value="07:30"></div><div class="extras-row"><button id="activarAvisos" class="extras-button" type="button" disabled>Activar o actualizar avisos</button><button id="desactivarAvisos" class="extras-button" type="button" disabled>Desactivar avisos</button></div><p id="estadoAvisos" class="extras-status" role="status"></p>';
+    '<summary>🔔 Avisos y recordatorios</summary><p class="extras-note">Elegí líneas para avisos de servicio. El recordatorio solo te invita a consultar tu viaje; no confirma la llegada de un bus. No compartimos tu ubicación ni tus destinos.</p><div class="extras-row"><label for="lineasAvisos">Líneas (separadas por coma)</label><input id="lineasAvisos" maxlength="120" placeholder="127, 185"><label><input id="usarRecordatorio" type="checkbox"> Recordarme de lunes a viernes</label><label for="horaRecordatorio">Hora (Montevideo)</label><input id="horaRecordatorio" type="time" value="07:30"></div><div class="extras-row"><button id="activarAvisos" class="extras-button" type="button" disabled>Activar o actualizar avisos</button><button id="probarAvisos" class="extras-button" type="button" disabled>Probar notificación</button><button id="desactivarAvisos" class="extras-button" type="button" disabled>Desactivar avisos</button></div><p id="estadoAvisos" class="extras-status" role="status"></p>';
   document.querySelector(".trip-preference").after(panel);
   const activar = panel.querySelector("#activarAvisos"),
+    probar = panel.querySelector("#probarAvisos"),
     desactivar = panel.querySelector("#desactivarAvisos"),
     estado = panel.querySelector("#estadoAvisos");
   const KEY = "dv-avisos-v1";
@@ -28,6 +29,7 @@
   async function preparar() {
     config = await DV.servicios.config();
     desactivar.disabled = !preferencias();
+    probar.disabled = !preferencias() || !config.push || !compatible();
     activar.disabled = !config.push || !compatible();
     estado.textContent = !config.push
       ? "Los avisos en segundo plano todavía no están disponibles. Podés consultar los avisos dentro de la app."
@@ -63,9 +65,9 @@
         body: JSON.stringify(body),
         signal: control.signal,
       });
-      if (!r.ok)
-        throw Error("El servicio no pudo guardar el cambio. Reintentá.");
-      return await r.json();
+      const data = await r.json();
+      if (!r.ok) throw Error(data.error || "El servicio no pudo guardar el cambio. Reintentá.");
+      return data;
     } finally {
       clearTimeout(timer);
     }
@@ -125,6 +127,7 @@
       estado.textContent =
         "Avisos activados. Los recordatorios pueden llegar con demora según conexión y ajustes del teléfono.";
       desactivar.disabled = false;
+      probar.disabled = false;
     } catch (e) {
       if (nueva) await nueva.unsubscribe().catch(() => {});
       estado.textContent = e.message || "No pudimos activar los avisos.";
@@ -132,6 +135,15 @@
       ocupado = false;
       activar.disabled = !config.push;
     }
+  });
+  probar.addEventListener("click", async () => {
+    if (ocupado || !preferencias() || !config?.url) return;
+    ocupado = true; probar.disabled = true;
+    try {
+      const result = await enviar("/test-push", {token:preferencias().token});
+      estado.textContent = result.aceptado ? "El proveedor aceptó la prueba. Revisá las notificaciones del teléfono; esto todavía no confirma la recepción." : "No se pudo enviar la prueba.";
+    } catch(e) { estado.textContent = e.message || "No pudimos enviar la prueba."; }
+    finally { ocupado = false; probar.disabled = !preferencias(); }
   });
   desactivar.addEventListener("click", async () => {
     if (ocupado) return;
@@ -147,6 +159,7 @@
       const reg = await navigator.serviceWorker.getRegistration();
       await (await reg?.pushManager.getSubscription())?.unsubscribe();
       DV.guardar(KEY, null);
+      probar.disabled = true;
       estado.textContent = "Avisos desactivados.";
     } catch (e) {
       estado.textContent = e.message;

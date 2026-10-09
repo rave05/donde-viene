@@ -411,3 +411,30 @@ test("Recordatorios en Montevideo, avisos vigentes, envío cifrado y deduplicaci
     sqlite.close();
   }
 });
+
+test('12:12: envío 12:15, reintento fuera de ventana y sin duplicados',async()=>{
+ const {DB,sqlite}=base(),keys=webpush.generateVAPIDKeys(),env={DB,VAPID_PUBLIC_KEY:keys.publicKey,VAPID_PRIVATE_KEY:keys.privateKey,VAPID_SUBJECT:'mailto:test@example.com',AVISOS_URL:'https://official.example/avisos'};
+ await DB.prepare('INSERT INTO subscriptions(id,token,subscription,lineas,recordatorio,actualizado) VALUES(?,?,?,?,?,?)').bind('sub','token',JSON.stringify(subscription()),'[]',JSON.stringify({dias:[5],hora:'12:12'}),Date.parse('2026-10-09T15:02:00Z')).run();
+ let sends=0;const real=globalThis.fetch;globalThis.fetch=async(url)=>url===env.AVISOS_URL?Response.json({avisos:[]}):new Response('',{status:++sends===1?503:201});
+ try {
+  await procesarAvisos(env,new Date('2026-10-09T15:15:00Z'));assert.equal(sends,1);assert.equal(sqlite.prepare("SELECT estado FROM deliveries WHERE subscription_id='sub'").get().estado,-503);
+  await procesarAvisos(env,new Date('2026-10-09T15:20:00Z'));assert.equal(sends,1);
+  await procesarAvisos(env,new Date('2026-10-09T15:25:00Z'));assert.equal(sends,2);
+  await procesarAvisos(env,new Date('2026-10-09T15:30:00Z'));assert.equal(sends,2);
+  assert(sqlite.prepare("SELECT creado FROM deliveries WHERE subscription_id='__cron__'").get());
+  sqlite.prepare("UPDATE deliveries SET estado=-503,creado=? WHERE subscription_id='sub'").run(Date.parse('2026-10-09T16:05:00Z'));
+  await procesarAvisos(env,new Date('2026-10-09T16:15:00Z'));assert.equal(sends,2,'caduca tras una hora');
+ }finally{globalThis.fetch=real;sqlite.close();}
+});
+test('Prueba push propia y diagnóstico protegido sin claves',async()=>{
+ const {DB,sqlite}=base(),keys=webpush.generateVAPIDKeys(),env={DB,ADMIN_TOKEN:'admin-test',APP_ORIGIN:origin,PUBLIC_LIMIT:{limit:async()=>({success:true})},VAPID_PUBLIC_KEY:keys.publicKey,VAPID_PRIVATE_KEY:keys.privateKey,VAPID_SUBJECT:'mailto:test@example.com'};
+ const token='a'.repeat(64);await DB.prepare('INSERT INTO subscriptions(id,token,subscription,lineas,actualizado) VALUES(?,?,?,?,?)').bind('sub',token,JSON.stringify(subscription()),'[]',Date.now()).run();
+ let sends=0,status=201;const real=globalThis.fetch;globalThis.fetch=async()=>{sends++;return new Response('',{status});};
+ try {
+  assert.equal((await worker.fetch(req('/admin/push'),env,ctx)).status,401);
+  const admin=await worker.fetch(req('/admin/push',null,{Authorization:'Bearer admin-test'}),env,ctx);const text=await admin.text();assert(!text.includes('p256dh')&&!text.includes('endpoint')&&!text.includes(token));
+  assert.equal((await worker.fetch(req('/test-push',{token:'b'.repeat(64)}),env,ctx)).status,404);assert.equal(sends,0);
+  assert.equal((await worker.fetch(req('/test-push',{token}),env,ctx)).status,202);assert.equal(sends,1);
+  status=401;const failure=await worker.fetch(req('/test-push',{token}),env,ctx);assert.equal(failure.status,502);assert.equal((await failure.json()).proveedorStatus,401);
+ }finally{globalThis.fetch=real;sqlite.close();}
+});
