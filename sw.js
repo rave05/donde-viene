@@ -1,5 +1,5 @@
 /* Cachea la interfaz y datos estáticos. Nunca guarda respuestas de la API de transporte. */
-const CACHE = "dv-shell-20261009-v31";
+const CACHE = "dv-shell-20261009-v32";
 const CORE = [
   "index.html",
   "metropolitano.js",
@@ -57,9 +57,9 @@ const CORE = [
   "alternativas-ahora.js",
   "alternativas-ahora.css",
   "manifest.webmanifest",
-  "icons/icon-192.png",
-  "icons/icon-512.png",
-  "icons/apple-touch-icon.png",
+  "icons/bus-192.png",
+  "icons/bus-512.png",
+  "icons/bus-apple-180.png",
   "datos/recargas-stm.json",
   "datos/caminatas.json.gz",
   "datos/patrocinios.json",
@@ -174,7 +174,7 @@ self.addEventListener("push", (event) => {
       body: String(
         payload.body || "Tenés un aviso para revisar en la app.",
       ).slice(0, 240),
-      icon: new URL("icons/icon-192.png", self.registration.scope).href,
+      icon: new URL("icons/bus-192.png", self.registration.scope).href,
       tag: String(payload.tag || "aviso").slice(0, 80),
     }),
   );

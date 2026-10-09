@@ -54,7 +54,7 @@
       await registro.showNotification('¿Dónde Viene? · Viaje activo', {
         body: 'Tenés un viaje en curso. Tocá para volver a la app. El GPS se pausa si la app queda en segundo plano.',
         tag: etiquetaAviso,
-        icon: new URL('icons/icon-192.png', registro.scope).href,
+        icon: new URL('icons/bus-192.png', registro.scope).href,
         data: { tipo: 'viaje-activo' }
       });
       if (!activa || version !== avisoVersion) { await limpiarAviso(); return; }
