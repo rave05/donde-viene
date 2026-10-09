@@ -1,4 +1,18 @@
 (() => {
+  // Comparte también las descargas en curso; un fallo permite reintentar.
+  const archivosPendientes = new Map();
+  function cargarJSON(url) {
+    if (!archivosPendientes.has(url)) {
+      const descarga = (async () => {
+        const respuesta = await fetch(url, { cache: 'no-cache' });
+        if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+        return respuesta.json();
+      })().catch(error => { archivosPendientes.delete(url); throw error; });
+      archivosPendientes.set(url, descarga);
+    }
+    return archivosPendientes.get(url);
+  }
+
   const cacheLineasHorarios = new Map();
   let manifiestoHorarios = null;
 
@@ -16,16 +30,8 @@
       return manifiestoHorarios;
     }
 
-    const respuesta = await fetch(
-      './horarios/manifest.json',
-      { cache: 'no-cache' }
-    );
-
-    if (!respuesta.ok) {
-      return null;
-    }
-
-    manifiestoHorarios = await respuesta.json();
+    const datosDescargados = await cargarJSON('./horarios/manifest.json');
+    manifiestoHorarios = datosDescargados;
     return manifiestoHorarios;
   }
 
@@ -36,16 +42,8 @@
       return indiceParadasHorarios;
     }
 
-    const respuesta = await fetch(
-      './horarios/paradas.json',
-      { cache: 'no-cache' }
-    );
-
-    if (!respuesta.ok) {
-      return {};
-    }
-
-    indiceParadasHorarios = await respuesta.json();
+    const datosDescargados = await cargarJSON('./horarios/paradas.json');
+    indiceParadasHorarios = datosDescargados;
     return indiceParadasHorarios;
   }
 
@@ -80,16 +78,8 @@
       return null;
     }
 
-    const respuesta = await fetch(
-      './horarios/' + archivo,
-      { cache: 'no-cache' }
-    );
-
-    if (!respuesta.ok) {
-      return null;
-    }
-
-    const datos = await respuesta.json();
+    const datosDescargados = await cargarJSON('./horarios/' + archivo);
+    const datos = datosDescargados;
     cacheLineasHorarios.set(clave, datos);
     return datos;
   }

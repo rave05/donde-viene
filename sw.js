@@ -1,5 +1,5 @@
 /* Cachea la interfaz y datos estáticos. Nunca guarda respuestas de la API de transporte. */
-const CACHE = "dv-shell-20261009-v13";
+const CACHE = "dv-shell-20261009-v14";
 const CORE = [
   "index.html",
   "app-util.js",
@@ -27,6 +27,7 @@ const CORE = [
   "redisenio.css",
   "buses-mapa-vista.js",
   "buses-sentido.js",
+  "actualizacion-buses.js",
   "mapa-gadgets.css",
   "mapa-layout.css",
   "viajes-habituales.js",
@@ -126,6 +127,7 @@ self.addEventListener("fetch", (event) => {
       const cached = await cache.match(request, { ignoreSearch: true });
       const fijo =
         isLeaflet ||
+        /\/(horarios|recorridos)\/.*\.json$/.test(url.pathname) ||
         url.pathname.endsWith("/datos/caminatas.json.gz") ||
         url.pathname.endsWith(".png");
       if (fijo && cached) return cached;

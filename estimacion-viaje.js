@@ -129,7 +129,7 @@
     await Promise.race([
       Promise.all([tarea(), tarea(), tarea()]),
       new Promise((resolve) => {
-        timer = setTimeout(resolve, 25000);
+        timer = setTimeout(resolve, 12000);
       }),
     ]);
     cerrado = true;

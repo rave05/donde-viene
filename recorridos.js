@@ -1,4 +1,18 @@
 (() => {
+  // Comparte también las descargas en curso; un fallo permite reintentar.
+  const archivosPendientes = new Map();
+  function cargarJSON(url) {
+    if (!archivosPendientes.has(url)) {
+      const descarga = (async () => {
+        const respuesta = await fetch(url, { cache: 'no-cache' });
+        if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+        return respuesta.json();
+      })().catch(error => { archivosPendientes.delete(url); throw error; });
+      archivosPendientes.set(url, descarga);
+    }
+    return archivosPendientes.get(url);
+  }
+
   const cacheRecorridos = new Map();
   let manifiestoRecorridos = null;
   let aliasesRecorridos = null;
@@ -18,16 +32,8 @@
       return manifiestoRecorridos;
     }
 
-    const respuesta = await fetch(
-      './recorridos/manifest.json',
-      { cache: 'no-cache' }
-    );
-
-    if (!respuesta.ok) {
-      return null;
-    }
-
-    manifiestoRecorridos = await respuesta.json();
+    const datosDescargados = await cargarJSON('./recorridos/manifest.json');
+    manifiestoRecorridos = datosDescargados;
     return manifiestoRecorridos;
   }
 
@@ -37,18 +43,9 @@
     }
 
     try {
-      const respuesta =
-        await fetch(
-          './recorridos/aliases.json',
-          { cache: 'no-cache' }
-        );
-
-      if (!respuesta.ok) {
-        return null;
-      }
-
-      aliasesRecorridos =
-        await respuesta.json();
+      const datosDescargados = await cargarJSON('./recorridos/aliases.json');
+aliasesRecorridos =
+        datosDescargados;
 
       return aliasesRecorridos;
     } catch (error) {
@@ -92,18 +89,9 @@
     }
 
     try {
-      const respuesta =
-        await fetch(
-          './recorridos/red.json',
-          { cache: 'no-cache' }
-        );
-
-      if (!respuesta.ok) {
-        return null;
-      }
-
-      redRecorridos =
-        await respuesta.json();
+      const datosDescargados = await cargarJSON('./recorridos/red.json');
+redRecorridos =
+        datosDescargados;
 
       return redRecorridos;
     } catch (error) {
@@ -130,16 +118,8 @@
       return null;
     }
 
-    const respuesta = await fetch(
-      './recorridos/' + archivo,
-      { cache: 'no-cache' }
-    );
-
-    if (!respuesta.ok) {
-      return null;
-    }
-
-    const datos = await respuesta.json();
+    const datosDescargados = await cargarJSON('./recorridos/' + archivo);
+    const datos = datosDescargados;
     cacheRecorridos.set(clave, datos);
     return datos;
   }

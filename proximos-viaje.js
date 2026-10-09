@@ -25,7 +25,7 @@
     }
     const consultas = [...grupos.values()].slice(0, 24);
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
+    const timer = setTimeout(() => controller.abort(), 6000);
     let siguiente = 0;
     async function tarea() {
       while (!controller.signal.aborted && siguiente < consultas.length) {

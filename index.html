@@ -1626,6 +1626,7 @@
   <script src="./viaje.js?v=20261008-6"></script>
   <script src="./buses-mapa-vista.js?v=20261008-1"></script>
   <script src="./buses-sentido.js?v=20261009-1"></script>
+  <script src="./actualizacion-buses.js?v=20261009-1"></script>
 
   <!-- Leaflet -->
 
@@ -1659,7 +1660,7 @@
       5 * 60 * 1000;
 
     const INTERVALO_PROXIMOS_MS =
-      30 * 1000;
+      20 * 1000;
 
 
     // =========================================================
@@ -2077,6 +2078,7 @@
     let seleccionLlegadasActiva = null;
     let estadoConsultaLlegadas = null;
     let proximaConsultaPermitida = 0;
+    const ritmoBuses = window.crearRitmoBuses(INTERVALO_PROXIMOS_MS);
     const estadoLlegadas = document.getElementById('estadoLlegadas');
     const tipoLlegadas = document.getElementById('tipoLlegadas');
     const horaLlegadas = document.getElementById('horaLlegadas');
@@ -2101,7 +2103,7 @@
         timeZone: 'America/Montevideo', hour: '2-digit', minute: '2-digit', second: '2-digit'
       }) + '. ' : '') + (tipo === 'programado' ? 'El horario puede sufrir cambios.' :
         tipo === 'error' ? 'Podés reintentar sin perder tu viaje.' :
-        antiguo ? 'Estas estimaciones pueden haber cambiado.' : 'Se consulta automáticamente cada 30 segundos.');
+        antiguo ? 'Estas estimaciones pueden haber cambiado.' : 'Actualización automática: ' + (ritmoBuses.intervalo() / 1000) + ' s con la app visible.');
       btnActualizarLlegadas.hidden = !seleccionLlegadasActiva?.variantId;
       const espera = Math.max(0, Math.ceil((proximaConsultaPermitida - Date.now()) / 1000));
       btnActualizarLlegadas.disabled = Boolean(abortControllerProximos) || espera > 0;
@@ -4604,6 +4606,7 @@
       estadoConsultaLlegadas = null;
       proximaConsultaPermitida = 0;
       estadoLlegadas.hidden = true;
+      ritmoBuses.reiniciar();
 
       // Al cambiar de parada o línea, quitamos del mapa
       // los vehículos de la selección anterior.
@@ -4636,9 +4639,10 @@
 
 
     function programarActualizacionProximos(
-      seleccion
+      seleccion, alVolver = false
     ) {
 
+      if (document.hidden) return;
       if (
         seleccion.sesionId !==
         sesionProximos
@@ -4675,6 +4679,7 @@
             }
 
 
+            if (document.hidden) return;
             await cargarProximos(
               seleccion
             );
@@ -4691,7 +4696,7 @@
             }
 
           },
-          INTERVALO_PROXIMOS_MS
+          Math.max(alVolver ? 0 : ritmoBuses.intervalo(), proximaConsultaPermitida - Date.now())
         );
     }
 
@@ -4741,7 +4746,7 @@
       abortControllerProximos =
         controller;
       seleccionLlegadasActiva = seleccion;
-      proximaConsultaPermitida = Date.now() + INTERVALO_PROXIMOS_MS;
+      proximaConsultaPermitida = Date.now() + ritmoBuses.intervalo();
       informarLlegadas('consultando', null);
       let consultaAgotada = false;
       const limiteConsulta = setTimeout(() => {
@@ -4777,9 +4782,10 @@
             429
           ) {
 
-            throw new Error(
-              'Demasiadas consultas. Esperá unos segundos.'
-            );
+            const error = new Error('Demasiadas consultas. Esperá unos segundos.');
+            error.status = 429;
+            error.retryAfter = respuesta.headers?.get('Retry-After');
+            throw error;
           }
 
 
@@ -4830,6 +4836,8 @@
           );
         }
 
+        if (sesionId === sesionProximos) ritmoBuses.exito();
+
       } catch (error) {
 
         if (
@@ -4859,6 +4867,8 @@
                 ${escaparHTML(consultaAgotada ? 'La consulta tardó demasiado. Podés reintentar.' : error.message)}
               </small>
             </div>`;
+          ritmoBuses.fallo(error.status, error.retryAfter);
+          proximaConsultaPermitida = Date.now() + ritmoBuses.intervalo();
           informarLlegadas('error');
         }
 
@@ -4880,6 +4890,16 @@
     }
 
 
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        clearTimeout(temporizadorProximos);
+        temporizadorProximos = null;
+        abortControllerProximos?.abort();
+      } else if (seleccionLlegadasActiva) {
+        programarActualizacionProximos(seleccionLlegadasActiva, true);
+      }
+    });
 
     async function obtenerBusesEnVivo(signal) {
 
@@ -5783,8 +5803,8 @@
 
   </script>
 
-  <script src="./horarios.js?v=20261008-2"></script>
-  <script src="./recorridos.js?v=20261009-1"></script>
+  <script src="./horarios.js?v=20261009-2"></script>
+  <script src="./recorridos.js?v=20261009-2"></script>
 
   <dialog id="editorFavorito" class="mobile-dialog" aria-labelledby="tituloFavorito">
     <form id="formFavorito">
@@ -5806,8 +5826,8 @@
   <script src="./guia-viaje.js?v=20261008-6"></script>
   <script src="./planificador.js?v=20261008-1"></script>
   <script src="./caminatas.js?v=20261008-1"></script>
-  <script src="./estimacion-viaje.js?v=20261008-6"></script>
-  <script src="./proximos-viaje.js?v=20261008-6"></script>
+  <script src="./estimacion-viaje.js?v=20261009-2"></script>
+  <script src="./proximos-viaje.js?v=20261009-2"></script>
   <script src="./actualizar-opciones.js?v=20261008-1"></script>
   <script src="./mapa-puntos.js?v=20261008-3"></script>
   <script src="./viajes-habituales.js?v=20261008-1"></script>

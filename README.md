@@ -121,3 +121,11 @@ buses-sentido.js reemplaza la comparación radial por proyección y avance sobre
 ## Beta pública
 
 `beta.js` y `beta.css` ofrecen un aviso compacto y reportes voluntarios por correo, con contexto textual editable y sin coordenadas GPS. El proceso y las verificaciones pendientes en la calle están en `BETA.md`.
+
+## Rendimiento y actualización
+
+Los módulos de horarios y recorridos comparten las descargas en curso y permiten reintentar los fallos. El service worker reutiliza estos JSON dentro de su versión de caché; al publicar datos estáticos nuevos debe cambiarse la versión de `sw.js`. La API en vivo sigue fuera de esa caché.
+
+`actualizacion-buses.js` usa 20 s como intervalo normal entre consultas completadas; el tiempo de red se suma. En segundo plano se detiene el seguimiento de buses; al volver respeta el tiempo mínimo pendiente. Los errores duplican la espera hasta 120 s; HTTP 429 exige al menos 60 s y respeta `Retry-After` si pide más. Una respuesta satisfactoria restablece el ritmo normal.
+
+La comparación conserva todas las rutas candidatas. La estimación adicional tiene un presupuesto de 12 s y las consultas de próximas salidas de 6 s. Si falta información se etiqueta como sin confirmar; esos límites no representan un tiempo total garantizado para una búsqueda.
