@@ -10,6 +10,9 @@
       .replace(/[\u0300-\u036f]/g, "")
       .toUpperCase();
   const distancia = (a, b) => DV.distancia(a, b);
+  const formatoFechaLocal = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Montevideo", year: "numeric", month: "2-digit", day: "2-digit",
+  });
   function cargar() {
     if (!pendiente)
       pendiente = fetch("./metropolitano/corredor.json", {
@@ -31,12 +34,7 @@
   }
   function fechaLocal(fecha) {
     const p = Object.fromEntries(
-      new Intl.DateTimeFormat("en-CA", {
-        timeZone: "America/Montevideo",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      })
+      formatoFechaLocal
         .formatToParts(fecha)
         .filter((x) => x.type !== "literal")
         .map((x) => [x.type, x.value]),
@@ -176,10 +174,13 @@
       return [];
     const saliendo = cobertura(origen);
     const urbano = saliendo ? destino : origen;
+    const extremoMetro = saliendo ? origen : destino;
+    d = {...d, patterns:d.patterns.filter(p=>p.stops.some(id=>distancia(extremoMetro,d.stops[id])<=800))};
+    const paradasPosibles = new Set(d.patterns.flatMap(p=>p.stops));
     // Cualquier parada metropolitana del área urbana puede ser un intercambio.
     // Primero comprobamos una directa urbana; así no evaluamos horarios MTOP
     // en puntos que el urbano no alcanza, ni dependemos de nombres de terminales.
-    const puntos = Object.values(d.stops)
+    const puntos = [...paradasPosibles].map(id=>d.stops[id])
       .filter(s => s.lat < -34.79)
       .sort((a, b) => distancia(a, urbano) - distancia(b, urbano));
     const origenesUrbanos = urbanaCerca(origen, 800);
@@ -300,8 +301,7 @@
     const opciones = [...unicas.values()]
       .sort(
         (a, b) => Number(!!a.urbana) - Number(!!b.urbana) || a.score - b.score,
-      )
-      .slice(0, 8);
+      );
     return render(d, opciones, ctx);
   }
   async function tramoMetro(c) {

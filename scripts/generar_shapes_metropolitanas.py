@@ -4,7 +4,7 @@ from pathlib import Path
 SOURCE = 'https://catalogodatos.gub.uy/dataset/3633b022-4fa8-4633-bf51-eb39f959ef8b/resource/ffc2dc6a-7ee6-4109-93d6-e45a5b0ea3a8/download/recorridos_metropolitanos.kml'
 def distance(a,b): return math.hypot((a[0]-b[0])*111000,(a[1]-b[1])*91000)
 def generate_shapes(kml, corridor, target):
-    data=json.loads(Path(corridor).read_text()); ns={'k':'http://www.opengis.net/kml/2.2'}; shapes={}
+    data=json.loads(Path(corridor).read_text()); ns={'k':'http://www.opengis.net/kml/2.2'}; shapes={}; unavailable={}
     for pm in ET.parse(kml).findall('.//k:Placemark',ns):
         variant=pm.find('.//k:SimpleData[@name="Variante"]',ns)
         if variant is None: continue
@@ -17,13 +17,20 @@ def generate_shapes(kml, corridor, target):
         while segments:
             options=[(distance(point,s[0]),i,False) for i,s in enumerate(segments)]+[(distance(point,s[-1]),i,True) for i,s in enumerate(segments)]
             gap,i,reverse=min(options)
-            if gap>200: raise ValueError('Geometría discontinua: '+variant.text)
+            if gap>200:
+                unavailable[variant.text]='Geometría oficial discontinua'
+                break
             segment=segments.pop(i); segment=segment[::-1] if reverse else segment
             shape.extend(segment); point=shape[-1]
+        if variant.text in unavailable: continue
         for p in patterns:
             last=data['stops'][p['stops'][-1]]
-            if distance(shape[-1],[last['lat'],last['lon']])>200: raise ValueError('Sentido incompatible: '+variant.text)
+            if distance(shape[-1],[last['lat'],last['lon']])>200:
+                unavailable[variant.text]='Extremo oficial incompatible con las paradas'
+        if variant.text in unavailable: continue
         shapes[variant.text]=shape
-    if len(shapes)!=len({p['routeId'] for p in data['patterns']}): raise ValueError('Falta una variante oficial')
-    Path(target).write_text(json.dumps({'source':SOURCE,'shapes':shapes},separators=(',',':'))+'\n')
+    for route in {p['routeId'] for p in data['patterns']} - shapes.keys() - unavailable.keys():
+        unavailable[route]='Variante sin geometría oficial publicada'
+    Path(target).write_text(json.dumps({'source':SOURCE,'shapes':shapes,'unavailable':unavailable},separators=(',',':'))+'\n')
+    print(json.dumps({'shapes':len(shapes),'unavailable':unavailable}))
 if __name__=='__main__': generate_shapes(*sys.argv[1:4])

@@ -136,6 +136,16 @@ const a = d.stops["24204"],
     location: { coordinates: [coords[1], coords[0]] },
   }));
   const destino = { lat: -34.8938334, lon: -56.1665762 };
+  const devoto = {lat:-34.7279330,lon:-56.2240597};
+  const devotoOpciones = await metro.intentar(devoto,destino,{fechaSalida:'2026-10-09T18:19:00-03:00'});
+  for(const linea of ['230','809','2A']) {
+    const opciones = devotoOpciones.candidatos.filter(c=>(c.line1||c.line)===linea);
+    assert(opciones.length,'Devoto Las Piedras → Tres Cruces incluye '+linea);
+    assert(opciones.every(c=>c.metropolitana.opcion.caminataInicio<=800));
+    assert(await metro.tramoMetro(opciones[0].metropolitana.opcion),'shape oficial disponible para '+linea);
+  }
+  assert(new Set(devotoOpciones.candidatos.map(c=>c.line1||c.line)).size>8,'variantes no ocultan otras líneas por un límite global');
+  console.log('Devoto → Tres Cruces: '+[...new Set(devotoOpciones.candidatos.map(c=>c.line1||c.line))].join(', '));
   const combinado = await metro.intentar(a, destino, {
     fechaSalida: f.toISOString(),
   });
