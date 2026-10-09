@@ -82,7 +82,22 @@ const a = d.stops["24204"],
   });
   assert(h.includes("no son llegadas en vivo"));
   assert(h.includes("no están verificadas para ese límite"));
-  assert(!h.includes("Empezar viaje"));
+  assert(h.includes("Elegir este viaje"));
+  const shape = await metro.tramoMetro(direct.find(c=>c.p.line==="230"));
+  assert(shape.length > 20, "geometría oficial con curvas, no unión de paradas");
+  const reverseShape = await metro.tramoMetro(metro.directas(d,b,a,f).find(c=>c.p.line==="230"));
+  assert(reverseShape.length > 20, "geometría en sentido inverso");
+  let dibujado;
+  w.DondeVieneApp = {mostrarParadasMetropolitanas: (points,tramos) => {dibujado={points,tramos};},limpiarMetropolitano:()=>{dibujado=null;}};
+  w.document.getElementById("resultadoRuta").innerHTML=h;
+  w.document.querySelector("[data-metro-elegir]").click();
+  await new Promise(r=>setTimeout(r,20));
+  assert(dibujado?.tramos.length===1, "seleccionar dibuja geometría");
+  assert(w.document.querySelector("[data-metro-volver]"));
+  assert.equal([...w.document.querySelectorAll("[data-metro-opcion]")].filter(el=>!el.hidden).length,1);
+  w.document.querySelector("[data-metro-volver]").click();
+  assert.equal(dibujado,null);
+  assert([...w.document.querySelectorAll("[data-metro-opcion]")].every(el=>!el.hidden));
   // Red urbana real: comprobamos continuidad geométrica, no una conexión horaria inventada.
   const red = JSON.parse(src("recorridos/red.json"));
   w.todasLasParadas = Object.entries(red.coords).map(([id, coords]) => ({

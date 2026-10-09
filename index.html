@@ -5781,12 +5781,15 @@
         };
       },
       leerBusqueda: () => ({ origen: origenRuta.value.trim(), destino: destinoRuta.value.trim(), preferencia: document.getElementById('preferenciaViaje').value }),
-      mostrarParadasMetropolitanas(puntos) {
+      limpiarMetropolitano() { if (capaMetropolitana) { mapa.removeLayer(capaMetropolitana); capaMetropolitana = null; } },
+      mostrarParadasMetropolitanas(puntos, tramos = []) {
+        window.limpiarRecorridoSeleccionado?.();
         if (capaMetropolitana) mapa.removeLayer(capaMetropolitana);
         capaMetropolitana = L.layerGroup();
         for (const p of puntos) L.circleMarker([p.lat,p.lon], {radius:9,color:'#6b3daf',weight:3,fillOpacity:0.7}).bindPopup(escaparHTML(p.nombre)).addTo(capaMetropolitana);
+        for (const t of tramos) L.polyline(t.coords,{color:t.color,weight:6,opacity:0.85}).bindPopup(escaparHTML(t.nombre)).addTo(capaMetropolitana);
         capaMetropolitana.addTo(mapa);
-        mapa.fitBounds(puntos.map(p=>[p.lat,p.lon]), {padding:[45,45],maxZoom:16});
+        mapa.fitBounds([...puntos.map(p=>[p.lat,p.lon]), ...tramos.flatMap(t=>t.coords)], {padding:[45,45],maxZoom:16});
         mapa.invalidateSize();
       },
       aplicarBusqueda(receta) {
@@ -5908,6 +5911,6 @@
   <script src="./informacion-oficial.js?v=20261009-1"></script>
   <script src="./servicios.js?v=20261009-1"></script>
   <script src="./notificaciones.js?v=20261009-1"></script>
-  <script src="./metropolitano.js?v=20261009-1"></script>
+  <script src="./metropolitano.js?v=20261009-2"></script>
 </body>
 </html>

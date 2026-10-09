@@ -4,6 +4,7 @@ import json, re, subprocess, tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 from generar_metropolitano import generate
+from generar_shapes_metropolitanas import generate_shapes, SOURCE as SHAPES_SOURCE
 
 RESOURCE = 'https://catalogodatos.gub.uy/api/3/action/resource_show?id=9f44b654-751a-42a4-a481-af91b7c9a2e4'
 
@@ -21,5 +22,7 @@ def main():
     with tempfile.TemporaryDirectory() as folder:
         archive = Path(folder) / 'gtfs.zip'; archive.write_bytes(descargar(url))
         generate(archive, 'metropolitano/corredor.json', source_date)
+        kml = Path(folder) / 'shapes.kml'; kml.write_bytes(descargar(SHAPES_SOURCE))
+        generate_shapes(kml, 'metropolitano/corredor.json', 'metropolitano/shapes.json')
 
 if __name__ == '__main__': main()

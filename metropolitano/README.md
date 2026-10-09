@@ -17,3 +17,5 @@ Las sugerencias Las Piedras y San Francisco representan paradas concretas public
 Regeneración: `python scripts/generar_metropolitano.py archivo.zip metropolitano/corredor.json AAAA-MM-DD`. Actualización: `python scripts/actualizar_metropolitano.py`, también ejecutada semanalmente por GitHub Actions sin claves nuevas. Si la descarga falla, se conserva la fuente anterior; los calendarios vencidos dejan de producir opciones vigentes.
 
 Validación: `node tests/metropolitano.cjs` y `npm test`.
+
+Selección: cada opción permite elegir el viaje y volver a la lista. Geometría oficial del KML MTOP vinculada por ID de variante; se recorta entre subida y bajada. Los fragmentos se ordenan por extremos y se rechazan discontinuidades mayores de 200 m. Los tramos urbanos usan las geometrías existentes. No representa GPS en vivo.

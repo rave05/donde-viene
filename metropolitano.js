@@ -2,7 +2,9 @@
 (() => {
   const DV = window.DV;
   let pendiente,
-    opcionesActuales = [];
+    opcionesActuales = [],
+    versionMapa = 0,
+    shapesPendientes;
   const normalizar = (s) =>
     String(s || "")
       .normalize("NFD")
@@ -277,7 +279,7 @@
         c.urbana && c.saliendo
           ? Number(c.urbana.destino.distanciaRuta)
           : c.caminataFinal;
-      html += `<article class="extras-block"><h4>${esc(lineas)} · ${c.urbana ? "1 transbordo" : "Directo"}</h4><p>${c.horario ? `Paso programado del ${esc(c.p.line)} en ${esc(nombre(c.subida))}: <strong>${esc(hora(c.horario.salida))}</strong>.${c.horario.llegada != null ? ` Bajada programada: ${esc(hora(c.horario.llegada))}.` : " Hora en la parada de bajada sin publicar."}` : "El MTOP no publica una próxima hora de paso en esta parada para la fecha consultada. No interpolamos horarios."}</p>${c.urbana ? '<p class="trip-note"><strong>Combinación por recorrido: conexión horaria sin confirmar.</strong> No podemos asegurar que alcances el segundo bus. Consultá el urbano y dejá margen antes de salir.</p>' : ""}<details><summary>Ver pasos y paradas</summary><p>🚶 Desde el origen: ${esc(metros(inicio))}.</p><ol>${c.urbana && !c.saliendo ? detallesUrbano : ""}${c.urbana && !c.saliendo ? `<li>🚶 Combinación: ${esc(metros(c.caminataCombinacion))}.</li>` : ""}${detallesMetro}${c.urbana && c.saliendo ? `<li>🚶 Combinación: ${esc(metros(c.caminataCombinacion))}.</li>${detallesUrbano}` : ""}</ol><p>🚶 Hasta el destino: ${esc(metros(fin))}.</p><button type="button" class="extras-button" data-metro-mapa="${i}">Ver paradas en mapa</button></details></article>`;
+      html += `<article class="extras-block" data-metro-opcion="${i}"><h4>${esc(lineas)} · ${c.urbana ? "1 transbordo" : "Directo"}</h4><p>${c.horario ? `Paso programado del ${esc(c.p.line)} en ${esc(nombre(c.subida))}: <strong>${esc(hora(c.horario.salida))}</strong>.${c.horario.llegada != null ? ` Bajada programada: ${esc(hora(c.horario.llegada))}.` : " Hora en la parada de bajada sin publicar."}` : "El MTOP no publica una próxima hora de paso en esta parada para la fecha consultada. No interpolamos horarios."}</p>${c.urbana ? '<p class="trip-note"><strong>Combinación por recorrido: conexión horaria sin confirmar.</strong> No podemos asegurar que alcances el segundo bus. Consultá el urbano y dejá margen antes de salir.</p>' : ""}<button type="button" class="extras-button" data-metro-elegir="${i}">Elegir este viaje</button><p data-metro-estado aria-live="polite"></p><details><summary>Ver pasos y paradas</summary><p>🚶 Desde el origen: ${esc(metros(inicio))}.</p><ol>${c.urbana && !c.saliendo ? detallesUrbano : ""}${c.urbana && !c.saliendo ? `<li>🚶 Combinación: ${esc(metros(c.caminataCombinacion))}.</li>` : ""}${detallesMetro}${c.urbana && c.saliendo ? `<li>🚶 Combinación: ${esc(metros(c.caminataCombinacion))}.</li>${detallesUrbano}` : ""}</ol><p>🚶 Hasta el destino: ${esc(metros(fin))}.</p><button type="button" class="extras-button" data-metro-mapa="${i}">Ver recorrido en mapa</button></details></article>`;
     }
     return (
       html +
@@ -310,11 +312,44 @@
       .slice(0, 8);
     return render(d, opciones, ctx);
   }
-  document.addEventListener("click", (e) => {
-    const boton = e.target.closest("[data-metro-mapa]");
-    if (!boton) return;
-    const c = opcionesActuales[Number(boton.dataset.metroMapa)];
-    if (!c) return;
+  async function tramoMetro(c) {
+    if (!shapesPendientes)
+      shapesPendientes = fetch("./metropolitano/shapes.json", {
+        cache: "no-cache",
+        signal: AbortSignal.timeout(12000),
+      })
+        .then((r) => {
+          if (!r.ok) throw Error("Geometrías no disponibles");
+          return r.json();
+        })
+        .catch((e) => {
+          shapesPendientes = null;
+          throw e;
+        });
+    const data = await shapesPendientes,
+      shape = data.shapes[c.p.routeId];
+    if (!shape) return null;
+    const nearest = (s) =>
+      shape.reduce(
+        (best, point, i) =>
+          distancia(s, { lat: point[0], lon: point[1] }) <
+          distancia(s, { lat: shape[best][0], lon: shape[best][1] })
+            ? i
+            : best,
+        0,
+      );
+    const a = nearest(c.subida),
+      b = nearest(c.bajada);
+    if (
+      a >= b ||
+      distancia(c.subida, { lat: shape[a][0], lon: shape[a][1] }) > 250 ||
+      distancia(c.bajada, { lat: shape[b][0], lon: shape[b][1] }) > 250
+    )
+      return null;
+    return shape.slice(a, b + 1);
+  }
+  async function mostrar(c, estado) {
+    const version = ++versionMapa;
     const points = [
       { ...c.subida, nombre: nombre(c.subida) },
       { ...c.bajada, nombre: nombre(c.bajada) },
@@ -326,7 +361,87 @@
           lon: s.location.coordinates[0],
           nombre: urbanoNombre(s),
         });
-    window.DondeVieneApp.mostrarParadasMetropolitanas(points);
+    estado.textContent = "Cargando recorrido…";
+    const resultados = await Promise.allSettled([
+      tramoMetro(c),
+      c.urbana && window.obtenerTramoLineaViaje
+        ? window.obtenerTramoLineaViaje(
+            c.urbana.line,
+            c.urbana.destination,
+            c.urbana.origen,
+            c.urbana.destino,
+          )
+        : Promise.resolve(null),
+    ]);
+    if (version !== versionMapa) return;
+    const shapes = resultados.map((r) =>
+      r.status === "fulfilled" ? r.value : null,
+    );
+    const tramos = shapes
+      .map((coords, i) =>
+        coords?.length > 1
+          ? {
+              coords,
+              color: i === 0 ? "#6b3daf" : "#087f8c",
+              nombre:
+                i === 0
+                  ? `${c.p.agency.name} ${c.p.line}`
+                  : `Urbano ${c.urbana.line}`,
+            }
+          : null,
+      )
+      .filter(Boolean);
+    window.DondeVieneApp.mostrarParadasMetropolitanas(points, tramos);
+    estado.textContent = shapes[0]
+      ? c.urbana && !shapes[1]
+        ? "Viaje elegido. Recorrido metropolitano visible; no pudimos cargar el tramo urbano."
+        : "Viaje elegido. Recorrido visible en el mapa: violeta metropolitano, verde urbano. Horarios programados; sin seguimiento en vivo del metropolitano."
+      : "Viaje elegido. Mostramos las paradas, pero no pudimos cargar un recorrido oficial compatible. Reintentá con Ver recorrido en mapa.";
+  }
+  window.addEventListener("donde-viene:viaje-cambio", () => {
+    versionMapa++;
+    opcionesActuales = [];
   });
-  DV.metro = { intentar, cobertura, directas, proximo, activo, cargar };
+  document.addEventListener("click", (e) => {
+    const volver = e.target.closest("[data-metro-volver]");
+    if (volver) {
+      versionMapa++;
+      document.querySelectorAll("[data-metro-opcion]").forEach((el) => {
+        el.hidden = false;
+        el.querySelector("[data-metro-elegir]").hidden = false;
+        el.querySelector("[data-metro-estado]").textContent = "";
+      });
+      volver.remove();
+      window.DondeVieneApp.limpiarMetropolitano?.();
+      return;
+    }
+    const boton = e.target.closest("[data-metro-elegir], [data-metro-mapa]");
+    if (!boton) return;
+    const i = Number(boton.dataset.metroElegir ?? boton.dataset.metroMapa),
+      c = opcionesActuales[i];
+    if (!c) return;
+    const card = boton.closest("[data-metro-opcion]");
+    if (boton.hasAttribute("data-metro-elegir")) {
+      document.querySelectorAll("[data-metro-opcion]").forEach((el) => {
+        el.hidden = el !== card;
+      });
+      boton.hidden = true;
+      card.querySelector("details").open = true;
+      if (!card.querySelector("[data-metro-volver]"))
+        card.insertAdjacentHTML(
+          "beforeend",
+          '<button type="button" class="extras-button" data-metro-volver>Cambiar viaje</button>',
+        );
+    }
+    mostrar(c, card.querySelector("[data-metro-estado]"));
+  });
+  DV.metro = {
+    intentar,
+    cobertura,
+    directas,
+    proximo,
+    activo,
+    cargar,
+    tramoMetro,
+  };
 })();
