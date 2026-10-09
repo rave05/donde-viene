@@ -44,7 +44,7 @@
   function separar(texto) {
     const m = String(texto)
       .trim()
-      .match(/^(.+?)\s+(\d{1,6})\s*([a-z]?)$/i);
+      .match(/^(.+?)\s+(\d{1,6})\s*([^ ·]{0,5})$/i);
     return m
       ? {
           calle: calleClave(m[1]),
@@ -73,46 +73,59 @@
           String(c[2]).padStart(2, "0") + ".json.gz",
           true,
         );
-        const puntos = (datos[c[0]] || []).filter(
-          (p) => p[0] === q.puerta && (!q.letra || p[1] === q.letra),
-        );
-        return puntos.map((p, i) => {
-          const nombre =
-            c[1] +
-            " " +
-            p[0] +
-            p[1] +
-            (puntos.length > 1 ? " · acceso " + (i + 1) : "");
-          const punto = {
-            lat: p[2],
-            lon: p[3],
-            nombre,
-            tipo: "house",
-            geocodificacionLocal: true,
-            fuente: indice.fuente,
-          };
-          elegidas.set(nombre, punto);
-          return {
-            valor: nombre,
-            nombre,
-            icono: "📍",
-            categoria: "Dirección oficial · Montevideo",
-            direccion: true,
-            punto,
-            calleUnica,
-          };
-        });
+        const puntos = (datos[c[0]] || []).filter((p) => p[0] === q.puerta);
+        return puntos
+          .map((p, i) => {
+            const nombre =
+              c[1] +
+              " " +
+              p[0] +
+              (p[1] ? " " + p[1] : "") +
+              (puntos.length > 1 ? " · acceso " + (i + 1) : "");
+            const punto = {
+              lat: p[2],
+              lon: p[3],
+              nombre,
+              tipo: "house",
+              geocodificacionLocal: true,
+              fuente: indice.fuente,
+            };
+            elegidas.set(nombre, punto);
+            return {
+              valor: nombre,
+              nombre,
+              icono: "📍",
+              categoria: "Dirección oficial · Montevideo",
+              direccion: true,
+              punto,
+              calleUnica,
+              letra: p[1],
+            };
+          })
+          .filter((o) => !q.letra || o.letra === q.letra);
       }),
     );
     while (elegidas.size > 100) elegidas.delete(elegidas.keys().next().value);
     return grupos.flat().slice(0, 6);
+  }
+  function qPuerta(texto) {
+    return separar(texto.replace(/ · acceso \d+$/, ""))?.puerta;
   }
   async function resolver(texto) {
     if (elegidas.has(texto)) return { ...elegidas.get(texto) };
     let opciones;
     try {
       opciones = await sugerir(texto.replace(/ · acceso \d+$/, ""));
-      const acceso = opciones.find((o) => o.valor === texto);
+      const acceso = opciones.find(
+        (o) =>
+          o.valor === texto ||
+          (o.letra &&
+            !/^\d+$/.test(o.letra) &&
+            o.valor.replace(
+              " " + qPuerta(texto) + " " + o.letra,
+              " " + qPuerta(texto) + o.letra,
+            ) === texto),
+      );
       if (acceso) return acceso.punto;
     } catch (_) {
       return null;

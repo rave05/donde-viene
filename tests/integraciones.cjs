@@ -35,6 +35,12 @@ load("notificaciones.js");
   const count = reads;
   await w.DV.direcciones.sugerir("18 de julio 1264");
   assert.equal(reads, count, "Índice y fragmento compartidos");
+  const bis = opts.find((o) => o.valor.includes("BIS"));
+  assert(bis, "La puerta BIS real forma parte de la prueba");
+  load("direcciones.js"); // Simula reabrir el enlace sin memoria de selecciones anteriores.
+  const reabierto = await w.DV.direcciones.resolver(bis.valor);
+  assert.equal(reabierto.lat, bis.punto.lat);
+  assert.equal(reabierto.lon, bis.punto.lon);
   const resolved = await w.DV.direcciones.resolver(opts[0].valor);
   assert(resolved.geocodificacionLocal);
   assert.equal(
@@ -53,6 +59,70 @@ load("notificaciones.js");
     fs.readFileSync(root + "/datos/direcciones/indice.json"),
   );
   assert(indice.calles.length > 4000);
+  const nunez = indice.calles.find((c) => c[1] === "IGNACIO NUÑEZ");
+  assert(nunez, "Se conserva Ñ con UTF-8");
+  const nunezPuerta = JSON.parse(
+    gunzipSync(
+      fs.readFileSync(
+        root +
+          "/datos/direcciones/" +
+          String(nunez[2]).padStart(2, "0") +
+          ".json.gz",
+      ),
+    ),
+  )[nunez[0]][0];
+  assert(
+    (await w.DV.direcciones.sugerir("Ignacio Nunez " + nunezPuerta[0])).length,
+  );
+  // Los sufijos numéricos se separan de la puerta; los índices no cambian al filtrar una letra.
+  let caso;
+  for (let n = 0; n < 64 && !caso; n++) {
+    const fragmento = JSON.parse(
+      gunzipSync(
+        fs.readFileSync(
+          root +
+            "/datos/direcciones/" +
+            String(n).padStart(2, "0") +
+            ".json.gz",
+        ),
+      ),
+    );
+    for (const [calle, filas] of Object.entries(fragmento)) {
+      const grupos = new Map();
+      for (const p of filas) {
+        if (!grupos.has(p[0])) grupos.set(p[0], []);
+        grupos.get(p[0]).push(p);
+      }
+      for (const [numero, filas] of grupos) {
+        if (filas.length > 6) continue;
+        const repetida = filas.find(
+          (p) =>
+            p[1] &&
+            filas.filter((r) => r[1] === p[1]).length > 1 &&
+            filas[0][1] !== p[1],
+        );
+        if (repetida) {
+          caso = {
+            calle: indice.calles.find((c) => c[0] === calle)[1],
+            numero,
+            letra: repetida[1],
+          };
+          break;
+        }
+      }
+      if (caso) break;
+    }
+  }
+  assert(caso);
+  const variantes = await w.DV.direcciones.sugerir(
+    caso.calle + " " + caso.numero,
+  );
+  const elegida = variantes.find((o) => o.letra === caso.letra);
+  load("direcciones.js");
+  const posicion = await w.DV.direcciones.resolver(elegida.valor);
+  assert.equal(posicion.lat, elegida.punto.lat);
+  assert.equal(posicion.lon, elegida.punto.lon);
+
   const filas = Object.values(
     JSON.parse(
       gunzipSync(fs.readFileSync(root + "/datos/direcciones/00.json.gz")),

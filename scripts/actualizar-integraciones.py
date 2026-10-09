@@ -24,7 +24,7 @@ def direcciones():
         for extension in ['shp','shx','dbf']:
             nombre=next(n for n in z.namelist() if pathlib.PurePosixPath(n).name=='v_mdg_accesos.'+extension)
             (pathlib.Path(temp)/('v_mdg_accesos.'+extension)).write_bytes(z.read(nombre))
-        reader=shapefile.Reader(str(pathlib.Path(temp)/'v_mdg_accesos.shp'),encoding='latin1')
+        reader=shapefile.Reader(str(pathlib.Path(temp)/'v_mdg_accesos.shp'),encoding='utf8')
         for registro,shape in zip(reader.iterRecords(),reader.iterShapes()):
             r=registro.as_dict();nombre=r['NOM_CALLE'].strip();numero=r['NUM_PUERTA'];letra=r['LETRA'].strip()
             if not nombre or not numero or numero<1 or not shape.points:continue
