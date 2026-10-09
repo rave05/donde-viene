@@ -1,5 +1,5 @@
 /* Cachea la interfaz y datos estáticos. Nunca guarda respuestas de la API de transporte. */
-const CACHE = "dv-shell-20261009-v24";
+const CACHE = "dv-shell-20261009-v25";
 const CORE = [
   "index.html",
   "metropolitano.js",
@@ -191,7 +191,10 @@ self.addEventListener("notificationclick", (event) => {
       const app = abiertas.find((c) =>
         c.url.startsWith(self.registration.scope),
       );
-      if (app) return app.focus();
+      if (app) {
+        if (event.notification.data?.tipo === 'viaje-activo') app.postMessage({ tipo: 'abrir-viaje-activo' });
+        return app.focus();
+      }
       return self.clients.openWindow(url);
     })(),
   );

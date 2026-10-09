@@ -107,6 +107,12 @@ const fire = (type, detail) =>
   w.document.querySelector('[data-parada-viaje="0:4"]').click();
   assert.equal(focused, "0:4");
   w.document.getElementById("btnSalirGuiaViaje").click();
+  assert.equal(w.document.getElementById("guiaViaje").hidden, true);
+  assert.equal(w.document.getElementById("btnVolverGuiaViaje").hidden, false);
+  assert.equal(drawn[0].paradas.length, 10, "minimizar mantiene las paradas");
+  w.document.getElementById("btnVolverGuiaViaje").click();
+  assert.equal(w.document.getElementById("guiaViaje").hidden, false);
+  w.document.getElementById("btnTerminarGuiaViaje").click();
   assert.equal(drawn, null);
   assert(!w.document.getElementById("paradasDelViaje"));
   const data = await w.DV.metro.cargar(),
