@@ -60,6 +60,14 @@ export default {
       ).all();
       return json(result.results);
     }
+    if (url.pathname === "/admin/push" && request.method === "GET") {
+      if (!env.ADMIN_TOKEN || request.headers.get("Authorization") !== "Bearer " + env.ADMIN_TOKEN)
+        return json({ error: "No autorizado" }, 401);
+      if (!env.DB) return json({ error: "Servicio no configurado" }, 503);
+      const subscriptions = await env.DB.prepare("SELECT recordatorio, actualizado FROM subscriptions ORDER BY actualizado DESC LIMIT 100").all();
+      const deliveries = await env.DB.prepare("SELECT event_id, estado, creado FROM deliveries ORDER BY creado DESC LIMIT 100").all();
+      return json({ subscriptions: subscriptions.results, deliveries: deliveries.results });
+    }
     if (
       request.method === "GET" &&
       env.TRANSPORTE &&
