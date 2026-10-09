@@ -82,8 +82,8 @@ const a = d.stops["24204"],
     fechaLlegadaLimite: f.toISOString(),
   });
   assert(h.html.includes("no son llegadas en vivo"));
-  assert(h.includes("no están verificadas para ese límite"));
-  assert(h.includes("Elegir este viaje"));
+  assert(h.html.includes("no están verificadas para ese límite"));
+  assert(h.html.includes("data-route-index"), "mismo selector de variantes urbano");
   const shape = await metro.tramoMetro(direct.find(c=>c.p.line==="230"));
   assert(shape.length > 20, "geometría oficial con curvas, no unión de paradas");
   const reverseShape = await metro.tramoMetro(metro.directas(d,b,a,f).find(c=>c.p.line==="230"));
@@ -143,7 +143,7 @@ const a = d.stops["24204"],
     combinado.html.includes("1 transbordo"),
     "Las Piedras a Tres Cruces conecta red urbana",
   );
-  assert(combinado.includes("conexión horaria sin confirmar"));
+  assert(combinado.html.includes("conexión horaria sin confirmar"));
   const vuelta = await metro.intentar(destino, a, {
     fechaSalida: f.toISOString(),
   });
