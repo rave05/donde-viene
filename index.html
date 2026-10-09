@@ -1619,6 +1619,7 @@
   <script src="./app-util.js?v=20261008-2"></script>
   <script src="./viaje.js?v=20261008-6"></script>
   <script src="./buses-mapa-vista.js?v=20261008-1"></script>
+  <script src="./buses-sentido.js?v=20261009-1"></script>
 
   <!-- Leaflet -->
 
@@ -2144,14 +2145,7 @@
     // Historial de distancia por parada + variante + coche.
     // Solo usamos buses GPS sin ETA cuando podemos confirmar
     // que se están acercando a la parada seleccionada.
-    const historialMovimientoBuses =
-      new Map();
-
-    const UMBRAL_ACERCAMIENTO_METROS =
-      40;
-
-    const HISTORIAL_MOVIMIENTO_MAX_MS =
-      3 * 60 * 1000;
+    let filtroSentidoActivo = null;
 
 
 
@@ -5007,19 +5001,11 @@
           Date.now();
         informarLlegadas('posicion', cacheBusesEnVivo.timestamp || ahora);
 
-        // Limpiar observaciones demasiado antiguas.
-        for (
-          const [clave, observacion] of
-            historialMovimientoBuses.entries()
-        ) {
-          if (
-            ahora - observacion.timestamp >
-              HISTORIAL_MOVIMIENTO_MAX_MS
-          ) {
-            historialMovimientoBuses.delete(
-              clave
-            );
-          }
+        const claveFiltro = JSON.stringify([seleccion.sesionId, stopId, variantId]);
+        if (filtroSentidoActivo?.clave !== claveFiltro) {
+          const shapes = await window.obtenerPatronesParaParada(linea, destination, stopId);
+          if (seleccion.sesionId !== sesionProximos) return;
+          filtroSentidoActivo = {clave: claveFiltro, filtrar: window.crearFiltroSentidoBuses(shapes, [Number(stopLat), Number(stopLon)])};
         }
 
         const busesMismaVariante =
@@ -5058,80 +5044,14 @@
 
         const busesAcercandose = [];
         let busesSinConfirmar = 0;
-        let busesAlejandose = 0;
+
 
         for (
           const bus of
             busesMismaVariante
         ) {
-          const identificadorBus =
-            bus.busId != null
-              ? String(bus.busId)
-              : `${bus.location.coordinates[0]}|${bus.location.coordinates[1]}`;
-
-          const claveMovimiento =
-            `${stopId}|${variantId}|${identificadorBus}`;
-
-          const anterior =
-            historialMovimientoBuses.get(
-              claveMovimiento
-            );
-
-          const distanciaActual =
-            Number(bus.distanciaAParada);
-
-          let estadoMovimiento =
-            'sin-confirmar';
-
-          if (
-            anterior &&
-            Number.isFinite(
-              Number(anterior.distancia)
-            )
-          ) {
-            const diferencia =
-              Number(anterior.distancia) -
-              distanciaActual;
-
-            if (
-              diferencia >=
-                UMBRAL_ACERCAMIENTO_METROS
-            ) {
-              estadoMovimiento =
-                'acercandose';
-            } else if (
-              diferencia <=
-                -UMBRAL_ACERCAMIENTO_METROS
-            ) {
-              estadoMovimiento =
-                'alejandose';
-            }
-          }
-
-          historialMovimientoBuses.set(
-            claveMovimiento,
-            {
-              distancia:
-                distanciaActual,
-
-              timestamp:
-                ahora
-            }
-          );
-
-          if (
-            estadoMovimiento ===
-              'acercandose'
-          ) {
-            busesAcercandose.push({
-              ...bus,
-              estadoMovimiento
-            });
-          } else if (
-            estadoMovimiento ===
-              'alejandose'
-          ) {
-            busesAlejandose++;
+          if (filtroSentidoActivo.filtrar(bus, cacheBusesEnVivo.timestamp)) {
+            busesAcercandose.push(bus);
           } else {
             busesSinConfirmar++;
           }
@@ -5181,8 +5101,8 @@
               <strong>Sin llegada estimada por ahora.</strong><br>
               ${
                 busesSinConfirmar > 0
-                  ? `Detectamos ${busesSinConfirmar} vehículo${busesSinConfirmar === 1 ? '' : 's'} de esta variante, pero todavía estamos verificando si viene${busesSinConfirmar === 1 ? '' : 'n'} hacia esta parada. La próxima actualización confirmará la dirección.`
-                  : `Los vehículos detectados de esta variante parecen haberse alejado de esta parada, por lo que no los mostramos como próximos.`
+                  ? `Detectamos ${busesSinConfirmar} vehículo${busesSinConfirmar === 1 ? '' : 's'} de esta variante, pero su avance hacia esta parada no está confirmado. Por eso no los mostramos como próximos.`
+                  : `No hay vehículos con avance confirmado hacia esta parada.`
               }
             </div>
           `;
@@ -5203,7 +5123,7 @@
           <h3>${linea}${destinoTexto}</h3>
           <div class="aviso-info">
             <strong>Sin ETA oficial por ahora.</strong><br>
-            Mostramos únicamente vehículos cuya posición indica que se están acercando a esta parada.
+            Mostramos únicamente vehículos ubicados antes de esta parada y con avance confirmado sobre el recorrido.
             La distancia es aproximada y en línea recta.
           </div>
         `;
@@ -5845,7 +5765,7 @@
   </script>
 
   <script src="./horarios.js?v=20261008-2"></script>
-  <script src="./recorridos.js?v=20261008-3"></script>
+  <script src="./recorridos.js?v=20261009-1"></script>
 
   <dialog id="editorFavorito" class="mobile-dialog" aria-labelledby="tituloFavorito">
     <form id="formFavorito">

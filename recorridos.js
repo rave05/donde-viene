@@ -144,6 +144,20 @@
     return datos;
   }
 
+  // Solo patrones del sentido elegido que contienen la parada; sin aproximar destinos.
+  window.obtenerPatronesParaParada = async function(linea, destino, stopId) {
+    try {
+      if (!normalizar(destino) || !stopId) return [];
+      await cargarAliasesRecorridos();
+      const datos = await cargarRecorridoLinea(linea);
+      return (datos?.patterns || []).filter(p =>
+        normalizar(p.destination) === normalizar(destino) &&
+        indiceParadaCompatible((p.stops || []).map(String), stopId) >= 0 &&
+        Array.isArray(p.shape) && p.shape.length >= 2
+      ).map(p => p.shape);
+    } catch (_) { return []; }
+  };
+
   function distanciaSimple(lat1, lon1, lat2, lon2) {
     const dLat = Number(lat1) - Number(lat2);
     const dLon = Number(lon1) - Number(lon2);
