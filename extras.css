@@ -71,6 +71,37 @@
   opacity: 0.55;
   cursor: default;
 }
+.stm-online-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.stm-online-actions a {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  margin: 0;
+  text-decoration: none;
+}
+.stm-help {
+  margin: 12px 0;
+}
+.stm-help > summary {
+  min-height: 44px;
+  display: list-item;
+  padding: 12px 0;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-weight: 700;
+}
+.stm-physical-title {
+  margin: 18px 0 8px;
+  font-size: 16px;
+}
+.stm-all-points {
+  display: inline-block;
+  padding: 12px 0;
+}
 .extras-primary {
   background: #164b8c;
   color: #fff;

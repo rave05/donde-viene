@@ -5,8 +5,18 @@
     version = 0;
   const section = document.createElement("details");
   section.className = "extras-block";
+  section.id = "miSTM";
   section.innerHTML =
-    '<summary>💳 Recargar la STM cerca</summary><p class="extras-note">Busca cerca del destino elegido o del centro del mapa. Confirmá los horarios con el local.</p><button class="extras-button" id="btnBuscarRecargas" type="button">Mostrar puntos cercanos</button><button class="extras-button" id="btnOcultarRecargas" type="button" hidden>Ocultar puntos</button><p id="estadoRecargas" class="extras-status" role="status"></p><div id="listaRecargas" class="extras-list"></div>';
+    '<summary>💳 Mi STM</summary>' +
+    '<p class="extras-note">Recargá online, consultá tu saldo o encontrá un local de recarga.</p>' +
+    '<div class="stm-online-actions">' +
+    '<a class="extras-button" href="https://stm.gub.uy/app/mistm/cuenta/" target="_blank" rel="noopener noreferrer">Recargar STM online ↗</a>' +
+    '<a class="extras-button" href="https://stm.gub.uy/app/mistm/cuenta/" target="_blank" rel="noopener noreferrer">Consultar saldo en STM en línea ↗</a></div>' +
+    '<p class="extras-note">Los accesos online abren el sitio oficial en otra pestaña. Para recargar, elegí “Recarga rápida” o ingresá a tu cuenta. Para consultar tu saldo, ingresá a tu cuenta de STM en línea.</p>' +
+    '<details class="stm-help"><summary>¿Qué necesito para recargar online?</summary><p class="extras-note">Tu tarjeta debe estar adherida a STM en línea. La recarga rápida solicita la cédula del titular y el número de tarjeta. Ingresá esos datos y completá el pago en el sitio oficial.</p><p class="extras-note">El saldo de STM en línea puede diferir del saldo físico de la tarjeta y de los últimos viajes.</p><a href="https://montevideo.gub.uy/stm-en-linea" target="_blank" rel="noopener noreferrer">Cómo adherirse y usar STM en línea ↗</a></details>' +
+    '<h3 class="stm-physical-title">Puntos físicos de recarga</h3>' +
+    '<p class="extras-note">Buscá cerca del destino elegido o del centro del mapa, en Montevideo y otras zonas del catálogo oficial. Confirmá los horarios con el local.</p><button class="extras-button" id="btnBuscarRecargas" type="button">Encontrar puntos de recarga cercanos</button><button class="extras-button" id="btnOcultarRecargas" type="button" hidden>Ocultar puntos</button><p id="estadoRecargas" class="extras-status" role="status"></p><div id="listaRecargas" class="extras-list"></div>' +
+    '<a class="stm-all-points" href="https://montevideo.gub.uy/tipo/area-tematica/sistema-de-transporte-metropolitano/locales-stm" target="_blank" rel="noopener noreferrer">Ver todos los locales en el sitio oficial ↗</a>';
   document.querySelector(".map-card").after(section);
   const status = document.getElementById("estadoRecargas"),
     list = document.getElementById("listaRecargas"),
