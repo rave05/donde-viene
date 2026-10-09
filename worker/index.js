@@ -4,7 +4,7 @@ import {
   validarSuscripcion,
   validarPreferencias,
 } from "./validacion.js";
-import { procesarAvisos, enviarPush } from "./push.js";
+import { procesarAvisos, enviarPush, prepararPush } from "./push.js";
 import { withSharedTransitCache, recursoCacheable } from "./transport-cache.js";
 export default {
   async fetch(request, env, ctx) {
@@ -66,7 +66,11 @@ export default {
       if (!env.DB) return json({ error: "Servicio no configurado" }, 503);
       const subscriptions = await env.DB.prepare("SELECT recordatorio, actualizado FROM subscriptions ORDER BY actualizado DESC LIMIT 100").all();
       const deliveries = await env.DB.prepare("SELECT event_id, estado, creado FROM deliveries ORDER BY creado DESC LIMIT 100").all();
-      return json({ subscriptions: subscriptions.results, deliveries: deliveries.results });
+      let preparation = { ok: null };
+      const sample = await env.DB.prepare("SELECT subscription FROM subscriptions LIMIT 1").first();
+      if (sample) try { prepararPush(JSON.parse(sample.subscription), {body:"diagnostico"}, env); preparation={ok:true}; }
+      catch(error) { preparation={ok:false,error:String(error.message).replace(/[A-Za-z0-9_-]{32,}/g,"[redactado]").slice(0,250)}; }
+      return json({ subscriptions: subscriptions.results, deliveries: deliveries.results, preparation });
     }
     if (
       request.method === "GET" &&

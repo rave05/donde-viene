@@ -1,6 +1,6 @@
 import webpush from "web-push";
 import { validarSuscripcion, recordatorioActual } from "./validacion.js";
-export async function enviarPush(subscription, payload, env) {
+export function prepararPush(subscription, payload, env) {
   validarSuscripcion(subscription);
   const details = webpush.generateRequestDetails(
     subscription,
@@ -15,6 +15,10 @@ export async function enviarPush(subscription, payload, env) {
       },
     },
   );
+  return details;
+}
+export async function enviarPush(subscription, payload, env) {
+  const details = prepararPush(subscription, payload, env);
   const response = await fetch(details.endpoint, {
     method: details.method,
     headers: details.headers,
