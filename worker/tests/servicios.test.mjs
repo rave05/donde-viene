@@ -395,7 +395,7 @@ test("Recordatorios en Montevideo, avisos vigentes, envío cifrado y deduplicaci
     sends++;
     assert(options.body.length > 40);
     assert(options.headers.Authorization || options.headers.authorization);
-    assert.equal(options.redirect, "error");
+    assert.equal(options.redirect, "manual");
     return new Response("", { status: 201 });
   };
   try {

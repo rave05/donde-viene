@@ -23,7 +23,7 @@ export async function enviarPush(subscription, payload, env) {
     method: details.method,
     headers: details.headers,
     body: details.body,
-    redirect: "error",
+    redirect: "manual",
     signal: AbortSignal.timeout(10000),
   });
   return response.status;

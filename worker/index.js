@@ -68,7 +68,7 @@ export default {
       const deliveries = await env.DB.prepare("SELECT event_id, estado, creado FROM deliveries ORDER BY creado DESC LIMIT 100").all();
       let preparation = { ok: null };
       const sample = await env.DB.prepare("SELECT subscription FROM subscriptions LIMIT 1").first();
-      if (sample) try { prepararPush(JSON.parse(sample.subscription), {body:"diagnostico"}, env); preparation={ok:true}; }
+      if (sample) try { const details = prepararPush(JSON.parse(sample.subscription), {body:"diagnostico"}, env); new Request(details.endpoint, {method:details.method,headers:details.headers,body:details.body,redirect:"manual"}); preparation={ok:true,requestReady:true}; }
       catch(error) { preparation={ok:false,error:String(error.message).replace(/[A-Za-z0-9_-]{32,}/g,"[redactado]").slice(0,250)}; }
       return json({ subscriptions: subscriptions.results, deliveries: deliveries.results, preparation });
     }
