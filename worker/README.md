@@ -1,6 +1,8 @@
 # Servicios auxiliares de ¿Dónde Viene?
 
-**Estado: implementados y probados localmente; todavía no desplegados.** La aplicación mantiene `datos/servicios.json` con `url: null`. No solicita permisos push ni confirma reportes del servidor mientras falte infraestructura. El correo existente sigue disponible.
+**Estado: servicio auxiliar desplegado y reportes verificados en D1.** `datos/servicios.json` apunta al servicio real. La recepción push en un dispositivo requiere una suscripción explícita y una prueba de entrega. El correo existente sigue disponible.
+
+La configuración conserva el binding `TRANSPORTE` y habilita `CACHE_PUBLIC_TRANSIT: "true"`: para rutas públicas reconocidas, permite una caché interna aunque la API original use `no-store`. El navegador sigue recibiendo `no-store`. Se excluyen respuestas privadas, cookies y variantes por autorización. Buses y llegadas se conservan solo cinco segundos, líneas por parada cinco minutos y paradas una hora. Sin esa opción se respeta también `no-store` del origen.
 
 ## Componentes
 

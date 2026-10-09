@@ -127,6 +127,72 @@ test("Caché: claves canónicas, consultas simultáneas, errores y datos privado
   );
   assert(!saved.has(fail.url));
 });
+test("Caché pública explícita: no-store solo en rutas públicas; nunca datos privados", async () => {
+  const saved = new Map();
+  const cache = {
+    async match(r) {
+      return saved.get(r.url)?.clone();
+    },
+    async put(r, v) {
+      saved.set(r.url, v);
+    },
+  };
+  const request = req("/stops/546/lines");
+  let calls = 0;
+  const original = async () => {
+    calls++;
+    return Response.json([{ line: "144" }], {
+      headers: { "Cache-Control": "no-store" },
+    });
+  };
+  await withSharedTransitCache(request, {}, ctx, original, cache);
+  assert.equal(saved.size, 0);
+  const env = { CACHE_PUBLIC_TRANSIT: "true" };
+  const first = await withSharedTransitCache(
+    request,
+    env,
+    ctx,
+    original,
+    cache,
+  );
+  const second = await withSharedTransitCache(
+    request,
+    env,
+    ctx,
+    original,
+    cache,
+  );
+  assert.equal(calls, 2);
+  assert.equal(
+    second.headers.get("X-DV-Observed-At"),
+    first.headers.get("X-DV-Observed-At"),
+  );
+  assert.equal(second.headers.get("Cache-Control"), "no-store");
+  for (const headers of [
+    { "Cache-Control": "private, no-store" },
+    { "Set-Cookie": "session=private" },
+    { Vary: "Authorization" },
+    { Vary: "Cookie" },
+    { Vary: "*" },
+  ]) {
+    saved.clear();
+    await withSharedTransitCache(
+      request,
+      env,
+      ctx,
+      async () => Response.json({}, { headers }),
+      cache,
+    );
+    assert.equal(saved.size, 0);
+  }
+  for (const request of [
+    req("/reports"),
+    req("/buses", null, { Authorization: "Bearer private" }),
+  ]) {
+    await withSharedTransitCache(request, env, ctx, original, cache);
+    assert.equal(saved.size, 0);
+  }
+});
 test("Reportes: confirmación real, texto limitado, acceso administrativo y límite de consultas", async () => {
   const { DB, sqlite } = base(),
     env = {

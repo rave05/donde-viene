@@ -14,6 +14,7 @@ export default {
       "Content-Type": "application/json",
       "Cache-Control": "no-store",
       Vary: "Origin",
+      "Access-Control-Expose-Headers": "Age, X-DV-Observed-At",
     };
     if (origin === env.APP_ORIGIN)
       headers["Access-Control-Allow-Origin"] = origin;
@@ -33,6 +34,12 @@ export default {
     if (url.pathname === "/config" && request.method === "GET")
       return json({
         reportes: Boolean(env.DB && env.PUBLIC_LIMIT),
+        transporte: Boolean(env.TRANSPORTE && env.PUBLIC_LIMIT),
+        cacheTransporte: Boolean(
+          env.TRANSPORTE &&
+            env.PUBLIC_LIMIT &&
+            env.CACHE_PUBLIC_TRANSIT === "true",
+        ),
         push: Boolean(
           env.DB &&
             env.PUBLIC_LIMIT &&

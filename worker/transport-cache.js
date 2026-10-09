@@ -80,7 +80,14 @@ export async function withSharedTransitCache(
         r.status !== 200 ||
         !tipo.includes("json") ||
         r.headers.has("Set-Cookie") ||
-        /private|no-store/i.test(r.headers.get("Cache-Control") || "")
+        /private/i.test(r.headers.get("Cache-Control") || "") ||
+        (/no-store/i.test(r.headers.get("Cache-Control") || "") &&
+          env.CACHE_PUBLIC_TRANSIT !== "true") ||
+        (r.headers.get("Vary") || "")
+          .split(",")
+          .some((v) =>
+            ["*", "cookie", "authorization"].includes(v.trim().toLowerCase()),
+          )
       )
         return r;
       const stored = new Response(r.body, r);

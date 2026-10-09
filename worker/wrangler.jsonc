@@ -4,6 +4,7 @@
   "compatibility_date": "2026-10-09",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
+    "CACHE_PUBLIC_TRANSIT": "true",
     "APP_ORIGIN": "https://rave05.github.io",
     "AVISOS_URL": "https://rave05.github.io/donde-viene/datos/avisos-oficiales.json",
     "VAPID_SUBJECT": "mailto:dondevieneadvertisement@gmail.com",
@@ -16,6 +17,7 @@
     },
   ],
   "triggers": { "crons": ["*/5 * * * *"] },
+  "services": [{ "binding": "TRANSPORTE", "service": "donde-viene-api" }],
   "d1_databases": [
     {
       "binding": "DB",
