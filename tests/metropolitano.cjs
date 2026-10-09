@@ -152,6 +152,24 @@ const a = d.stops["24204"],
   assert(co.origen.busstopId.startsWith("mtop:") && !co.destino.busstopId.startsWith("mtop:"));
   assert(!cv.origen.busstopId.startsWith("mtop:") && cv.destino.busstopId.startsWith("mtop:"));
   assert(!cv.proximaSalida,"horario MTOP de segundo tramo no se presenta como salida del primer urbano");
+  // Regresión real: el transbordo no tiene por qué ser Colón o Río Branco.
+  const anaya = {lat:-34.818249,lon:-56.309443}, plaza = {lat:-34.72749,lon:-56.21648};
+  const inicio = Date.now();
+  const aPlaza = await metro.intentar(anaya,plaza,{fechaSalida:'2026-10-09T17:49:00-03:00'});
+  assert(aPlaza.candidatos.length,'Anaya a Plaza de Las Piedras ofrece opciones');
+  assert(aPlaza.candidatos.every(c=>c.line1 && c.line2 && c.metropolitana.opcion.caminataCombinacion<=300));
+  for(const c of aPlaza.candidatos){
+    const raw=c.metropolitana.opcion;
+    assert(!raw.saliendo);
+    const patron=d.patterns.find(p=>p.routeId===raw.p.routeId && p.stops.indexOf(raw.subida.id.replace('mtop:',''))<p.stops.indexOf(raw.bajada.id.replace('mtop:','')));
+    assert(patron,'sentido metropolitano confirmado por secuencia');
+    assert(raw.urbana.detectadaPorRed,'urbano llega al transbordo por red real');
+  }
+  const desdePlaza = await metro.intentar(plaza,anaya,{fechaSalida:'2026-10-09T17:49:00-03:00'});
+  assert(desdePlaza.candidatos.length,'también encuentra la vuelta');
+  assert(desdePlaza.candidatos.every(c=>c.metropolitana.opcion.saliendo && c.metropolitana.opcion.caminataCombinacion<=300));
+  assert(aPlaza.html.includes('conexión horaria sin confirmar'));
+  console.log('Anaya ↔ Plaza Las Piedras: '+aPlaza.candidatos.length+' / '+desdePlaza.candidatos.length+' opciones en '+(Date.now()-inicio)+' ms');
   const saved=w.obtenerTramoLineaViaje, calls=[];
   w.obtenerTramoLineaViaje=async(line,destination,subida,bajada)=>{
     calls.push([subida.busstopId,bajada.busstopId]);

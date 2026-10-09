@@ -169,49 +169,43 @@
       }))
       .filter((s) => s.distanciaRuta <= radio)
       .sort((a, b) => a.distanciaRuta - b.distanciaRuta)
-      .slice(0, 8);
+      .slice(0, 24);
   }
   async function combinar(d, origen, destino, referencia) {
     if (!window.buscarDirectasPorRed || !window.todasLasParadas?.length)
       return [];
     const saliendo = cobertura(origen);
     const urbano = saliendo ? destino : origen;
+    // Cualquier parada metropolitana del área urbana puede ser un intercambio.
+    // Primero comprobamos una directa urbana; así no evaluamos horarios MTOP
+    // en puntos que el urbano no alcanza, ni dependemos de nombres de terminales.
     const puntos = Object.values(d.stops)
-      .filter(
-        (s) =>
-          s.lat < -34.79 &&
-          /TERMINAL B.BRUM|PZA\.?\s*COLON|PLAZA 1o MAYO/i.test(s.name),
-      )
+      .filter(s => s.lat < -34.79)
       .sort((a, b) => distancia(a, urbano) - distancia(b, urbano));
-    const elegidos = [];
-    for (const p of puntos)
-      if (!elegidos.some((s) => distancia(s, p) < 250)) {
-        elegidos.push(p);
-        if (elegidos.length === 3) break;
-      }
+    const origenesUrbanos = urbanaCerca(origen, 800);
     const output = [];
-    for (const punto of elegidos) {
+    const conexionesUrbanas = new Map();
+    async function urbanasEn(punto) {
+      const key = punto.lat + ':' + punto.lon;
+      if (!conexionesUrbanas.has(key)) conexionesUrbanas.set(key,
+        saliendo
+          ? window.buscarDirectasPorRed(urbanaCerca(punto), destino, 800)
+          : window.buscarDirectasPorRed(origenesUrbanos, punto, 300));
+      return conexionesUrbanas.get(key);
+    }
+    for (const punto of puntos) {
+      if (!(await urbanasEn(punto)).length) continue;
       const metros = (
         saliendo
           ? directas(d, origen, punto, referencia)
           : directas(d, punto, destino, referencia)
-      )
-        .filter((c) => distancia(saliendo ? c.bajada : c.subida, punto) <= 300)
-        .slice(0, 2);
+      ).filter(c => distancia(saliendo ? c.bajada : c.subida, punto) <= 300);
       for (const metro of metros) {
         const intercambio = saliendo ? metro.bajada : metro.subida;
-        const urbanas = saliendo
-          ? await window.buscarDirectasPorRed(
-              urbanaCerca(intercambio),
-              destino,
-              800,
-            )
-          : await window.buscarDirectasPorRed(
-              urbanaCerca(origen, 800),
-              intercambio,
-              300,
-            );
-        for (const u of urbanas.slice(0, 2)) {
+        // La secuencia y el sentido MTOP pueden elegir otra parada próxima.
+        // Confirmamos la conexión urbana con esa parada concreta.
+        const urbanas = await urbanasEn(intercambio);
+        for (const u of urbanas.slice(0, 4)) {
           const parada = saliendo ? u.origen : u.destino;
           const caminar = distancia(intercambio, {
             lat: parada.location?.coordinates?.[1],
@@ -226,7 +220,8 @@
             score:
               metro.score +
               caminar +
-              Number((saliendo ? u.destino : u.origen).distanciaRuta || 0),
+              Number((saliendo ? u.destino : u.origen).distanciaRuta || 0) +
+              distancia(urbano, intercambio) * 0.1,
           });
         }
       }
@@ -300,7 +295,7 @@
         c.urbana?.line || "",
         c.urbana?.destination || "",
       ].join("|");
-      if (!unicas.has(k)) unicas.set(k, c);
+      if (!unicas.has(k) || c.score < unicas.get(k).score) unicas.set(k, c);
     }
     const opciones = [...unicas.values()]
       .sort(
