@@ -1493,18 +1493,17 @@
       <div class="route-fields">
         <div class="route-field">
           <label for="origenRuta">Origen</label>
-          <input id="origenRuta" type="text" autocomplete="off" placeholder="Ej: Tres Cruces">
+          <input id="origenRuta" type="text" autocomplete="off" aria-describedby="ayudaDireccionesRuta" placeholder="Ej: Luis Batlle Berres y Tomkinson">
         </div>
 
         <div class="route-field">
           <label for="destinoRuta">Destino</label>
-          <input id="destinoRuta" type="text" autocomplete="off" placeholder="Ej: Plaza Independencia">
+          <input id="destinoRuta" type="text" autocomplete="off" aria-describedby="ayudaDireccionesRuta" placeholder="Ej: 18 de Julio 1263 o Tres Cruces">
         </div>
 
         <button id="btnBuscarRuta" type="button">Buscar ruta</button>
       </div>
-
-
+      <p id="ayudaDireccionesRuta" class="trip-note">Buscá un lugar, una calle con número o una esquina. Elegí la dirección en las sugerencias para ubicarla con precisión.</p>
       <div class="trip-preference">
         <label for="preferenciaViaje">¿Qué preferís para este viaje?</label>
         <select id="preferenciaViaje"><option value="proximos">Bus más próximo</option><option value="transbordos">Menos transbordos</option><option value="caminar">Caminar menos</option><option value="tiempo">Menor tiempo orientativo</option></select>
@@ -1626,7 +1625,7 @@
   <!-- Catálogo local de lugares conocidos -->
   <script src="./lugares.js?v=20261009-metro-1"></script>
   <script src="./app-util.js?v=20261008-2"></script>
-  <script src="./direcciones.js?v=20261009-2"></script>
+  <script src="./direcciones.js?v=20261009-cruces-1"></script>
   <script src="./viaje.js?v=20261009-metro-ui-1"></script>
   <script src="./buses-mapa-vista.js?v=20261008-1"></script>
   <script src="./buses-sentido.js?v=20261009-1"></script>
@@ -1886,7 +1885,7 @@
         mostrar();
         if (input === destinoRuta) limpiarVistaDestino();
       });
-      input.addEventListener('focus', mostrar);
+      input.addEventListener('focus', () => mostrar());
       input.addEventListener('click', () => { if (lista.hidden) mostrar(); });
       input.addEventListener('blur', () => { if (!toqueOpcion) cerrar(); });
       input.addEventListener('keydown', event => {

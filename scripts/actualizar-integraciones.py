@@ -41,6 +41,39 @@ def direcciones():
     for i,shard in enumerate(fragmentos):escribir(destino/f'{i:02d}.json.gz',shard)
     escribir(destino/'indice.json',{'version':STAMP.replace('-',''),'fuente':'https://ckan.montevideo.gub.uy/dataset/direcciones-oficiales-de-montevideo','licencia':'dag-uy','descargado':STAMP,'calles':indice})
     print(len(calles),'calles y',sum(len(v['puntos']) for v in calles.values()),'accesos')
+def cruces(archivo=None):
+    import shapefile
+    from pyproj import Transformer
+    nombre='v_sig_cruces_vias_montevideo'
+    if archivo:
+        raw=pathlib.Path(archivo).read_bytes()
+    else:
+        descargar('https://intgis.montevideo.gub.uy/sit/php/common/datos/generar_zip2.php?nom_tab='+nombre+'&tipo=gis')
+        raw=descargar('https://intgis.montevideo.gub.uy/sit/tmp/'+nombre+'.zip')
+    z=zipfile.ZipFile(io.BytesIO(raw))
+    def componente(ext):
+        return io.BytesIO(z.read(next(n for n in z.namelist() if pathlib.PurePosixPath(n).name==nombre+'.'+ext)))
+    reader=shapefile.Reader(shp=componente('shp'),shx=componente('shx'),dbf=componente('dbf'),encoding='utf8')
+    transformar=Transformer.from_crs(32721,4326,always_xy=True)
+    puntos=set()
+    for registro,shape in zip(reader.iterRecords(),reader.iterShapes()):
+        r=registro.as_dict()
+        if r['COD_DEPTO']!=1 or not shape.points:continue
+        a,b=sorted([r['NOM_CALLE_'].strip(),r['NOM_CAL_01'].strip()])
+        if not a or not b or a==b:continue
+        lon,lat=transformar.transform(*shape.points[0])
+        if not(-35.05<=lat<=-34.65 and -56.45<=lon<=-55.90):continue
+        puntos.add((a,b,round(lat,6),round(lon,6)))
+    if len(puntos)<15000:raise RuntimeError('Fuente de cruces incompleta')
+    calles=sorted({n for a,b,_,_ in puntos for n in (a,b)})
+    ids={c:i for i,c in enumerate(calles)}
+    fragmentos=[[] for _ in range(32)]
+    for a,b,lat,lon in sorted(puntos):
+        fragmentos[ids[a]%32].append([ids[a],ids[b],lat,lon])
+    destino=ROOT/'datos'/'direcciones'
+    for i,filas in enumerate(fragmentos):escribir(destino/f'cruces-{i:02d}.json',filas)
+    escribir(destino/'cruces-indice.json',{'version':STAMP.replace('-',''),'fuente':'https://catalogodatos.gub.uy/dataset/cruces-de-calle-de-montevideo','licencia':'dag-uy','descargado':STAMP,'fragmentos':32,'cantidad':len(puntos),'calles':calles})
+    print(len(calles),'calles y',len(puntos),'cruces oficiales')
 def accesibilidad():
     raw=descargar('https://datos-abiertos.montevideo.gub.uy/accesibilidad_lugares.zip')
     z=zipfile.ZipFile(io.BytesIO(raw));name=next(n for n in z.namelist() if n.endswith('.csv'))
@@ -58,5 +91,6 @@ def accesibilidad():
     escribir(ROOT/'datos'/'accesibilidad-lugares.json',{'fuente':'https://ckan.montevideo.gub.uy/dataset/espacios-accesibles-de-montevideo','licencia':'dag-uy','descargado':STAMP,'lugares':lugares})
     print(len(lugares),'lugares con fecha de registro original')
 if __name__=='__main__':
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('fuente',choices=['direcciones','accesibilidad']);args=parser.parse_args()
-    (direcciones if args.fuente=='direcciones' else accesibilidad)()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('fuente',choices=['direcciones','cruces','accesibilidad']);parser.add_argument('--archivo',help='ZIP de cruces ya descargado');args=parser.parse_args()
+    if args.fuente=='cruces':cruces(args.archivo)
+    else:(direcciones if args.fuente=='direcciones' else accesibilidad)()
