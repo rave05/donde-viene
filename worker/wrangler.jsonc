@@ -16,7 +16,14 @@
     },
   ],
   "triggers": { "crons": ["*/5 * * * *"] },
-  // Antes del despliegue: agregar d1_databases con binding DB e id real.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "donde-viene-servicios",
+      "database_id": "3548d5e8-ed3b-4a62-acb0-0441c914857c",
+    },
+  ],
+  // Inicializar las tablas con schema.sql antes de activar el servicio en la app.
   // Claves VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY y ADMIN_TOKEN mediante wrangler secret.
   // TRANSPORTE es opcional: service binding al Worker original para probar la caché sin reemplazarlo.
 }
