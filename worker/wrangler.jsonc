@@ -1,0 +1,22 @@
+{
+  "name": "donde-viene-servicios",
+  "main": "index.js",
+  "compatibility_date": "2026-10-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "APP_ORIGIN": "https://rave05.github.io",
+    "AVISOS_URL": "https://rave05.github.io/donde-viene/datos/avisos-oficiales.json",
+    "VAPID_SUBJECT": "mailto:dondevieneadvertisement@gmail.com",
+  },
+  "ratelimits": [
+    {
+      "name": "PUBLIC_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 60, "period": 60 },
+    },
+  ],
+  "triggers": { "crons": ["*/5 * * * *"] },
+  // Antes del despliegue: agregar d1_databases con binding DB e id real.
+  // Claves VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY y ADMIN_TOKEN mediante wrangler secret.
+  // TRANSPORTE es opcional: service binding al Worker original para probar la caché sin reemplazarlo.
+}

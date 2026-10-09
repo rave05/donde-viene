@@ -27,7 +27,10 @@
     button.textContent = "Actualizando…";
     try {
       window.DondeVieneApp.aplicarBusqueda(consulta);
-      window.DV.planificador.aplicar(consulta.fechaSalida || null);
+      window.DV.planificador.aplicar(
+        consulta.fechaSalida || null,
+        consulta.fechaLlegadaLimite || null,
+      );
       document.getElementById("btnCerrarSelectorRuta").click();
       await window.DondeVieneApp.buscar();
     } finally {

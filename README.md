@@ -50,7 +50,7 @@ No hay consultas de caminatas a un servidor público de demostración ni claves 
 
 En `DV.config` se editan velocidad de caminata, velocidad orientativa de bus y margen del rango mostrado. La espera se toma de la próxima salida programada del sentido elegido después de la caminata. El recorrido se estima usando la geometría del bus y una velocidad supuesta, **no el tránsito actual ni una ETA en vivo**. Las combinaciones incluyen la espera del segundo bus. Sin horario o geometría suficiente no se inventa un tiempo total.
 
-El cálculo tiene un límite global de 25 segundos y analiza un máximo de 24 candidatos, con tres tareas concurrentes y cachés; la interfaz conserva el resto de las rutas sin tiempo confirmado. Los horarios de salidas futuras no consultan buses en vivo de ahora. La planificación usa el calendario y excepciones GTFS disponibles; fuera de su vigencia no se promete servicio.
+El cálculo tiene un límite global de 12 segundos para estimaciones y 6 segundos para próximas salidas y analiza un máximo de 24 candidatos, con tres tareas concurrentes y cachés; la interfaz conserva el resto de las rutas sin tiempo confirmado. Los horarios de salidas futuras no consultan buses en vivo de ahora. La planificación usa el calendario y excepciones GTFS disponibles; fuera de su vigencia no se promete servicio.
 
 ## Sin conexión y privacidad
 
@@ -139,3 +139,14 @@ El desplegable identifica la parada por calle/ID y el cartel de destino esperado
 ## Reconsultar si el bus no llegó
 
 `alternativas-ahora.js` agrega una acción al viaje elegido para buscar de nuevo desde el origen elegido o desde una ubicación GPS reciente (hasta 30 s, precisión hasta 150 m). Se conserva el destino y la preferencia, y se cambia la salida planificada a ahora explícitamente. No afirma que el servicio haya sido cancelado. Cancelación, falta de permiso, ubicación imprecisa/antigua o desconexión conservan el viaje previo. Impide acciones simultáneas y aplica 30 s entre reconsultas iniciadas. En el modo viaje se oculta esta acción de la primera subida.
+
+## Integraciones de direcciones e información (octubre de 2026)
+
+- `direcciones.js` y `datos/direcciones/`: 377.913 accesos oficiales, un índice de 4.462 nombres de calle y 64 fragmentos gzip. El índice se carga al escribir calle y número; solo se descargan fragmentos necesarios. No se interpola una puerta inexistente. Ante varios accesos se requiere seleccionar una sugerencia; las selecciones se pueden resolver nuevamente tras recargar. Fuente: https://ckan.montevideo.gub.uy/dataset/direcciones-oficiales-de-montevideo, licencia DAG Uruguay, descarga 09/10/2026. Safari sin DecompressionStream conserva la búsqueda externa, sin sugerencias oficiales comprimidas.
+- `planificador.js`: límite opcional de llegada desde la salida elegida. Filtra solo candidatos con datos completos y cuya llegada, usando el extremo superior del rango, cabe en el límite. No busca la última salida posible, no garantiza puntualidad y no ofrece como confirmado un viaje sin estimación. El cálculo continúa limitado a los candidatos estimados por el motor. Los enlaces y la actualización manual conservan el límite; buscar alternativas ahora lo limpia.
+- `comparar-viajes.js`: comparación de dos variantes de la misma consulta, dentro del selector. Reutiliza resultados sin solicitudes nuevas.
+- `beta.js`: categorías en los correos, texto editable y recibo de servidor solo cuando exista un servicio configurado. No hay envío automático.
+- `informacion-oficial.js`: avisos con inicio, fin, línea, sentido y fuente. La selección no es exhaustiva ni automática. Los avisos vencen solos, pero una prórroga requiere actualizar la fuente revisada. El catálogo oficial de 77 lugares accesibles contiene registros históricos con su fecha, no certificados de paradas, buses ni rutas. No hay fuente verificada para todos los refugios de paradas. El pronóstico se consulta en INUMET mediante enlace; no hay temperaturas inventadas ni uso comercial de una API gratuita restringida.
+- `servicios.js`, `notificaciones.js` y `worker/`: integración auxiliar preparada para reportes D1, Web Push, recordatorios y caché compartida. **Todavía no desplegada en Cloudflare**: ver `worker/README.md`. `datos/servicios.json` conserva `url: null` hasta verificar el servicio real. No se reemplazó el Worker de transporte cuyo código no está en este repositorio.
+
+Para regenerar direcciones y lugares accesibles: `python3 -m pip install pyshp pyproj`, luego `python3 scripts/actualizar-integraciones.py direcciones` o `accesibilidad`. Las direcciones se leen de SHP UTM 21S y se convierten a WGS84. No se conservan padrones, teléfonos ni correos del catálogo.

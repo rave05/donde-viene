@@ -4,7 +4,7 @@
   const panel = document.createElement("details");
   panel.className = "extras-block";
   panel.innerHTML =
-    '<summary>🕒 Planificar para más tarde</summary><div class="extras-row"><label for="momentoViaje">Salida</label><select id="momentoViaje"><option value="ahora">Ahora</option><option value="fecha">Elegir día y hora</option></select></div><div id="fechaViajeCampos" class="extras-row" hidden><label for="diaViaje">Día</label><input id="diaViaje" type="date"><label for="horaViaje">Hora de salida</label><input id="horaViaje" type="time"></div><p class="extras-note">Hora de Montevideo. Para otra fecha usamos horarios programados; pueden cambiar.</p><p id="errorPlanificador" class="extras-status" role="status"></p>';
+    '<summary>🕒 Salida y hora de llegada</summary><div class="extras-row"><label for="momentoViaje">Salida</label><select id="momentoViaje"><option value="ahora">Ahora</option><option value="fecha">Elegir día y hora</option></select></div><div id="fechaViajeCampos" class="extras-row" hidden><label for="diaViaje">Día</label><input id="diaViaje" type="date"><label for="horaViaje">Hora de salida</label><input id="horaViaje" type="time"></div><div class="extras-row"><label><input id="usarLimiteLlegada" type="checkbox"> Tengo que llegar antes de…</label></div><div id="limiteLlegadaCampos" class="extras-row" hidden><label for="diaLlegada">Día de llegada</label><input id="diaLlegada" type="date"><label for="horaLlegada">Hora límite</label><input id="horaLlegada" type="time"></div><p class="extras-note">El límite filtra los viajes desde la salida elegida, con un margen orientativo. No garantiza la llegada ni busca la última salida posible.</p><p class="extras-note">Hora de Montevideo. Para otra fecha usamos horarios programados; pueden cambiar.</p><p id="errorPlanificador" class="extras-status" role="status"></p>';
   document.querySelector(".trip-preference").after(panel);
   const modo = document.getElementById("momentoViaje"),
     dia = document.getElementById("diaViaje"),
@@ -48,5 +48,60 @@
     panel.open = Boolean(iso);
     error.textContent = "";
   }
-  DV.planificador = { leerFecha, aplicar };
+  const usarLimite = document.getElementById("usarLimiteLlegada"),
+    diaLlegada = document.getElementById("diaLlegada"),
+    horaLlegada = document.getElementById("horaLlegada");
+  diaLlegada.value = dia.value;
+  diaLlegada.min = dia.min;
+  const futuro = DV.fechaPartes(new Date(Date.now() + 3600000));
+  diaLlegada.value = [futuro.year, futuro.month, futuro.day].join("-");
+  horaLlegada.value = futuro.hour + ":" + futuro.minute;
+  usarLimite.addEventListener("change", () => {
+    document.getElementById("limiteLlegadaCampos").hidden = !usarLimite.checked;
+  });
+  function leerLimite(salida = leerFecha()) {
+    if (!usarLimite.checked) return null;
+    const f = new Date(
+      diaLlegada.value + "T" + horaLlegada.value + ":00-03:00",
+    );
+    if (
+      !Number.isFinite(f.getTime()) ||
+      f.getTime() <= new Date(salida || Date.now()).getTime() ||
+      f.getTime() > Date.now() + 7 * 86400000
+    )
+      throw Error(
+        "Elegí una llegada posterior a la salida, dentro de los próximos 7 días.",
+      );
+    return f.toISOString();
+  }
+  function filtrarLlegada(opciones, limite) {
+    const max = Date.parse(limite);
+    return opciones.filter((c) => {
+      const t = c.tiempo;
+      return (
+        t?.disponible &&
+        Number.isFinite(t.max) &&
+        t.max >= t.total &&
+        Number.isFinite(Date.parse(t.fechaSalida)) &&
+        Date.parse(t.fechaSalida) + t.max * 60000 <= max
+      );
+    });
+  }
+  const aplicarSalida = aplicar;
+  DV.planificador = {
+    leerFecha,
+    leerLimite,
+    filtrarLlegada,
+    aplicar(iso, limite = null) {
+      aplicarSalida(iso);
+      usarLimite.checked = Boolean(limite);
+      document.getElementById("limiteLlegadaCampos").hidden = !limite;
+      if (limite) {
+        const p = DV.fechaPartes(new Date(limite));
+        diaLlegada.value = [p.year, p.month, p.day].join("-");
+        horaLlegada.value = p.hour + ":" + p.minute;
+        panel.open = true;
+      }
+    },
+  };
 })();

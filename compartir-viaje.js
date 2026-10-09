@@ -28,9 +28,10 @@
         "Para compartir, elegí un lugar o una dirección como origen.";
       return;
     }
-    let fecha;
+    let fecha, limite;
     try {
       fecha = DV.planificador.leerFecha();
+      limite = DV.planificador.leerLimite(fecha);
     } catch (e) {
       status.textContent = e.message;
       return;
@@ -40,7 +41,12 @@
     url.hash =
       "viaje=" +
       encodeURIComponent(
-        JSON.stringify({ ...r, version: 1, fechaSalida: fecha }),
+        JSON.stringify({
+          ...r,
+          version: 1,
+          fechaSalida: fecha,
+          fechaLlegadaLimite: limite,
+        }),
       );
     try {
       if (navigator.share) {
@@ -72,10 +78,18 @@
     const fecha =
       r.fechaSalida &&
       Number.isFinite(Date.parse(r.fechaSalida)) &&
-      Date.parse(r.fechaSalida) > Date.now()
+      Date.parse(r.fechaSalida) > Date.now() &&
+      Date.parse(r.fechaSalida) <= Date.now() + 7 * 86400000
         ? r.fechaSalida
         : null;
-    DV.planificador.aplicar(fecha);
+    const limite =
+      r.fechaLlegadaLimite &&
+      Number.isFinite(Date.parse(r.fechaLlegadaLimite)) &&
+      Date.parse(r.fechaLlegadaLimite) > Date.now() &&
+      Date.parse(r.fechaLlegadaLimite) <= Date.now() + 7 * 86400000
+        ? r.fechaLlegadaLimite
+        : null;
+    DV.planificador.aplicar(fecha, limite);
     status.textContent =
       "Recorrido compartido cargado. Tocá “Buscar ruta” para consultar opciones.";
   } catch (_) {

@@ -1433,6 +1433,7 @@
   <link rel="stylesheet" href="./beta.css?v=20261009-1">
   <link rel="stylesheet" href="./abordaje.css?v=20261009-1">
   <link rel="stylesheet" href="./alternativas-ahora.css?v=20261009-1">
+  <link rel="stylesheet" href="./integraciones.css?v=20261009-1">
 </head>
 
 <body>
@@ -1625,7 +1626,8 @@
   <!-- Catálogo local de lugares conocidos -->
   <script src="./lugares.js?v=20261002-3"></script>
   <script src="./app-util.js?v=20261008-2"></script>
-  <script src="./viaje.js?v=20261008-6"></script>
+  <script src="./direcciones.js?v=20261009-1"></script>
+  <script src="./viaje.js?v=20261009-2"></script>
   <script src="./buses-mapa-vista.js?v=20261008-1"></script>
   <script src="./buses-sentido.js?v=20261009-1"></script>
   <script src="./actualizacion-buses.js?v=20261009-1"></script>
@@ -1757,8 +1759,10 @@
       let opciones = [];
       let activa = -1;
       let toqueOpcion = null;
+      let versionSugerencias = 0;
 
       function cerrar() {
+        versionSugerencias++;
         lista.hidden = true;
         input.setAttribute('aria-expanded', 'false');
         input.removeAttribute('aria-activedescendant');
@@ -1788,12 +1792,13 @@
         input.focus({ preventScroll: true });
         // Enfocar al seleccionar no debe volver a abrir la lista.
         cerrar();
-        if (input === destinoRuta && !opcion.direccion) {
-          resaltarLugarDestino(window.buscarLugarFavorito?.(opcion.valor) || window.buscarLugarMontevideo(opcion.valor));
+        if (input === destinoRuta && (!opcion.direccion || opcion.punto)) {
+          resaltarLugarDestino(opcion.punto || window.buscarLugarFavorito?.(opcion.valor) || window.buscarLugarMontevideo(opcion.valor));
         }
       }
 
-      function mostrar() {
+      function mostrar(direcciones = null) {
+        const turno = ++versionSugerencias;
         const texto = input.value.trim();
         const clave = normalizar(texto);
         const palabras = clave.split(' ').filter(Boolean);
@@ -1813,6 +1818,7 @@
           const [icono, categoria] = categorias[lugar.categoria] || ['📍', 'Lugar'];
           return { valor: lugar.nombre, nombre: lugar.nombre, icono, categoria };
         });
+        if (direcciones) opciones.unshift(...direcciones);
         if (texto) opciones.push({
           valor: texto, nombre: 'Buscar “' + texto + '”', icono: '🔎',
           categoria: 'Dirección o lugar en el mapa', direccion: true
@@ -1869,6 +1875,11 @@
         });
         lista.hidden = !opciones.length;
         input.setAttribute('aria-expanded', String(!lista.hidden));
+        if (direcciones === null && window.DV?.direcciones && texto) {
+          window.DV.direcciones.sugerir(texto).then(datos => {
+            if (datos.length && !toqueOpcion && turno === versionSugerencias && input.value.trim() === texto && !lista.hidden && document.activeElement === input) mostrar(datos);
+          }).catch(() => {});
+        }
       }
 
       input.addEventListener('input', () => {
@@ -2462,6 +2473,8 @@
 
     async function geocodificarRuta(texto) {
       const limpio = texto.trim();
+      const direccionOficial = await window.DV?.direcciones?.resolver(limpio);
+      if (direccionOficial) return direccionOficial;
       if (limpio.startsWith('Punto en el mapa (')) return window.DV?.puntosMapa?.resolver(limpio) || null;
 
       // Los lugares con coordenadas verificadas se resuelven directamente.
@@ -2744,7 +2757,7 @@
       selectorRutaResumen.textContent =
         origenRuta.value.trim() + ' → ' + destinoRuta.value.trim();
       window.dispatchEvent(new CustomEvent('donde-viene:opciones-listas', {
-        detail: { contexto: { ...contextoViajeActivo }, consultadoEn: new Date().toISOString() }
+        detail: { candidatos, contexto: { ...contextoViajeActivo }, consultadoEn: new Date().toISOString() }
       }));
 
       selectorRutaContenido
@@ -2905,8 +2918,8 @@
       const destinoTexto =
         destinoRuta.value.trim();
       const preferencia = document.getElementById('preferenciaViaje').value;
-      let fechaSalida = null;
-      try { fechaSalida = window.DV?.planificador?.leerFecha() || null; }
+      let fechaSalida = null, fechaLlegadaLimite = null;
+      try { fechaSalida = window.DV?.planificador?.leerFecha() || null; fechaLlegadaLimite = window.DV?.planificador?.leerLimite?.(fechaSalida) || null; }
       catch (error) { resultadoRuta.innerHTML = '<div class="route-empty">' + escaparHTML(error.message) + '</div>'; return; }
       if (navigator.onLine === false) { resultadoRuta.innerHTML = '<div class="route-empty">Sin conexión. Podés consultar el último viaje guardado debajo del buscador.</div>'; return; }
 
@@ -2923,6 +2936,7 @@
       }
 
       btnBuscarRuta.disabled = true;
+      cancelarActualizacionProximos();
       window.dispatchEvent(new Event('donde-viene:viaje-cambio'));
       document.getElementById('preferenciaViaje').disabled = true;
       versionViajeElegido++;
@@ -2971,7 +2985,7 @@
           lon: Number(destino.lon),
           nombre: destino.nombre || destinoTexto
         };
-        contextoViajeActivo = { origen: origenTexto, destino: destinoTexto, preferencia, fechaSalida, puntoOrigen: {lat:Number(origen.lat),lon:Number(origen.lon)}, puntoDestino: {...destinoRutaActivo} };
+        contextoViajeActivo = { origen: origenTexto, destino: destinoTexto, preferencia, fechaSalida, fechaLlegadaLimite, puntoOrigen: {lat:Number(origen.lat),lon:Number(origen.lon)}, puntoDestino: {...destinoRutaActivo} };
 
         mostrarPuntosRuta(origen, destino);
 
@@ -3421,7 +3435,7 @@
         }
 
         let opciones = candidatos;
-        if (!candidatos.length || preferencia === 'caminar' || preferencia === 'tiempo' || preferencia === 'proximos') {
+        if (!candidatos.length || fechaLlegadaLimite || preferencia === 'caminar' || preferencia === 'tiempo' || preferencia === 'proximos') {
           resultadoRuta.innerHTML = '<div class="route-status">Comparando rutas y combinaciones...</div>';
           const combinaciones = typeof window.buscarCombinacionesRuta === 'function'
             ? await window.buscarCombinacionesRuta(paradasOrigen, paradasDestino, origen, destino)
@@ -3436,7 +3450,14 @@
           resultadoRuta.innerHTML = '<div class="route-status">Comparando caminatas y horarios programados...</div>';
           opciones = await window.DV.estimacion.enriquecer(opciones, contextoViajeActivo);
         }
-        if (window.DV?.proximosViaje) {
+        if (fechaLlegadaLimite) {
+          opciones = window.DV.planificador.filtrarLlegada(opciones, fechaLlegadaLimite);
+          if (!opciones.length) {
+            resultadoRuta.innerHTML = '<div class="route-empty">No pudimos confirmar una opción estimada que llegue antes de tu límite. Probá salir antes o ampliar la hora de llegada. Esto no confirma que no exista un servicio.</div>';
+            return;
+          }
+        }
+        if (window.DV?.proximosViaje && !fechaLlegadaLimite) {
           resultadoRuta.innerHTML = '<div class="route-status">Comparando próximas salidas...</div>';
           opciones = await window.DV.proximosViaje.enriquecer(opciones, contextoViajeActivo);
         }
@@ -3444,6 +3465,7 @@
         const grupos = window.agruparOpcionesViaje(ordenadas).slice(0, 4);
         const selector = window.crearSelectorViajesAgrupados(grupos, preferencia);
         mostrarSelectorRuta('mixta', selector.candidatos, selector.html);
+        selectorRutaResumen.textContent += fechaLlegadaLimite ? ' · Llegar antes de: ' + window.DV.fechaTexto(fechaLlegadaLimite) + ' (orientativo)' : '';
         selectorRutaResumen.textContent += fechaSalida ? ' · Salida: ' + window.DV.fechaTexto(fechaSalida) : '';
         selectorRutaResumen.textContent += preferencia === 'proximos' ? ' · Bus más próximo' : preferencia === 'caminar' ? ' · Caminar menos' : preferencia === 'tiempo' ? ' · Tiempo orientativo' : ' · Menos transbordos';
 
@@ -5828,14 +5850,14 @@
   <script src="./mobile.js?v=20261008-1"></script>
   <script src="./seguimiento-viaje.js?v=20261008-6"></script>
   <script src="./guia-viaje.js?v=20261008-6"></script>
-  <script src="./planificador.js?v=20261008-1"></script>
+  <script src="./planificador.js?v=20261009-2"></script>
   <script src="./caminatas.js?v=20261008-1"></script>
   <script src="./estimacion-viaje.js?v=20261009-2"></script>
   <script src="./proximos-viaje.js?v=20261009-2"></script>
-  <script src="./actualizar-opciones.js?v=20261008-1"></script>
+  <script src="./actualizar-opciones.js?v=20261009-2"></script>
   <script src="./mapa-puntos.js?v=20261008-3"></script>
   <script src="./viajes-habituales.js?v=20261008-1"></script>
-  <script src="./compartir-viaje.js?v=20261008-6"></script>
+  <script src="./compartir-viaje.js?v=20261009-2"></script>
   <script src="./ultimo-viaje.js?v=20261008-6"></script>
   <script src="./recargas-stm.js?v=20261008-1"></script>
   <script src="./patrocinios-locales.js?v=20261008-1"></script>
@@ -5848,6 +5870,8 @@
   <dialog id="reporteProblema" class="mobile-dialog" aria-labelledby="tituloReporte">
     <div class="mobile-dialog-heading"><h2 id="tituloReporte">Reportar un problema</h2><button id="cerrarReporte" class="mobile-close" type="button" aria-label="Cerrar reporte">×</button></div>
     <p>Contanos qué esperabas y qué pasó. Podés editar los datos antes de enviarlos.</p>
+    <label for="categoriaReporte">Tipo de problema</label>
+    <select id="categoriaReporte"><option>Bus o sentido incorrecto</option><option>Horario o llegada</option><option>Dirección o parada</option><option>Mapa o funcionamiento</option><option>Accesibilidad</option><option>Sugerencia</option></select>
     <label class="report-context"><input id="incluirContextoReporte" type="checkbox" checked> Incluir recorrido y paradas consultadas</label>
     <label for="textoReporte">Tu reporte</label>
     <textarea id="textoReporte" rows="9" maxlength="3000"></textarea>
@@ -5856,7 +5880,7 @@
     <p id="estadoReporte" role="status"></p>
     <p class="favorite-note">Si no se abre el correo, copiá el reporte y enviálo a dondevieneadvertisement@gmail.com.</p>
   </dialog>
-  <script src="./beta.js?v=20261009-1"></script>
+  <script src="./beta.js?v=20261009-2"></script>
   <script src="./abordaje.js?v=20261009-1"></script>
   <dialog id="alternativasAhora" class="mobile-dialog" aria-labelledby="tituloAlternativasAhora">
     <div class="mobile-dialog-heading"><h2 id="tituloAlternativasAhora">Buscar alternativas</h2><button id="cerrarAlternativasAhora" class="mobile-close" type="button" aria-label="Cerrar alternativas">×</button></div>
@@ -5867,5 +5891,9 @@
     <p id="estadoAlternativasAhora" role="status"></p>
   </dialog>
   <script src="./alternativas-ahora.js?v=20261009-1"></script>
+  <script src="./comparar-viajes.js?v=20261009-1"></script>
+  <script src="./informacion-oficial.js?v=20261009-1"></script>
+  <script src="./servicios.js?v=20261009-1"></script>
+  <script src="./notificaciones.js?v=20261009-1"></script>
 </body>
 </html>

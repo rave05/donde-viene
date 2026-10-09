@@ -2,3 +2,8 @@ node_modules/
 *.osm.pbf
 .DS_Store
 datos/caminatas.json
+
+# Configuración privada y builds locales del servicio auxiliar
+worker/.dev.vars*
+worker/.wrangler/
+worker/dist/

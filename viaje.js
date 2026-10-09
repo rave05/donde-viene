@@ -137,6 +137,7 @@
       '<button type="button" class="trip-change" id="btnAlternativasViaje">Cambiar ruta</button></div>' +
       '<p class="trip-endpoints">' + escapar(contexto.origen || 'Origen') + ' → ' + escapar(contexto.destino || 'Destino') + '</p>' +
       tarjetaSalida(c, contexto) +
+      (contexto.fechaLlegadaLimite ? '<p class="trip-note">🎯 Llegar antes de ' + escapar(window.DV.fechaTexto(contexto.fechaLlegadaLimite)) + '. Estimación con margen; confirmá las condiciones del viaje.</p>' : '') +
       (total != null ? '<p class="trip-walking">🚶 Caminata total aproximada: <strong>' + distancia(total) + '</strong></p>' : '') +
       (contexto.fechaSalida ? '<p class="trip-note">🕒 Salida planificada: ' + escapar(window.DV?.fechaTexto(contexto.fechaSalida) || contexto.fechaSalida) + '</p>' : '') +
       (c.tiempo?.disponible ? '<p class="trip-time">Tiempo total orientativo: ' + c.tiempo.min + '–' + c.tiempo.max + ' min</p><details class="trip-time-detail"><summary>Ver estimación del tiempo</summary><p>Caminata: ' + c.tiempo.caminata + ' min aprox.</p><ul>' + c.tiempo.partes.map(t => '<li>' + escapar(t.linea) + ': espera programada ' + t.espera + ' min + recorrido orientativo ' + t.recorrido + ' min.</li>').join('') + '</ul><p>No es una ETA en vivo. La espera puede cambiar y el recorrido no incluye el tránsito actual.</p></details>' : c.tiempo ? '<p class="trip-note">Tiempo total sin confirmar para esta hora.</p>' : '') +

@@ -1,7 +1,16 @@
 /* Cachea la interfaz y datos estáticos. Nunca guarda respuestas de la API de transporte. */
-const CACHE = "dv-shell-20261009-v16";
+const CACHE = "dv-shell-20261009-v17";
 const CORE = [
   "index.html",
+  "direcciones.js",
+  "comparar-viajes.js",
+  "informacion-oficial.js",
+  "integraciones.css",
+  "notificaciones.js",
+  "servicios.js",
+  "datos/servicios.json",
+  "datos/avisos-oficiales.json",
+  "datos/accesibilidad-lugares.json",
   "app-util.js",
   "viaje.js",
   "viaje.css",
@@ -132,6 +141,7 @@ self.addEventListener("fetch", (event) => {
       const fijo =
         isLeaflet ||
         /\/(horarios|recorridos)\/.*\.json$/.test(url.pathname) ||
+        /\/datos\/direcciones\/.*\.(json|gz)$/.test(url.pathname) ||
         url.pathname.endsWith("/datos/caminatas.json.gz") ||
         url.pathname.endsWith(".png");
       if (fijo && cached) return cached;
@@ -147,6 +157,40 @@ self.addEventListener("fetch", (event) => {
       } catch (_) {
         return cached || Response.error();
       }
+    })(),
+  );
+});
+
+/* Solo contenido del servicio propio; nunca abre URLs suministradas por el payload. */
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data?.json() || {};
+  } catch (_) {}
+  event.waitUntil(
+    self.registration.showNotification("¿Dónde Viene?", {
+      body: String(
+        payload.body || "Tenés un aviso para revisar en la app.",
+      ).slice(0, 240),
+      icon: new URL("icons/icon-192.png", self.registration.scope).href,
+      tag: String(payload.tag || "aviso").slice(0, 80),
+    }),
+  );
+});
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    (async () => {
+      const url = new URL("index.html", self.registration.scope).href;
+      const abiertas = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      const app = abiertas.find((c) =>
+        c.url.startsWith(self.registration.scope),
+      );
+      if (app) return app.focus();
+      return self.clients.openWindow(url);
     })(),
   );
 });

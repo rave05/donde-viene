@@ -1,0 +1,61 @@
+.compare-panel {
+  margin: 8px 18px 16px;
+}
+.compare-panel select {
+  max-width: 100%;
+  width: 100%;
+}
+.compare-scroll {
+  overflow-x: auto;
+}
+.compare-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.compare-scroll th,
+.compare-scroll td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 1px solid #dce6f2;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+.compare-scroll th {
+  color: #344e6c;
+}
+.official-info {
+  margin-top: 16px;
+}
+.official-info ul {
+  padding-left: 20px;
+}
+.official-info a {
+  color: #1463c7;
+}
+.official-info summary {
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 700;
+}
+#reporteProblema select {
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0 16px;
+  border: 1px solid #ccd9e8;
+  border-radius: 12px;
+  background: white;
+  font: inherit;
+}
+@media (max-width: 640px) {
+  .compare-panel {
+    margin: 8px 10px 14px;
+  }
+  .compare-scroll {
+    font-size: 0.85rem;
+  }
+  .compare-scroll th,
+  .compare-scroll td {
+    padding: 8px 5px;
+  }
+}
