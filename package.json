@@ -4,7 +4,7 @@
   "version": "0.7.0",
   "description": "App estática de transporte para Montevideo",
   "scripts": {
-    "test": "node tests/funciones-nuevas.cjs && node tests/interfaz.cjs && node tests/proximos.cjs && node tests/mapa.cjs && node tests/ubicacion.cjs && node tests/redisenio.cjs && node tests/buses-mapa.cjs && node tests/buses-sentido.cjs && node tests/beta.cjs && node tests/rendimiento.cjs && node tests/abordaje.cjs && node tests/alternativas-ahora.cjs && node tests/integraciones.cjs",
+    "test": "node tests/funciones-nuevas.cjs && node tests/interfaz.cjs && node tests/proximos.cjs && node tests/mapa.cjs && node tests/ubicacion.cjs && node tests/redisenio.cjs && node tests/buses-mapa.cjs && node tests/buses-sentido.cjs && node tests/beta.cjs && node tests/rendimiento.cjs && node tests/abordaje.cjs && node tests/alternativas-ahora.cjs && node tests/integraciones.cjs && node tests/metropolitano.cjs",
     "format:extras": "prettier --write app-util.js planificador.js viajes-habituales.js compartir-viaje.js caminatas.js caminatas-worker.js estimacion-viaje.js ultimo-viaje.js recargas-stm.js patrocinios-locales.js extras-viaje.js sw.js extras.css tests/*.cjs"
   },
   "devDependencies": {

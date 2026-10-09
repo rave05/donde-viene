@@ -1624,7 +1624,7 @@
 
 
   <!-- Catálogo local de lugares conocidos -->
-  <script src="./lugares.js?v=20261002-3"></script>
+  <script src="./lugares.js?v=20261009-metro-1"></script>
   <script src="./app-util.js?v=20261008-2"></script>
   <script src="./direcciones.js?v=20261009-2"></script>
   <script src="./viaje.js?v=20261009-2"></script>
@@ -2071,6 +2071,7 @@
     let capasExtrasViaje = null;
     let capaRecorridoGuardado = null;
     let capaRecargas = null;
+    let capaMetropolitana = null;
 
     let ultimaUbicacionUsuario = null;
 
@@ -2519,7 +2520,7 @@
 
       for (let i = 0; i < consultas.length; i++) {
         const consulta =
-          consultas[i] + ', Montevideo, Uruguay';
+          consultas[i] + (/\b(las piedras|la paz|progreso|canelones)\b/i.test(limpio) ? ', Canelones, Uruguay' : ', Montevideo, Uruguay');
 
         const url =
           'https://nominatim.openstreetmap.org/search' +
@@ -2929,14 +2930,9 @@
         return;
       }
 
-      if (!todasLasParadas.length) {
-        resultadoRuta.innerHTML =
-          '<div class="route-status">Todavía estamos cargando las paradas. Probá de nuevo en unos segundos.</div>';
-        return;
-      }
-
       btnBuscarRuta.disabled = true;
       cancelarActualizacionProximos();
+      if (capaMetropolitana) { mapa.removeLayer(capaMetropolitana); capaMetropolitana = null; }
       window.dispatchEvent(new Event('donde-viene:viaje-cambio'));
       document.getElementById('preferenciaViaje').disabled = true;
       versionViajeElegido++;
@@ -2988,6 +2984,15 @@
         contextoViajeActivo = { origen: origenTexto, destino: destinoTexto, preferencia, fechaSalida, fechaLlegadaLimite, puntoOrigen: {lat:Number(origen.lat),lon:Number(origen.lon)}, puntoDestino: {...destinoRutaActivo} };
 
         mostrarPuntosRuta(origen, destino);
+
+        if (window.DV?.metro) {
+          const metropolitana = await window.DV.metro.intentar(origen, destino, contextoViajeActivo);
+          if (metropolitana !== null) {
+            resultadoRuta.innerHTML = metropolitana;
+            return;
+          }
+        }
+        if (!todasLasParadas.length) throw new Error('Todavía estamos cargando las paradas urbanas. Probá de nuevo en unos segundos.');
 
         let paradasOrigen =
           obtenerParadasRutaCercanas(
@@ -5776,6 +5781,14 @@
         };
       },
       leerBusqueda: () => ({ origen: origenRuta.value.trim(), destino: destinoRuta.value.trim(), preferencia: document.getElementById('preferenciaViaje').value }),
+      mostrarParadasMetropolitanas(puntos) {
+        if (capaMetropolitana) mapa.removeLayer(capaMetropolitana);
+        capaMetropolitana = L.layerGroup();
+        for (const p of puntos) L.circleMarker([p.lat,p.lon], {radius:9,color:'#6b3daf',weight:3,fillOpacity:0.7}).bindPopup(escaparHTML(p.nombre)).addTo(capaMetropolitana);
+        capaMetropolitana.addTo(mapa);
+        mapa.fitBounds(puntos.map(p=>[p.lat,p.lon]), {padding:[45,45],maxZoom:16});
+        mapa.invalidateSize();
+      },
       aplicarBusqueda(receta) {
         for (const [input, valor] of [[origenRuta, receta.origen], [destinoRuta, receta.destino]]) {
           input.value = valor; input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -5895,5 +5908,6 @@
   <script src="./informacion-oficial.js?v=20261009-1"></script>
   <script src="./servicios.js?v=20261009-1"></script>
   <script src="./notificaciones.js?v=20261009-1"></script>
+  <script src="./metropolitano.js?v=20261009-1"></script>
 </body>
 </html>

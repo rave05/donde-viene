@@ -5,6 +5,9 @@
   // https://www.openstreetmap.org/copyright
   // Puntos del edificio/predio; no representan cada entrada o puerta del recinto.
   const lugares = [
+    // Puntos de parada publicados por MTOP, no centros de localidades.
+    { nombre: 'Las Piedras (San Luis y Washington)', categoria: 'terminal', lat: -34.71778, lon: -56.19388, fuente: 'https://catalogodatos.gub.uy/dataset/ministerio-de-transporte-y-obras-publicas-horarios-de-omnibus-en-lineas-interdepartamentales', consulta: 'Las Piedras (San Luis y Washington)', aliases: ['Las Piedras', 'Terminal Las Piedras', 'Las Piedras centro'] },
+    { nombre: 'Las Piedras · San Francisco (Borrazas y Elías Regules)', categoria: 'terminal', lat: -34.69755, lon: -56.21495, fuente: 'https://catalogodatos.gub.uy/dataset/ministerio-de-transporte-y-obras-publicas-horarios-de-omnibus-en-lineas-interdepartamentales', consulta: 'Las Piedras · San Francisco (Borrazas y Elías Regules)', aliases: ['Las Piedras San Francisco', 'Terminal San Francisco'] },
     { nombre: 'Tres Cruces', categoria: 'terminal', lat: -34.8938334, lon: -56.1665762, fuente: 'https://www.openstreetmap.org/way/56393958', consulta: 'Terminal Tres Cruces', aliases: ['Terminal Tres Cruces', 'Shopping Tres Cruces', 'Tres Cruces Shopping'] },
     { nombre: 'Montevideo Shopping', categoria: 'shopping', lat: -34.9030628, lon: -56.1363655, fuente: 'https://www.openstreetmap.org/way/37684509', consulta: 'Montevideo Shopping', aliases: ['Montevideo Shopping Center'] },
     { nombre: 'Nuevocentro Shopping', categoria: 'shopping', lat: -34.8688546, lon: -56.1697834, fuente: 'https://www.openstreetmap.org/way/243502545', consulta: 'Nuevocentro Shopping', aliases: ['Nuevo Centro', 'Nuevocentro'] },
