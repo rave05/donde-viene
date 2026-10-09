@@ -73,3 +73,7 @@ body.trip-guide-active { padding-bottom: 210px; }
 
 .trip-alight-alert { margin-top: 10px; padding: 12px; border: 2px solid #d99518; border-radius: 10px; background: #fff5d9; color: #674508; font-size: 14px; line-height: 1.5; font-weight: 700; }
 .trip-alight-alert[hidden] { display: none; }
+
+.trip-stop-list { margin: .5rem 0; padding-left: 1.8rem; }
+.trip-stop-list li { margin: .3rem 0; padding-left: .2rem; }
+.trip-stop-list button { width: 100%; text-align: left; }

@@ -345,6 +345,13 @@
       return null;
     return shape.slice(a, b + 1);
   }
+  async function paradasTramo(candidato) {
+    const raw=candidato.metropolitana?.opcion; if(!raw)return [];
+    const d=await cargar(), a=raw.subida.id.replace('mtop:',''), b=raw.bajada.id.replace('mtop:','');
+    const p=d.patterns.find(p=>p.routeId===raw.p.routeId && p.stops.indexOf(a)>=0 && p.stops.indexOf(b)>p.stops.indexOf(a));
+    if(!p)return [];
+    return p.stops.slice(p.stops.indexOf(a),p.stops.indexOf(b)+1).map((id,n)=>({id:'mtop:'+id,nombre:nombre(d.stops[id]),lat:d.stops[id].lat,lon:d.stops[id].lon,posicion:n}));
+  }
   async function seleccionar(candidato, ctx) {
     const version=++versionMapa, c=candidato.metropolitana.opcion;
     window.limpiarRecorridoSeleccionado?.();
@@ -366,5 +373,5 @@
     return version===versionMapa;
   }
   window.addEventListener("donde-viene:viaje-cambio",()=>{versionMapa++;});
-  DV.metro={intentar,cobertura,directas,proximo,activo,cargar,tramoMetro,adaptar,nota,seleccionar};
+  DV.metro={intentar,cobertura,directas,proximo,activo,cargar,tramoMetro,adaptar,nota,seleccionar,paradasTramo};
 })();

@@ -2329,6 +2329,29 @@ window.buscarCombinacionesRuta = async function(
   };
 
 
+  // Paradas publicadas del mismo sentido y solo entre subida y bajada.
+  window.obtenerParadasTramoViaje = async function(linea, destino, subida, bajada) {
+    await Promise.all([cargarAliasesRecorridos(), cargarRedRecorridos()]);
+    const datos = await cargarRecorridoLinea(linea);
+    const a = String(subida?.gtfsStopId || subida?.busstopId || '');
+    const b = String(bajada?.gtfsStopId || bajada?.busstopId || '');
+    const sentido = normalizar(destino);
+    if (!a || !b || a.startsWith('mtop:') || b.startsWith('mtop:') || !sentido) return [];
+    const patrones = (datos?.patterns || []).filter(p => {
+      const stops=(p.stops||[]).map(String), i=indiceParadaCompatible(stops,a), j=indiceParadaCompatible(stops,b);
+      const d=normalizar(p.destination);
+      return i>=0 && j>i && (d===sentido || d.includes(sentido) || sentido.includes(d));
+    });
+    const p=patrones[0]; if(!p)return [];
+    const stops=p.stops.map(String), i=indiceParadaCompatible(stops,a), j=indiceParadaCompatible(stops,b);
+    return stops.slice(i,j+1).map((id,n)=> {
+      const stop=buscarParadaGlobal(id);
+      const coords=window.DV.coord(stop);
+      const street=[stop?.street1,stop?.street2].filter(Boolean).join(' y ');
+      return {id,nombre:street && street!=='Parada GTFS'?street:'Parada '+id, ...coords, posicion:n};
+    });
+  };
+
   // Adaptadores de lectura para estimación y copia del último viaje.
   window.obtenerTramoLineaViaje = tramoParaLinea;
   window.obtenerGeometriaViajeActual = () => {

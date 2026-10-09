@@ -1424,7 +1424,7 @@
   </style>
   <link rel="stylesheet" href="./mobile.css?v=20261008-1">
   <link rel="stylesheet" href="./patrocinios.css?v=20261008-2">
-  <link rel="stylesheet" href="./viaje.css?v=20261008-8">
+  <link rel="stylesheet" href="./viaje.css?v=20261009-paradas-1">
   <link rel="stylesheet" href="./extras.css?v=20261008-3">
   <link rel="stylesheet" href="./mapa-layout.css?v=20261008-1">
   <link rel="stylesheet" href="./mapa-gadgets.css?v=20261008-3">
@@ -2071,6 +2071,8 @@
     let capasExtrasViaje = null;
     let capaRecorridoGuardado = null;
     let capaRecargas = null;
+    let capaParadasViaje = null;
+    const marcadoresParadasViaje = new Map();
     let capaMetropolitana = null;
 
     let ultimaUbicacionUsuario = null;
@@ -5795,6 +5797,27 @@
         };
       },
       leerBusqueda: () => ({ origen: origenRuta.value.trim(), destino: destinoRuta.value.trim(), preferencia: document.getElementById('preferenciaViaje').value }),
+      limpiarParadasViaje() {
+        if (capaParadasViaje) mapa.removeLayer(capaParadasViaje);
+        capaParadasViaje = null; marcadoresParadasViaje.clear();
+      },
+      mostrarParadasViaje(tramos) {
+        this.limpiarParadasViaje(); capaParadasViaje = L.layerGroup();
+        tramos.forEach((t,i) => t.paradas.forEach((p,j) => {
+          if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) return;
+          const key=i+':'+j;
+          const m=L.circleMarker([p.lat,p.lon],{radius:5,color:'#ffffff',weight:2,fillColor:i===0?'#1769e0':'#7c3aed',fillOpacity:1})
+            .bindPopup('<strong>🚏 '+escaparHTML(p.nombre)+'</strong><br>Línea '+escaparHTML(t.linea)+' · Parada '+(j+1)+' de '+t.paradas.length)
+            .addTo(capaParadasViaje);
+          marcadoresParadasViaje.set(key,m);
+        }));
+        capaParadasViaje.addTo(mapa);
+      },
+      enfocarParadaViaje(key) {
+        const m=marcadoresParadasViaje.get(key); if(!m)return;
+        mapa.setView(m.getLatLng(),Math.max(mapa.getZoom(),16)); m.openPopup();
+        document.getElementById('mapa').scrollIntoView({behavior:'smooth',block:'center'});
+      },
       aplicarBusqueda(receta) {
         for (const [input, valor] of [[origenRuta, receta.origen], [destinoRuta, receta.destino]]) {
           input.value = valor; input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -5849,7 +5872,7 @@
   </script>
 
   <script src="./horarios.js?v=20261009-2"></script>
-  <script src="./recorridos.js?v=20261009-metro-ui-1"></script>
+  <script src="./recorridos.js?v=20261009-paradas-1"></script>
 
   <dialog id="editorFavorito" class="mobile-dialog" aria-labelledby="tituloFavorito">
     <form id="formFavorito">
@@ -5868,7 +5891,7 @@
   </dialog>
   <script src="./mobile.js?v=20261008-1"></script>
   <script src="./seguimiento-viaje.js?v=20261008-6"></script>
-  <script src="./guia-viaje.js?v=20261008-6"></script>
+  <script src="./guia-viaje.js?v=20261009-paradas-1"></script>
   <script src="./planificador.js?v=20261009-2"></script>
   <script src="./caminatas.js?v=20261008-1"></script>
   <script src="./estimacion-viaje.js?v=20261009-2"></script>
@@ -5914,6 +5937,7 @@
   <script src="./informacion-oficial.js?v=20261009-1"></script>
   <script src="./servicios.js?v=20261009-1"></script>
   <script src="./notificaciones.js?v=20261009-2"></script>
-  <script src="./metropolitano.js?v=20261009-3"></script>
+  <script src="./metropolitano.js?v=20261009-4"></script>
+  <script src="./paradas-viaje.js?v=20261009-1"></script>
 </body>
 </html>

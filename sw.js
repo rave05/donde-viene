@@ -1,8 +1,9 @@
 /* Cachea la interfaz y datos estáticos. Nunca guarda respuestas de la API de transporte. */
-const CACHE = "dv-shell-20261009-v23";
+const CACHE = "dv-shell-20261009-v24";
 const CORE = [
   "index.html",
   "metropolitano.js",
+  "paradas-viaje.js",
   "direcciones.js",
   "comparar-viajes.js",
   "informacion-oficial.js",

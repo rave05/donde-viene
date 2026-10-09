@@ -35,6 +35,7 @@
   function cerrar(terminado = false) {
     window.seguimientoViaje?.detener();
     activa = false;
+    window.dispatchEvent(new Event('donde-viene:guia-cerrada'));
     pasos = [];
     indice = 0;
     panel.hidden = true;
@@ -64,6 +65,7 @@
     indice = 0;
     detalle.open = false;
     renderizar();
+    window.dispatchEvent(new Event('donde-viene:guia-iniciada'));
   });
   document.getElementById('btnSeguirViaje').addEventListener('click', () => {
     if (!activa) return;
