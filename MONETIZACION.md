@@ -2,11 +2,13 @@
 
 Preparación publicada: guía original de uso, acerca/contacto, privacidad y enlaces desde la app. No hay etiquetas de anuncios, identificadores ficticios ni anuncios activos. La aprobación depende de Google; estas páginas no garantizan aceptación.
 
-## Bloqueo actual: dirección principal
+## Dirección principal publicada
 
-El 10/10/2026, `https://rave05.github.io/` devuelve 404; la app funciona en `/donde-viene/`. AdSense registra sitios por dominio, no por una ruta. Google admite subdominios de plataformas de la Public Suffix List, donde figura `github.io`. Probar el dominio `rave05.github.io` en la cuenta y publicar una portada en su raíz.
+El 10/10/2026 se publicó y verificó la portada en `https://rave05.github.io/`; la app conserva su dirección en `/donde-viene/`. AdSense registra sitios por dominio, no por una ruta. Google admite subdominios de plataformas de la Public Suffix List, donde figura `github.io`. Probar el dominio `rave05.github.io` en la cuenta y publicar una portada en su raíz.
 
-El directorio `adsense-raiz` contiene una portada lista para copiar al repositorio de usuario `rave05/rave05.github.io`, que no existe según la consulta de GitHub del 10/10/2026. No cambiar la ruta de la app ni sus servicios: la portada enlaza la app existente. Crear ese repositorio público, copiar `adsense-raiz/index.html` a su raíz y habilitar GitHub Pages en main. El conector disponible permite modificar repositorios existentes, pero no crear uno ni configurar Pages.
+El propietario creó `rave05/rave05.github.io` y su portada ya está publicada mediante GitHub Pages. La copia de `adsense-raiz/index.html` permite mantener su contenido. No cambiar la ruta de la app ni sus servicios: la portada enlaza la app existente.
+
+Se incorporó la metaetiqueta real entregada por el propietario (`ca-pub-4123487373894739`) en la portada y las páginas de la app. La verificación de propiedad y la solicitud de revisión todavía deben confirmarse en AdSense. Esta etiqueta no carga anuncios.
 
 ## Verificación y revisión
 
