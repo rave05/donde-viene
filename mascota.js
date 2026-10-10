@@ -142,6 +142,7 @@
     state.lastDay = today;
     save();
     render();
+    window.dispatchEvent(new Event("donde-viene:mascota-cuidada"));
     message(
       gap > 1 && Number.isFinite(gap)
         ? "¡Bienvenido de vuelta! Empezaste una nueva racha y conservás tus colores."

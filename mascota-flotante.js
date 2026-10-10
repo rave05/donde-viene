@@ -129,6 +129,7 @@
     panel.open = true;
     previousOverflow = document.documentElement.style.overflow;
     popup.showModal();
+    window.dispatchEvent(new Event("donde-viene:mascota-abierta"));
     document.documentElement.style.overflow = "hidden";
     button.setAttribute("aria-expanded", "true");
     close.focus();

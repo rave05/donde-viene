@@ -56,7 +56,7 @@ El cálculo tiene un límite global de 12 segundos para estimaciones y 6 segundo
 
 Primero se debe abrir la app con conexión y elegir un viaje. El service worker prepara la interfaz; las instrucciones del último viaje se guardan automáticamente en ese navegador. Sin conexión se ofrece la copia guardada, nunca una llegada en vivo. Las teselas del mapa no se descargan masivamente ni se garantiza su disponibilidad sin conexión.
 
-Recetas y copia se guardan en `localStorage`; no se envían a un servidor ni se instalan analíticas. Un enlace compartido incluye nombres/direcciones que el usuario eligió compartir, no su GPS. El GPS del modo viaje sigue requiriendo permiso y la app abierta.
+Recetas y copia se guardan en `localStorage`; no se envían a un servidor. Las estadísticas opcionales se documentan más abajo. Un enlace compartido incluye nombres/direcciones que el usuario eligió compartir, no su GPS. El GPS del modo viaje sigue requiriendo permiso y la app abierta.
 
 ## Patrocinios
 
@@ -176,3 +176,11 @@ Un error síncrono al iniciar el GPS no crea el temporizador de seguimiento, por
 `mascota.js` y `mascota.css` agregan un juego local, plegado al final de la app. Un cuidado diario voluntario cuenta con fecha de America/Montevideo. Racha y récord son independientes del total de cuidados: celeste se habilita a los 3 días acumulados y coral a los 7. Los colores permanecen tras un día sin uso. Se puede pausar o borrar con confirmación. Sin permisos, red, cuentas ni cambios en búsquedas. La validación rechaza datos locales inválidos; el almacenamiento fallido se informa y conserva el progreso en memoria. Los cambios de otras pestañas se sincronizan.
 
 `mascota-flotante.js` presenta el mismo juego en un diálogo modal accesible. El bus es un botón fijo arrastrable con Pointer Events: distingue toque/arrastre, limita su posición al viewport y área segura, guarda coordenadas relativas y se adapta a cambios de orientación. Cierre con X, fondo y Escape, foco devuelto al botón y desplazamiento del fondo restaurado. Sin soporte de dialog se conserva el panel de la página.
+
+### Estadísticas opcionales
+
+`analitica.js` prepara GA4 `G-N6QV8RK6JC` con consentimiento básico: no carga la etiqueta antes de aceptar y permite retirar la elección. **Activación confirmada por el administrador el 10/10/2026:** Medición mejorada desactivada en el flujo de GA4; `MEDICION_MEJORADA_DESACTIVADA` está en `true`. Si se vuelve a activar Medición mejorada, poner el valor en `false` para bloquear la integración antes de cambiar el flujo. Así se evitan detectores automáticos de enlaces, formularios o términos de búsqueda.
+
+URLs sin query/fragmento, referrer solo dominio, títulos fijos, sin lectura de direcciones, GPS, rutas, formularios o reportes. Los cuatro eventos propios son `buscar_ruta`, `iniciar_viaje`, `abrir_ruti` y `cuidar_ruti`; el último se emite solo al sumar un nuevo día y retomar un viaje no cuenta como inicio nuevo. No se encolan acciones anteriores a aceptar. Signals y personalización publicitaria desactivados; cookies host-only con prefijo `dv`, ruta de la app y 90 días. No se modificó AdSense.
+
+En GA4: revisar Tiempo real tras aceptar en una visita de prueba; Usuarios nuevos y Retención se poblarán con las visitas posteriores. Los bloqueadores y visitantes que rechacen no se medirán. El etiquetado no reconstruye visitas anteriores.

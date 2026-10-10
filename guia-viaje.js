@@ -231,6 +231,7 @@
     detalle.open = false;
     renderizar();
     window.dispatchEvent(new Event('donde-viene:guia-iniciada'));
+    window.dispatchEvent(new Event('donde-viene:viaje-iniciado'));
     mostrarAviso();
   });
   document.getElementById('btnSeguirViaje').addEventListener('click', () => {

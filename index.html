@@ -14,6 +14,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="¿Dónde Viene?">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <script defer src="./analitica.js?v=20261010-1"></script>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./app-informacion.css?v=20261010-1">
   <link rel="stylesheet" href="./mascota.css?v=20261010-flotante-1">
@@ -3033,6 +3034,7 @@
         return;
       }
 
+      window.dispatchEvent(new Event('donde-viene:busqueda-iniciada'));
       btnBuscarRuta.disabled = true;
       window.limpiarRecorridoSeleccionado?.();
       candidatoViajeActivo = null;
@@ -5978,11 +5980,11 @@
     <ol class="install-steps"><li>Abrí esta página en Safari.</li><li>Tocá <strong>Compartir</strong>. Según tu versión, puede estar dentro del menú de Safari.</li><li>Elegí <strong>Agregar a Inicio</strong> o <strong>Agregar a la pantalla de inicio</strong>.</li><li>Si aparece <strong>Abrir como app web</strong>, activalo. Luego tocá <strong>Agregar</strong>.</li></ol>
     <p class="favorite-note">Las llegadas en vivo requieren conexión a internet.</p>
   </dialog>
-  <script src="./mascota.js?v=20261010-ruti-1"></script>
-  <script src="./mascota-flotante.js?v=20261010-ruti-1"></script>
+  <script src="./mascota.js?v=20261010-estadisticas-1"></script>
+  <script src="./mascota-flotante.js?v=20261010-estadisticas-1"></script>
   <script src="./mobile.js?v=20261008-1"></script>
   <script src="./seguimiento-viaje.js?v=20261010-estabilidad-2"></script>
-  <script src="./guia-viaje.js?v=20261010-pantalla-1"></script>
+  <script src="./guia-viaje.js?v=20261010-estadisticas-1"></script>
   <script src="./planificador.js?v=20261009-2"></script>
   <script src="./caminatas.js?v=20261008-1"></script>
   <script src="./estimacion-viaje.js?v=20261009-2"></script>
