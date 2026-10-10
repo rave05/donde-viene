@@ -72,6 +72,15 @@
   const saved = DV.leer(KEY, null);
   if (valida(saved)) copia = saved;
   render();
+  function restaurar(value) {
+    if (!valida(value) || JSON.stringify(value).length > 600000 || !window.DondeVieneApp?.restaurarViaje) return false;
+    if (document.getElementById('btnBuscarRuta')?.disabled) return false;
+    window.DV.planificador?.aplicar(null);
+    window.DondeVieneApp.restaurarViaje(value.candidato, value.contexto, value.geometria);
+    copia = value;
+    render();
+    return true;
+  }
   document
     .getElementById("btnAbrirUltimoViaje")
     .addEventListener("click", () => {
@@ -81,12 +90,7 @@
           "Esperá a que termine la búsqueda actual antes de abrir la copia.";
         return;
       }
-      window.DV.planificador.aplicar(null);
-      window.DondeVieneApp.restaurarViaje(
-        copia.candidato,
-        copia.contexto,
-        copia.geometria,
-      );
+      if (!restaurar(copia)) return;
       section.open = true;
       document.getElementById("estadoUltimoViaje").textContent =
         "Mostrando una copia guardada, sin consultar llegadas en vivo. Reconectate y buscá nuevamente para actualizarla.";
@@ -107,7 +111,7 @@
     document.getElementById("estadoUltimoViaje").textContent =
       "Sin conexión. Podés abrir las instrucciones guardadas.";
   });
-  DV.ultimoViaje = { guardar };
+  DV.ultimoViaje = { guardar, valida, restaurar, obtenerCopia: () => copia ? JSON.parse(JSON.stringify(copia)) : null };
   if ("serviceWorker" in navigator)
     navigator.serviceWorker
       .register("./sw.js", { updateViaCache: "none" })

@@ -152,3 +152,9 @@ El desplegable identifica la parada por calle/ID y el cartel de destino esperado
 - `servicios.js`, `notificaciones.js` y `worker/`: integración auxiliar preparada para reportes D1, Web Push, recordatorios y caché compartida. **Todavía no desplegada en Cloudflare**: ver `worker/README.md`. `datos/servicios.json` conserva `url: null` hasta verificar el servicio real. No se reemplazó el Worker de transporte cuyo código no está en este repositorio.
 
 Para regenerar direcciones y lugares accesibles: `python3 -m pip install pyshp pyproj`, luego `python3 scripts/actualizar-integraciones.py direcciones` o `accesibilidad`. Las direcciones se leen de SHP UTM 21S y se convierten a WGS84. No se conservan padrones, teléfonos ni correos del catálogo.
+
+## Recuperación del viaje activo
+
+`viaje-en-curso.js` conserva localmente la copia del recorrido y el avance manual durante un máximo de 12 horas sin actualizarse. Tras recargar ofrece retomar o descartar; restaurar requiere un toque y reutiliza la copia offline sin consultas de llegadas ni inicio automático de GPS o notificaciones. Finalizar o cambiar la ruta elimina el avance; se informa si el almacenamiento no permite guardar o borrar. La validación limita tamaño, cantidad de pasos, textos, índice, antigüedad y coordenadas.
+
+La guía avanza al próximo bus desde la caminata de un transbordo y detiene el GPS al cambiar de paso. El seguimiento descarta lecturas futuras o anteriores a la última aceptada y exige una lectura nueva después de un error o segundo plano. Estas comprobaciones no garantizan GPS continuo en segundo plano ni sustituyen verificar el aviso de bajada en un viaje real.

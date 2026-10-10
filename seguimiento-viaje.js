@@ -20,11 +20,11 @@
   function mostrarUltima() {
     if (!activo || !ultima || document.hidden) return;
     const edad = Date.now() - ultima.timestamp;
-    if (edad > 30000) { ocultarAviso(); informar('GPS sin actualizar. La posición mostrada es la última recibida.'); return; }
+    if (edad < 0 || edad > 30000) { ocultarAviso(); informar('GPS sin actualizar. La posición mostrada es la última recibida.'); return; }
     if (ultima.accuracy > 150) { ocultarAviso(); informar('GPS poco preciso (±' + Math.round(ultima.accuracy) + ' m). Esperando una mejor ubicación.'); return; }
     const lat = Number(tramo?.lat), lon = Number(tramo?.lon);
     let texto = 'GPS activo · actualizado ' + new Date(ultima.timestamp).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    if (tramo?.lat != null && tramo.lat !== '' && tramo.lon != null && tramo.lon !== '' && Number.isFinite(lat) && Number.isFinite(lon)) {
+    if (tramo?.lat != null && tramo.lat !== '' && tramo.lon != null && tramo.lon !== '' && Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
       const metros = distancia(ultima.lat, ultima.lon, lat, lon);
       texto += ' · Bajada de este tramo a ' + (metros < 1000 ? Math.round(metros) + ' m' : (metros / 1000).toFixed(1).replace('.', ',') + ' km') + ' en línea recta';
       if (metros <= 250 && ultima.accuracy <= 80) {
@@ -40,6 +40,8 @@
   }
   function observar() {
     detenerWatch();
+    ultima = null;
+    ocultarAviso();
     const sesion = version;
     informar('Buscando tu ubicación GPS…');
     try {
@@ -48,15 +50,20 @@
         const {latitude: lat, longitude: lon, accuracy} = pos.coords;
         const timestamp = Number(pos.timestamp);
         if (![lat, lon, accuracy, timestamp].every(Number.isFinite) || accuracy < 0 || Math.abs(lat) > 90 || Math.abs(lon) > 180) return;
-        ultima = {lat, lon, accuracy, timestamp};
+        const ahora = Date.now();
+        if (timestamp > ahora + 5000 || (ultima && timestamp < ultima.timestamp)) return;
+        if (ahora - timestamp > 30000) { ocultarAviso(); informar('GPS sin actualizar. Esperando una ubicación reciente.'); return; }
+        const recibido = Math.min(timestamp, ahora);
+        ultima = {lat, lon, accuracy, timestamp: recibido};
         if (Date.now() - timestamp <= 30000 && accuracy <= 150) window.mapaSeguimientoViaje?.actualizar(lat, lon, accuracy, seguir);
         mostrarUltima();
       }, error => {
         if (!activo || sesion !== version) return;
+        ultima = null;
         ocultarAviso();
         if (error.code === 1) {
           detener();
-          informar('No hay permiso de ubicación. Permití el GPS en Safari y tocá “Ya subí” para reintentar. Podés continuar con los pasos manuales.');
+          informar('No hay permiso de ubicación. Permití la ubicación en los ajustes del navegador y tocá “Ya subí” para reintentar. Podés continuar con los pasos manuales.');
         } else informar('No pudimos actualizar el GPS. Esperando señal; podés seguir con los pasos manuales.');
       }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
     } catch (_) { detener(); informar('El navegador no pudo iniciar el GPS. Podés continuar con los pasos manuales.'); }
@@ -94,7 +101,7 @@
   });
   document.addEventListener('visibilitychange', () => {
     if (!activo) return;
-    if (document.hidden) { ocultarAviso(); detenerWatch(); informar('Seguimiento pausado mientras la app está en segundo plano.'); }
+    if (document.hidden) { ultima = null; ocultarAviso(); detenerWatch(); informar('Seguimiento pausado mientras la app está en segundo plano.'); }
     else observar();
   });
   window.addEventListener('donde-viene:viaje-cambio', detener);

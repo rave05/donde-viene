@@ -84,7 +84,48 @@
     window.seguimientoViaje?.setTramo(paso.bajada);
     const boton = document.getElementById('btnEmpezarViaje');
     if (boton) boton.textContent = 'Viaje en curso';
+    document.getElementById('btnSeguirViaje').hidden = !pasos.slice(indice).some(paso => paso.titulo.startsWith('🚌'));
+    window.dispatchEvent(new Event('donde-viene:guia-actualizada'));
   }
+  function cambiarPaso(nuevo) {
+    if (nuevo !== indice) window.seguimientoViaje?.detener();
+    indice = nuevo;
+    detalle.open = false;
+    renderizar();
+  }
+  function validaEstado(value) {
+    return value && Array.isArray(value.pasos) && value.pasos.length > 0 && value.pasos.length <= 50 &&
+      Number.isInteger(value.indice) && value.indice >= 0 && value.indice < value.pasos.length &&
+      value.pasos.every(paso => {
+        if (!paso || typeof paso.titulo !== 'string' || !paso.titulo.trim() || paso.titulo.length > 500 ||
+          typeof paso.descripcion !== 'string' || paso.descripcion.length > 3000) return false;
+        const b = paso.bajada;
+        if (b == null) return true;
+        if (typeof b.nombre !== 'string' || !b.nombre.trim() || b.nombre.length > 240) return false;
+        if ((b.lat == null || b.lat === '') && (b.lon == null || b.lon === '')) return true;
+        const coordValida = v => typeof v === 'number' || (typeof v === 'string' && v.trim() !== '');
+        return coordValida(b.lat) && coordValida(b.lon) &&
+          Number.isFinite(Number(b.lat)) && Number.isFinite(Number(b.lon)) && Math.abs(Number(b.lat)) <= 90 && Math.abs(Number(b.lon)) <= 180;
+      });
+  }
+  window.guiaViaje = {
+    validaEstado,
+    estado() { return activa ? { pasos: pasos.map(paso => ({ ...paso, bajada: paso.bajada ? { ...paso.bajada } : null })), indice } : null; },
+    retomar(value) {
+      if (!validaEstado(value)) return false;
+      window.seguimientoViaje?.detener();
+      pasos = value.pasos.map(paso => ({ ...paso, bajada: paso.bajada ? { ...paso.bajada } : null }));
+      indice = value.indice;
+      activa = true;
+      avisoVersion++;
+      document.getElementById('btnAvisoViaje').hidden = false;
+      document.getElementById('estadoAvisoViaje').hidden = true;
+      detalle.open = false;
+      renderizar();
+      window.dispatchEvent(new Event('donde-viene:guia-iniciada'));
+      return true;
+    }
+  };
   function cerrar(terminado = false) {
     window.seguimientoViaje?.detener();
     activa = false;
@@ -129,22 +170,19 @@
   });
   document.getElementById('btnSeguirViaje').addEventListener('click', () => {
     if (!activa) return;
-    const bus = pasos.findIndex(paso => paso.titulo.startsWith('🚌'));
-    if (indice < bus) { indice = bus; renderizar(); }
+    const bus = pasos.findIndex((paso, i) => i >= indice && paso.titulo.startsWith('🚌'));
+    if (bus < 0) return;
+    if (indice < bus) cambiarPaso(bus);
     window.seguimientoViaje?.iniciar();
   });
   siguiente.addEventListener('click', () => {
     if (!activa) return;
     if (indice === pasos.length - 1) { cerrar(true); return; }
-    indice++;
-    detalle.open = false;
-    renderizar();
+    cambiarPaso(indice + 1);
   });
   anterior.addEventListener('click', () => {
     if (!activa || indice === 0) return;
-    indice--;
-    detalle.open = false;
-    renderizar();
+    cambiarPaso(indice - 1);
   });
   document.getElementById('btnSalirGuiaViaje').addEventListener('click', () => {
     panel.hidden = true;

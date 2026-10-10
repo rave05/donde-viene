@@ -80,3 +80,6 @@ body.trip-guide-active { padding-bottom: 210px; }
 .trip-stop-list { margin: .5rem 0; padding-left: 1.8rem; }
 .trip-stop-list li { margin: .3rem 0; padding-left: .2rem; }
 .trip-stop-list button { width: 100%; text-align: left; }
+.trip-recovery { padding: 16px; border: 1px solid #b9c9dc; border-radius: 14px; background: #f4f8fe; margin-bottom: 16px; }
+.trip-recovery[hidden] { display: none; }
+.trip-recovery p { overflow-wrap: anywhere; }
