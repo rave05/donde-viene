@@ -42,3 +42,11 @@
   .app-shell { padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
   header { padding-top: max(16px, env(safe-area-inset-top)); }
 }
+
+.install-card { flex-wrap: wrap; }
+.install-status { flex-basis: 100%; margin: 0; }
+.install-status:empty { display: none; }
+.install-link { flex-basis: 100%; min-width: 0; width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #b9cbe1; border-radius: 10px; font-size: 16px; }
+.install-card button[hidden], .install-link[hidden] { display: none; }
+.install-footer-button { padding: 8px; border: 0; background: transparent; color: inherit; text-decoration: underline; font: inherit; cursor: pointer; }
+.install-footer-button:focus-visible { outline: 3px solid #1668c1; outline-offset: 3px; }

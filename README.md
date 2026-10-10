@@ -184,3 +184,7 @@ Un error síncrono al iniciar el GPS no crea el temporizador de seguimiento, por
 URLs sin query/fragmento, referrer solo dominio, títulos fijos, sin lectura de direcciones, GPS, rutas, formularios o reportes. Los cuatro eventos propios son `buscar_ruta`, `iniciar_viaje`, `abrir_ruti` y `cuidar_ruti`; el último se emite solo al sumar un nuevo día y retomar un viaje no cuenta como inicio nuevo. No se encolan acciones anteriores a aceptar. Signals y personalización publicitaria desactivados; cookies host-only con prefijo `dv`, ruta de la app y 90 días. No se modificó AdSense.
 
 En GA4: revisar Tiempo real tras aceptar en una visita de prueba; Usuarios nuevos y Retención se poblarán con las visitas posteriores. Los bloqueadores y visitantes que rechacen no se medirán. El etiquetado no reconstruye visitas anteriores.
+
+### Instalar y compartir DondeViene
+
+`instalar-compartir.js` amplía el panel de instalación: prompt del navegador solo al tocar, pasos para iPhone/iPad, Android y escritorio, cierre recordado y reapertura desde el pie de página. En modo standalone se oculta instalar; compartir sigue disponible. Usa Web Share, copia al portapapeles o enlace seleccionable según soporte. Comparte únicamente la URL base sin búsqueda ni fragmento del recorrido. No cambia ni cancela viajes. Las pruebas cubren instalación única, cancelación, preferencias bloqueadas y enlace limpio.

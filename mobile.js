@@ -173,17 +173,4 @@
   renderizar();
   if (problemaLectura) estado.textContent = 'No pudimos leer los lugares guardados en este navegador.';
 
-  const aviso = document.getElementById('avisoInstalacion');
-  const ayuda = document.getElementById('ayudaInstalacion');
-  const esIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const instalada = navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
-  let oculto = false;
-  try { oculto = localStorage.getItem('donde-viene:ocultar-instalacion') === '1'; } catch (_) {}
-  aviso.hidden = !esIOS || instalada || oculto;
-  document.getElementById('btnAyudaInstalacion').addEventListener('click', () => ayuda.showModal());
-  document.getElementById('btnCerrarInstalacion').addEventListener('click', () => ayuda.close());
-  document.getElementById('btnOcultarInstalacion').addEventListener('click', () => {
-    aviso.hidden = true;
-    try { localStorage.setItem('donde-viene:ocultar-instalacion', '1'); } catch (_) {}
-  });
 })();

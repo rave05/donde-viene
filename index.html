@@ -1445,7 +1445,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="./mobile.css?v=20261008-1">
+  <link rel="stylesheet" href="./mobile.css?v=20261010-instalar-1">
   <link rel="stylesheet" href="./patrocinios.css?v=20261008-2">
   <link rel="stylesheet" href="./viaje.css?v=20261010-estabilidad-2">
   <link rel="stylesheet" href="./extras.css?v=20261009-mistm-1">
@@ -1520,7 +1520,10 @@
 
     <aside id="avisoInstalacion" class="install-card" hidden aria-label="Agregar al inicio">
       <div><strong>Tu viaje, a un toque</strong><p>Agregá ¿Dónde Viene? a la pantalla de inicio.</p></div>
-      <button id="btnAyudaInstalacion" class="mobile-button" type="button">Cómo agregarla</button>
+      <button id="btnAyudaInstalacion" class="mobile-button" type="button">Instalar app</button>
+      <button id="btnCompartirApp" class="mobile-button" type="button">Compartir DondeViene</button>
+      <p id="estadoCompartirApp" class="install-status" role="status"></p>
+      <input id="enlaceCompartirApp" class="install-link" type="url" readonly hidden aria-label="Enlace de DondeViene para copiar">
       <button id="btnOcultarInstalacion" class="mobile-close" type="button" aria-label="Ocultar consejo de instalación">×</button>
     </aside>
 
@@ -1709,6 +1712,7 @@
     <a href="./acerca.html">Acerca de DondeViene</a>
     <a href="./acerca.html#contacto">Contacto</a>
     <a href="./privacidad.html">Privacidad</a>
+    <button id="btnReabrirInstalacion" class="install-footer-button" type="button">Instalar y compartir</button>
   </footer>
 
   <!-- Catálogo local de lugares conocidos -->
@@ -5976,13 +5980,15 @@
     </form>
   </dialog>
   <dialog id="ayudaInstalacion" class="mobile-dialog" aria-labelledby="tituloInstalacion">
-    <div class="mobile-dialog-heading"><h2 id="tituloInstalacion">Agregar al inicio</h2><button id="btnCerrarInstalacion" class="mobile-close" type="button" aria-label="Cerrar">×</button></div>
-    <ol class="install-steps"><li>Abrí esta página en Safari.</li><li>Tocá <strong>Compartir</strong>. Según tu versión, puede estar dentro del menú de Safari.</li><li>Elegí <strong>Agregar a Inicio</strong> o <strong>Agregar a la pantalla de inicio</strong>.</li><li>Si aparece <strong>Abrir como app web</strong>, activalo. Luego tocá <strong>Agregar</strong>.</li></ol>
+    <div class="mobile-dialog-heading"><h2 id="tituloInstalacion">Instalar DondeViene</h2><button id="btnCerrarInstalacion" class="mobile-close" type="button" aria-label="Cerrar">×</button></div>
+    <p id="introInstalacion" class="favorite-note"></p>
+    <ol id="pasosInstalacion" class="install-steps"><li>Abrí esta página en Safari.</li><li>Tocá <strong>Compartir</strong>. Según tu versión, puede estar dentro del menú de Safari.</li><li>Elegí <strong>Agregar a Inicio</strong> o <strong>Agregar a la pantalla de inicio</strong>.</li><li>Si aparece <strong>Abrir como app web</strong>, activalo. Luego tocá <strong>Agregar</strong>.</li></ol>
     <p class="favorite-note">Las llegadas en vivo requieren conexión a internet.</p>
   </dialog>
   <script src="./mascota.js?v=20261010-estadisticas-1"></script>
   <script src="./mascota-flotante.js?v=20261010-estadisticas-1"></script>
-  <script src="./mobile.js?v=20261008-1"></script>
+  <script src="./mobile.js?v=20261010-instalar-1"></script>
+  <script src="./instalar-compartir.js?v=20261010-1"></script>
   <script src="./seguimiento-viaje.js?v=20261010-estabilidad-2"></script>
   <script src="./guia-viaje.js?v=20261010-estadisticas-1"></script>
   <script src="./planificador.js?v=20261009-2"></script>
