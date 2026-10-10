@@ -170,3 +170,7 @@ Al compartir, los favoritos se traducen a su dirección de búsqueda. No se agre
 La oferta de retomar se sincroniza entre pestañas mediante eventos de almacenamiento, sin reemplazar una guía activa. Retomar y descartar releen la copia antes de actuar: si cambió mientras la pestaña estaba inactiva, muestran el recorrido nuevo y requieren un segundo toque antes de recuperarlo o borrarlo. Las pruebas cubren cierre en otra pestaña, copia cambiada, eventos omitidos y protección del viaje activo.
 
 Un error síncrono al iniciar el GPS no crea el temporizador de seguimiento, por lo que los reintentos fallidos no acumulan temporizadores. El encabezado de la guía permanece visible al desplazar su contenido para mantener accesible el botón de minimizar.
+
+### Mascota opcional
+
+`mascota.js` y `mascota.css` agregan un juego local, plegado al final de la app. Un cuidado diario voluntario cuenta con fecha de America/Montevideo. Racha y récord son independientes del total de cuidados: celeste se habilita a los 3 días acumulados y coral a los 7. Los colores permanecen tras un día sin uso. Se puede pausar o borrar con confirmación. Sin permisos, red, cuentas ni cambios en búsquedas. La validación rechaza datos locales inválidos; el almacenamiento fallido se informa y conserva el progreso en memoria. Los cambios de otras pestañas se sincronizan.

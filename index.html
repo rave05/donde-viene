@@ -16,6 +16,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./app-informacion.css?v=20261010-1">
+  <link rel="stylesheet" href="./mascota.css?v=20261010-1">
   <link rel="apple-touch-icon" sizes="180x180" href="./icons/bus-apple-180.png">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/bus-192.png">
 
@@ -1636,6 +1637,48 @@
 
     </section>
 
+    <details id="mascotaBus" class="bus-pet" data-color="amarillo">
+      <summary id="mascotaResumen">Tu bus · una racha para jugar</summary>
+      <div class="bus-pet-content">
+        <h2>Un compañero para tus viajes</h2>
+        <p>Cargale energía una vez al día y desbloqueá nuevos colores. Es un juego opcional: viajá cuando lo necesites.</p>
+        <svg class="bus-pet-art" viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mascotaDibujoTitulo">
+          <title id="mascotaDibujoTitulo">Tu mascota: un pequeño bus sonriente</title>
+          <ellipse cx="120" cy="145" rx="78" ry="7" fill="#e9eef5"/>
+          <rect x="48" y="30" width="144" height="110" rx="30" class="bus-pet-body"/>
+          <rect x="61" y="42" width="118" height="57" rx="18" fill="#dff4ff"/>
+          <rect x="76" y="16" width="88" height="24" rx="10" fill="#172b46"/>
+          <text x="120" y="32" fill="#fff" text-anchor="middle" font-size="12" font-family="system-ui, sans-serif">DONDE VIENE</text>
+          <g class="bus-pet-eyes" fill="#172b46"><ellipse cx="98" cy="68" rx="6" ry="8"/><ellipse cx="142" cy="68" rx="6" ry="8"/></g>
+          <path d="M108 81q12 12 24 0" fill="none" stroke="#172b46" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="72" cy="115" r="8" fill="#fff9ce"/><circle cx="168" cy="115" r="8" fill="#fff9ce"/>
+          <rect x="90" y="115" width="60" height="6" rx="3" fill="#172b46"/>
+          <rect x="63" y="131" width="23" height="16" rx="6" fill="#172b46"/><rect x="154" y="131" width="23" height="16" rx="6" fill="#172b46"/>
+          <path d="M47 67h-9v22h10m144-22h10v22h-10" fill="#172b46"/>
+        </svg>
+        <div class="bus-pet-stats" aria-label="Tu progreso">
+          <div><strong id="mascotaRacha">0</strong><span>días de racha</span></div>
+          <div><strong id="mascotaTotal">0</strong><span>días de cuidado</span></div>
+          <div><strong id="mascotaRecord">0</strong><span>mejor racha</span></div>
+        </div>
+        <button id="mascotaJugar" class="bus-pet-care" type="button">Empezar a cuidar mi bus</button>
+        <button id="mascotaCuidar" class="bus-pet-care" type="button" hidden>Cargar energía de hoy</button>
+        <p id="mascotaMensaje" role="status" aria-live="polite"></p>
+        <div class="bus-pet-colors" aria-label="Elegir color del bus">
+          <button type="button" data-mascota-color="amarillo" aria-pressed="true">Amarillo</button>
+          <button type="button" data-mascota-color="celeste" aria-pressed="false" disabled>Celeste · 3 días</button>
+          <button type="button" data-mascota-color="coral" aria-pressed="false" disabled>Coral · 7 días</button>
+        </div>
+        <p id="mascotaPremio" class="bus-pet-note"></p>
+        <p class="bus-pet-note">El día cambia a medianoche de Uruguay. El progreso queda en este navegador; no se comparte entre dispositivos. Si faltás un día, conservás los colores.</p>
+        <details class="bus-pet-settings"><summary>Opciones de la mascota</summary>
+          <button id="mascotaPausar" type="button" hidden>Pausar mascota</button>
+          <button id="mascotaBorrar" type="button">Borrar progreso</button>
+          <button id="mascotaConfirmarBorrar" type="button" hidden>Sí, borrar</button>
+          <button id="mascotaCancelarBorrar" type="button" hidden>Conservar progreso</button>
+        </details>
+      </div>
+    </details>
     <aside class="sponsor-card" aria-labelledby="tituloPatrocinios">
       <span class="sponsor-label">Patrocinios · Espacio disponible</span>
       <h2 id="tituloPatrocinios">Tu marca puede acompañar el próximo viaje</h2>
@@ -5935,6 +5978,7 @@
     <ol class="install-steps"><li>Abrí esta página en Safari.</li><li>Tocá <strong>Compartir</strong>. Según tu versión, puede estar dentro del menú de Safari.</li><li>Elegí <strong>Agregar a Inicio</strong> o <strong>Agregar a la pantalla de inicio</strong>.</li><li>Si aparece <strong>Abrir como app web</strong>, activalo. Luego tocá <strong>Agregar</strong>.</li></ol>
     <p class="favorite-note">Las llegadas en vivo requieren conexión a internet.</p>
   </dialog>
+  <script src="./mascota.js?v=20261010-1"></script>
   <script src="./mobile.js?v=20261008-1"></script>
   <script src="./seguimiento-viaje.js?v=20261010-estabilidad-2"></script>
   <script src="./guia-viaje.js?v=20261010-pantalla-1"></script>

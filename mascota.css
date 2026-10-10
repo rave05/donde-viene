@@ -1,0 +1,136 @@
+.bus-pet {
+  --pet-color: #ffda38;
+  margin: 20px 0;
+  border: 1px solid #dce5ef;
+  border-radius: 22px;
+  background: #fff;
+  color: #172b46;
+}
+.bus-pet > summary {
+  padding: 18px 22px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.bus-pet-content {
+  padding: 0 22px 22px;
+  max-width: 620px;
+  margin: auto;
+  text-align: center;
+}
+.bus-pet-content h2 {
+  margin: 8px 0;
+  font-size: 24px;
+}
+.bus-pet-content p {
+  color: #526781;
+  line-height: 1.55;
+}
+.bus-pet[data-color="celeste"] {
+  --pet-color: #68ccec;
+}
+.bus-pet[data-color="coral"] {
+  --pet-color: #ff9480;
+}
+.bus-pet-art {
+  width: min(240px, 75%);
+  height: auto;
+  display: block;
+  margin: 12px auto;
+}
+.bus-pet-body {
+  fill: var(--pet-color);
+  transition: fill 0.3s ease;
+}
+.bus-pet-eyes {
+  transform-origin: 120px 68px;
+  animation: bus-pet-blink 7s infinite;
+}
+.bus-pet-stats {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin: 12px 0 18px;
+}
+.bus-pet-stats div {
+  flex: 1;
+  max-width: 130px;
+}
+.bus-pet-stats strong {
+  display: block;
+  font-size: 28px;
+}
+.bus-pet-stats span {
+  display: block;
+  font-size: 12px;
+  color: #526781;
+}
+.bus-pet button {
+  min-height: 44px;
+  border: 1px solid #c9d6e7;
+  border-radius: 14px;
+  padding: 10px 16px;
+  background: #fff;
+  color: #172b46;
+  cursor: pointer;
+  font: inherit;
+}
+.bus-pet button:focus-visible {
+  outline: 3px solid #1668c1;
+  outline-offset: 3px;
+}
+.bus-pet button.bus-pet-care {
+  background: #ffda38;
+  border-color: #ffda38;
+  font-weight: 700;
+}
+.bus-pet-colors {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.bus-pet-colors button[aria-pressed="true"] {
+  border: 2px solid #1668c1;
+}
+.bus-pet button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.bus-pet-note {
+  font-size: 12px;
+}
+.bus-pet-settings {
+  margin-top: 16px;
+  text-align: left;
+}
+.bus-pet-settings summary {
+  cursor: pointer;
+  font-size: 14px;
+  color: #526781;
+}
+.bus-pet-settings button {
+  margin: 10px 4px 0 0;
+  font-size: 14px;
+}
+.bus-pet [hidden] {
+  display: none !important;
+}
+@keyframes bus-pet-blink {
+  0%,
+  44%,
+  48%,
+  100% {
+    transform: scaleY(1);
+  }
+  46% {
+    transform: scaleY(0.1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bus-pet-eyes {
+    animation: none;
+  }
+  .bus-pet-body {
+    transition: none;
+  }
+}
