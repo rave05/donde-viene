@@ -114,6 +114,7 @@
         : state.total < 7
           ? `¡Celeste desbloqueado! Coral: ${7 - state.total} ${7 - state.total === 1 ? "día más" : "días más"}.`
           : "¡Desbloqueaste todos los colores! Tus premios se conservan aunque cortes la racha.";
+    window.dispatchEvent(new Event("donde-viene:mascota-actualizada"));
   }
   function care() {
     if (!memoryOnly) state = read();
@@ -155,6 +156,7 @@
     save();
     render();
     panel.open = false;
+    window.dispatchEvent(new Event("donde-viene:mascota-pausa"));
     message(
       "Mascota pausada. Podés volver a jugar cuando quieras; tus colores se conservan.",
     );

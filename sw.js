@@ -1,5 +1,5 @@
 /* Cachea la interfaz y datos estáticos. Nunca guarda respuestas de la API de transporte. */
-const CACHE = "dv-shell-20261010-v40";
+const CACHE = "dv-shell-20261010-v41";
 const CORE = [
   "index.html",
   "ayuda.html",
@@ -22,6 +22,7 @@ const CORE = [
   "viaje.js",
   "viaje.css",
   "mascota.js",
+  "mascota-flotante.js",
   "mascota.css",
   "mobile.js",
   "mobile.css",

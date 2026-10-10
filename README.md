@@ -174,3 +174,5 @@ Un error síncrono al iniciar el GPS no crea el temporizador de seguimiento, por
 ### Mascota opcional
 
 `mascota.js` y `mascota.css` agregan un juego local, plegado al final de la app. Un cuidado diario voluntario cuenta con fecha de America/Montevideo. Racha y récord son independientes del total de cuidados: celeste se habilita a los 3 días acumulados y coral a los 7. Los colores permanecen tras un día sin uso. Se puede pausar o borrar con confirmación. Sin permisos, red, cuentas ni cambios en búsquedas. La validación rechaza datos locales inválidos; el almacenamiento fallido se informa y conserva el progreso en memoria. Los cambios de otras pestañas se sincronizan.
+
+`mascota-flotante.js` presenta el mismo juego en un diálogo modal accesible. El bus es un botón fijo arrastrable con Pointer Events: distingue toque/arrastre, limita su posición al viewport y área segura, guarda coordenadas relativas y se adapta a cambios de orientación. Cierre con X, fondo y Escape, foco devuelto al botón y desplazamiento del fondo restaurado. Sin soporte de dialog se conserva el panel de la página.
