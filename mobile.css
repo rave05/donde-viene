@@ -50,3 +50,5 @@
 .install-card button[hidden], .install-link[hidden] { display: none; }
 .install-footer-button { padding: 8px; border: 0; background: transparent; color: inherit; text-decoration: underline; font: inherit; cursor: pointer; }
 .install-footer-button:focus-visible { outline: 3px solid #1668c1; outline-offset: 3px; }
+.install-card { position: relative; padding-right: 48px; }
+.install-card .mobile-close { position: absolute; top: 7px; right: 4px; }
