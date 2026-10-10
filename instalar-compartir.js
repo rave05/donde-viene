@@ -59,7 +59,9 @@
     event.preventDefault(); deferred = event; update();
   });
   window.addEventListener('appinstalled', () => {
+    const firstConfirmation = !installed;
     installed = true; deferred = null; update();
+    if (firstConfirmation) window.dispatchEvent(new Event('donde-viene:app-instalada'));
     status.textContent = 'DondeViene instalada. Podés abrirla desde su icono.';
   });
   display.addEventListener?.('change', event => {
@@ -110,9 +112,11 @@
     try {
       if (typeof navigator.share === 'function') {
         await navigator.share({title:'¿Dónde Viene?',text:'Encontrá buses y combinaciones para moverte por Montevideo y el área metropolitana.',url:appURL});
+        window.dispatchEvent(new Event('donde-viene:app-compartida'));
         status.textContent = 'Se abrió la opción de compartir.';
       } else if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(appURL);
+        window.dispatchEvent(new Event('donde-viene:enlace-app-copiado'));
         status.textContent = 'Enlace copiado. Pegalo donde quieras compartirlo.';
       } else manualCopy();
     } catch (error) {

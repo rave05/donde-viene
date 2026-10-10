@@ -91,11 +91,14 @@ try {
     "viaje-iniciado",
     "mascota-abierta",
     "mascota-cuidada",
+    "app-compartida",
+    "enlace-app-copiado",
+    "app-instalada",
   ])
     t.fire("donde-viene:" + name);
   assert.deepEqual(
     t.events().map((a) => a[1]),
-    ["page_view", "buscar_ruta", "iniciar_viaje", "abrir_ruti", "cuidar_ruti"],
+    ["page_view", "buscar_ruta", "iniciar_viaje", "abrir_ruti", "cuidar_ruti", "compartir_app", "copiar_enlace_app", "instalar_app"],
   );
   assert(!JSON.stringify(t.commands()).includes("Casa secreta"));
   assert(!JSON.stringify(t.commands()).includes("-34.9"));
@@ -116,6 +119,9 @@ try {
   assert.equal(t.w[`ga-disable-${ID}`], true);
   assert(!t.d.cookie.includes("dv_ga="), "Retirar elimina cookies propias");
   t.fire("donde-viene:mascota-cuidada");
+  t.fire("donde-viene:app-compartida");
+  t.fire("donde-viene:enlace-app-copiado");
+  t.fire("donde-viene:app-instalada");
   assert.equal(t.events().length, before);
   t.w.localStorage.setItem(KEY, "si");
   t.w.dispatchEvent(new t.w.StorageEvent("storage", { key: KEY }));

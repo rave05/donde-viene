@@ -216,6 +216,9 @@
     ["donde-viene:viaje-iniciado", "iniciar_viaje"],
     ["donde-viene:mascota-cuidada", "cuidar_ruti"],
     ["donde-viene:mascota-abierta", "abrir_ruti"],
+    ["donde-viene:app-compartida", "compartir_app"],
+    ["donde-viene:enlace-app-copiado", "copiar_enlace_app"],
+    ["donde-viene:app-instalada", "instalar_app"],
   ])
     window.addEventListener(source, () => send(event));
   if (choice === "si") load();
