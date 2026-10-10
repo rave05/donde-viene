@@ -4,13 +4,14 @@ const fs = require("node:fs"),
 const { JSDOM } = require("jsdom");
 const root = path.resolve(__dirname, "..");
 const src = (n) => fs.readFileSync(path.join(root, n), "utf8");
-function preparar(hash = "") {
+function preparar(hash = "", online = true) {
   const dom = new JSDOM(src("index.html"), {
     url: "https://example.test/donde-viene/" + hash,
     runScripts: "outside-only",
   });
   const w = dom.window,
     d = w.document;
+  Object.defineProperty(w.navigator, 'onLine', {value:online,configurable:true});
   let searches = 0,
     recargas = [],
     shared = "",
@@ -30,6 +31,7 @@ function preparar(hash = "") {
         : [],
   });
   Object.defineProperty(w.navigator, "clipboard", {
+    configurable: true,
     value: {
       writeText: async (value) => {
         shared = value;
@@ -143,6 +145,15 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
     0,
     "Un enlace no debe iniciar consultas ni solicitar GPS por sí solo",
   );
+  w.buscarLugarFavorito = texto => texto === 'Casa' ? {consulta:'Terminal Paso de la Arena',lat:-34.83496,lon:-56.27568} : null;
+  d.getElementById('origenRuta').value = 'Casa';
+  share.click(); await flush();
+  const compartido = JSON.parse(decodeURIComponent(new URL(x.shared()).hash.slice(7)));
+  assert.equal(compartido.origen, 'Terminal Paso de la Arena', 'Compartir resuelve una etiqueta personal a su dirección');
+  assert.equal(compartido.lat, undefined, 'No agrega coordenadas GPS al enlace');
+  Object.defineProperty(w.navigator, 'clipboard', {value:{writeText:async()=>{throw Error('No hay portapapeles');}},configurable:true});
+  share.click(); await flush();
+  assert.equal(d.querySelector('.extras-link').hidden, false);
   d.getElementById("origenRuta").value = "Mi ubicación";
   share.click();
   await flush();
@@ -150,14 +161,32 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
     d.body.textContent,
     /elegí un lugar o una dirección como origen/,
   );
+  assert.equal(d.querySelector('.extras-link').hidden, true, 'Una búsqueda inválida no ofrece el enlace de la anterior');
+  assert.equal(share.disabled, false);
   d.getElementById("momentoViaje").value = "fecha";
   d.getElementById("momentoViaje").dispatchEvent(new w.Event("change"));
   assert.equal(d.getElementById("fechaViajeCampos").hidden, false);
   d.getElementById("diaViaje").value = "2020-01-01";
   d.getElementById("horaViaje").value = "10:00";
   assert.throws(() => w.DV.planificador.leerFecha());
+  d.getElementById('origenRuta').value = 'Tres Cruces';
+  share.click(); await flush();
+  assert.equal(share.disabled, false, 'Un error de fecha deja reintentar compartir');
   w.DV.planificador.aplicar(null);
   assert.equal(w.DV.planificador.leerFecha(), null);
+  let resolverCompartir, solicitudesCompartir = 0;
+  Object.defineProperty(w.navigator, 'share', {configurable:true,value:()=>{
+    solicitudesCompartir++;
+    return new Promise(resolve => {resolverCompartir=resolve;});
+  }});
+  share.click(); share.click();
+  assert.equal(solicitudesCompartir, 1, 'Doble toque no abre dos solicitudes');
+  assert.equal(share.disabled, true);
+  resolverCompartir(); await flush();
+  assert.equal(share.disabled, false);
+  Object.defineProperty(w.navigator, 'share', {configurable:true,value:async()=>{throw new w.DOMException('Cancelado', 'AbortError');}});
+  share.click(); await flush();
+  assert.equal(share.disabled, false, 'Cancelar el diálogo nativo deja reintentar');
   const c = {
       line: "157",
       origen: { busstopId: 1 },
@@ -216,6 +245,13 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
   assert.ok(z.recargas().length > 0);
   assert.equal(z.searches(), 0);
   z.dom.window.close();
+  const offline = preparar('', false);
+  assert.equal(offline.d.getElementById('estadoUltimoViaje').parentElement.open, true, 'Abrir sin red muestra la copia disponible');
+  assert.match(offline.d.getElementById('estadoUltimoViaje').textContent, /Sin conexión/);
+  offline.w.dispatchEvent(new offline.w.Event('online'));
+  assert.match(offline.d.getElementById('estadoUltimoViaje').textContent, /conexión volvió/);
+  assert.equal(offline.searches(), 0, 'Reconectar no busca ni cancela un viaje automáticamente');
+  offline.dom.window.close();
   assert.equal(
     d.querySelector('[aria-label="Publicidad cerca del destino"]').hidden,
     true,

@@ -203,6 +203,25 @@ try {
 } finally {
   deletion.dom.window.close();
 }
+const quota = preparar();
+try {
+  const guardarNormal = quota.w.DV.guardar;
+  const contexto = { origen: 'A', destino: 'B', preferencia: 'proximos' };
+  const candidato = { line: '494', origen: { busstopId: 'a' }, destino: { busstopId: 'b' } };
+  quota.w.DV.ultimoViaje.guardar(candidato, contexto);
+  // La copia grande puede exceder la cuota mientras el avance todavía cabe.
+  quota.w.DV.guardar = (key, value) => key === 'donde-viene-ultimo-v1' ? false : guardarNormal(key, value);
+  quota.w.DV.ultimoViaje.guardar({ ...candidato, line: '230' }, { ...contexto, destino: 'C' });
+  quota.click('btnEmpezarViaje');
+  const actual = JSON.parse(quota.w.localStorage.getItem(KEY));
+  assert.equal(actual.recorrido.candidato.line, '230');
+  assert.equal(actual.recorrido.contexto.destino, 'C');
+  assert.match(quota.d.getElementById('estadoUltimoViaje').textContent, /no pudimos guardar/);
+  quota.w.DV.ultimoViaje.guardar({ ...candidato, line: '' }, contexto);
+  assert.equal(quota.w.DV.ultimoViaje.obtenerCopia(), null, 'Una copia inválida no conserva la ruta anterior en memoria');
+} finally {
+  quota.dom.window.close();
+}
 console.log(
   "Recuperación: paso de combinación, cierre, espera de búsqueda, restauración explícita sin GPS/ETAs, fin, descarte, vencimiento, datos inválidos y almacenamiento bloqueado OK",
 );

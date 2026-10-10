@@ -1,5 +1,5 @@
 /* Cachea la interfaz y datos estáticos. Nunca guarda respuestas de la API de transporte. */
-const CACHE = "dv-shell-20261010-v35";
+const CACHE = "dv-shell-20261010-v36";
 const CORE = [
   "index.html",
   "ayuda.html",
@@ -106,6 +106,16 @@ self.addEventListener("activate", (event) =>
     })(),
   ),
 );
+// Un fallo de almacenamiento no debe convertir una respuesta de red en un error.
+async function abrirCache() {
+  try { return await caches.open(CACHE); } catch (_) { return null; }
+}
+async function leerCache(cache, key) {
+  try { return await cache?.match(key, { ignoreSearch: true }); } catch (_) { return null; }
+}
+async function guardarCache(cache, key, response) {
+  try { await cache?.put(key, response.clone()); } catch (_) {}
+}
 self.addEventListener("fetch", (event) => {
   const request = event.request,
     url = new URL(request.url);
@@ -127,20 +137,19 @@ self.addEventListener("fetch", (event) => {
       : page.href;
     event.respondWith(
       (async () => {
-        const cache = await caches.open(CACHE);
+        const cache = await abrirCache();
         try {
           const response = await fetch(request);
           if (response.ok)
-            await cache.put(
-              navigationKey,
-              response.clone(),
-            );
+            await guardarCache(cache, navigationKey, response);
+          else if (response.status >= 500) {
+            const cached = await leerCache(cache, navigationKey);
+            if (cached) return cached;
+          }
           return response;
         } catch (_) {
           return (
-            (await cache.match(
-              navigationKey,
-            )) || Response.error()
+            (await leerCache(cache, navigationKey)) || Response.error()
           );
         }
       })(),
@@ -151,8 +160,8 @@ self.addEventListener("fetch", (event) => {
     return;
   event.respondWith(
     (async () => {
-      const cache = await caches.open(CACHE);
-      const cached = await cache.match(request, { ignoreSearch: true });
+      const cache = await abrirCache();
+      const cached = await leerCache(cache, request);
       const fijo =
         isLeaflet ||
         /\/(horarios|recorridos)\/.*\.json$/.test(url.pathname) ||
@@ -165,7 +174,7 @@ self.addEventListener("fetch", (event) => {
         if (response.ok) {
           const key = new URL(request.url);
           key.search = "";
-          await cache.put(key.href, response.clone());
+          await guardarCache(cache, key.href, response);
         }
         if (!response.ok && cached) return cached;
         return response;

@@ -11,6 +11,7 @@
     '<div id="avisoBajadaViaje" class="trip-alight-alert" role="status" aria-live="polite" aria-atomic="true" hidden></div><div class="trip-guide-controls"><button id="btnAnteriorGuiaViaje" class="trip-change" type="button">Anterior</button><button id="btnSiguienteGuiaViaje" class="trip-guide-next" type="button">Paso completado</button></div>' +
     '<button id="btnSeguirViaje" class="trip-start" type="button">Ya subí · seguir mi viaje</button><p id="estadoSeguimientoViaje" class="trip-tracking-status" role="status" hidden></p><button id="btnCentrarViaje" class="trip-change" type="button" hidden>Volver a seguirme</button><p class="trip-note">Al acercarte a la bajada, verás un aviso para este tramo. El seguimiento usa el GPS del teléfono. Mantené la app abierta y la pantalla encendida.</p>' +
     '<details id="detalleGuiaViaje"><summary>Detalles de este paso</summary><p id="descripcionGuiaViaje"></p><button id="btnMapaGuiaViaje" class="trip-change" type="button">Ver mapa</button></details>' +
+    '<button id="btnPantallaViaje" class="trip-change" type="button" aria-pressed="false">Mantener pantalla encendida</button><p id="estadoPantallaViaje" class="trip-note" role="status" hidden></p>' +
     '<button id="btnAvisoViaje" class="trip-change" type="button">Activar aviso de viaje activo</button><p id="estadoAvisoViaje" class="trip-note" role="status" hidden></p><button id="btnTerminarGuiaViaje" class="trip-change" type="button">Finalizar viaje</button>';
   document.body.appendChild(panel);
   const volver = document.createElement('button');
@@ -20,6 +21,68 @@
   volver.textContent = '🚌 Viaje activo · volver';
   volver.hidden = true;
   document.body.appendChild(volver);
+  const pantalla = document.getElementById('btnPantallaViaje');
+  const estadoPantalla = document.getElementById('estadoPantallaViaje');
+  let mantenerPantalla = false, bloqueoPantalla = null, pantallaVersion = 0, solicitandoPantalla = false;
+  pantalla.hidden = !navigator.wakeLock?.request;
+  function informarPantalla(texto) {
+    estadoPantalla.textContent = texto;
+    estadoPantalla.hidden = !texto;
+    pantalla.setAttribute('aria-pressed', String(!!bloqueoPantalla && !bloqueoPantalla.released));
+    pantalla.textContent = bloqueoPantalla ? 'Permitir que la pantalla se apague' : solicitandoPantalla ? 'Cancelar pantalla encendida' : 'Mantener pantalla encendida';
+  }
+  function liberarPantalla(conservar = false) {
+    pantallaVersion++;
+    solicitandoPantalla = false;
+    mantenerPantalla = conservar && mantenerPantalla;
+    const anterior = bloqueoPantalla;
+    bloqueoPantalla = null;
+    if (anterior && !anterior.released) Promise.resolve(anterior.release()).catch(() => {});
+    informarPantalla(mantenerPantalla ? 'Pantalla encendida en pausa. Se reintentará cuando vuelvas a la app.' : '');
+  }
+  async function pedirPantalla() {
+    if (!activa || !mantenerPantalla || document.hidden || !navigator.wakeLock?.request) return;
+    const version = ++pantallaVersion;
+    solicitandoPantalla = true;
+    informarPantalla('Intentando mantener la pantalla encendida…');
+    try {
+      const bloqueo = await navigator.wakeLock.request('screen');
+      if (version !== pantallaVersion || !activa || !mantenerPantalla || document.hidden) {
+        if (!bloqueo.released) await bloqueo.release();
+        return;
+      }
+      solicitandoPantalla = false;
+      if (bloqueo.released) throw Error('Bloqueo liberado');
+      bloqueoPantalla = bloqueo;
+      bloqueo.addEventListener('release', () => {
+        if (bloqueoPantalla !== bloqueo) return;
+        bloqueoPantalla = null;
+        if (!document.hidden) mantenerPantalla = false;
+        informarPantalla(document.hidden ? 'Pantalla encendida en pausa. Se reintentará cuando vuelvas a la app.' : 'El teléfono liberó la pantalla encendida. Podés reintentar; revisá la batería y los ajustes de ahorro.');
+      });
+      informarPantalla('Pantalla encendida solicitada. Consume más batería; el teléfono puede desactivarla si necesita ahorrar energía.');
+    } catch (_) {
+      if (version !== pantallaVersion) return;
+      solicitandoPantalla = false;
+      mantenerPantalla = false;
+      informarPantalla('No pudimos mantener la pantalla encendida. Revisá la batería y los ajustes del teléfono o reintentá.');
+    }
+  }
+  pantalla.addEventListener('click', () => {
+    if (!activa) return;
+    if (mantenerPantalla) {
+      liberarPantalla();
+      informarPantalla('La pantalla vuelve a seguir los ajustes del teléfono.');
+    } else {
+      mantenerPantalla = true;
+      pedirPantalla();
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) liberarPantalla(true);
+    else if (mantenerPantalla && activa) pedirPantalla();
+  });
+  window.addEventListener('pagehide', () => liberarPantalla());
   let avisoVersion = 0;
   const etiquetaAviso = 'donde-viene-viaje-activo';
   function informarAviso(texto) {
@@ -113,6 +176,7 @@
     estado() { return activa ? { pasos: pasos.map(paso => ({ ...paso, bajada: paso.bajada ? { ...paso.bajada } : null })), indice } : null; },
     retomar(value) {
       if (!validaEstado(value)) return false;
+      liberarPantalla();
       window.seguimientoViaje?.detener();
       pasos = value.pasos.map(paso => ({ ...paso, bajada: paso.bajada ? { ...paso.bajada } : null }));
       indice = value.indice;
@@ -127,6 +191,7 @@
     }
   };
   function cerrar(terminado = false) {
+    liberarPantalla();
     window.seguimientoViaje?.detener();
     activa = false;
     avisoVersion++;

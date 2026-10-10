@@ -83,3 +83,4 @@ body.trip-guide-active { padding-bottom: 210px; }
 .trip-recovery { padding: 16px; border: 1px solid #b9c9dc; border-radius: 14px; background: #f4f8fe; margin-bottom: 16px; }
 .trip-recovery[hidden] { display: none; }
 .trip-recovery p { overflow-wrap: anywhere; }
+#btnPantallaViaje[aria-pressed="true"] { background: #e7f4ec; border-color: #24603c; color: #24603c; }

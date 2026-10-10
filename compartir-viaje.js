@@ -18,7 +18,16 @@
   manual.className = "extras-link";
   status.after(manual);
   button.addEventListener("click", async () => {
-    const r = window.DondeVieneApp.leerBusqueda();
+    if (button.disabled) return;
+    manual.hidden = true;
+    manual.value = '';
+    status.textContent = '';
+    const r = { ...window.DondeVieneApp.leerBusqueda() };
+    // Las etiquetas personales (Casa/Trabajo) no existen en otro teléfono.
+    for (const campo of ['origen', 'destino']) {
+      const favorito = window.buscarLugarFavorito?.(r[campo]);
+      if (typeof favorito?.consulta === 'string') r[campo] = favorito.consulta;
+    }
     if (!DV.recetaValida(r)) {
       status.textContent = "Completá el origen y el destino para compartir.";
       return;
@@ -48,6 +57,7 @@
           fechaLlegadaLimite: limite,
         }),
       );
+    button.disabled = true;
     try {
       if (navigator.share) {
         await navigator.share({
@@ -67,6 +77,8 @@
       manual.hidden = false;
       manual.select();
       status.textContent = "Copiá este enlace para compartir el recorrido.";
+    } finally {
+      button.disabled = false;
     }
   });
   try {

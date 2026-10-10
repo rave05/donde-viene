@@ -55,17 +55,22 @@
       geometria,
       guardado: new Date().toISOString(),
     };
-    if (
-      !valida(value) ||
-      JSON.stringify(value).length > 600000 ||
-      !DV.guardar(KEY, value)
-    ) {
+    if (!valida(value) || JSON.stringify(value).length > 600000) {
+      copia = null;
+      render();
       document.getElementById("estadoUltimoViaje").textContent =
         "No pudimos conservar la copia en este navegador.";
       return;
     }
+    // La guía debe usar el viaje recién elegido aunque el disco esté lleno.
+    // Nunca asociar su avance con la copia de un viaje anterior.
     copia = value;
     render();
+    if (!DV.guardar(KEY, value)) {
+      document.getElementById("estadoUltimoViaje").textContent =
+        "El viaje está disponible en esta pantalla, pero no pudimos guardar su copia. Podría perderse al cerrar la app.";
+      return;
+    }
     document.getElementById("estadoUltimoViaje").textContent =
       "Instrucciones guardadas. Sin conexión no se actualizan las llegadas ni se garantiza la disponibilidad del mapa.";
   }
@@ -106,10 +111,16 @@
       copia = null;
       render();
     });
-  window.addEventListener("offline", () => {
+  function informarSinConexion() {
     section.open = true;
     document.getElementById("estadoUltimoViaje").textContent =
       "Sin conexión. Podés abrir las instrucciones guardadas.";
+  }
+  window.addEventListener("offline", informarSinConexion);
+  if (navigator.onLine === false) informarSinConexion();
+  window.addEventListener("online", () => {
+    document.getElementById("estadoUltimoViaje").textContent =
+      "La conexión volvió. Buscá nuevamente para consultar llegadas actuales; la copia guardada no se actualiza sola.";
   });
   DV.ultimoViaje = { guardar, valida, restaurar, obtenerCopia: () => copia ? JSON.parse(JSON.stringify(copia)) : null };
   if ("serviceWorker" in navigator)

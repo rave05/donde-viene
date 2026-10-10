@@ -158,3 +158,11 @@ Para regenerar direcciones y lugares accesibles: `python3 -m pip install pyshp p
 `viaje-en-curso.js` conserva localmente la copia del recorrido y el avance manual durante un máximo de 12 horas sin actualizarse. Tras recargar ofrece retomar o descartar; restaurar requiere un toque y reutiliza la copia offline sin consultas de llegadas ni inicio automático de GPS o notificaciones. Finalizar o cambiar la ruta elimina el avance; se informa si el almacenamiento no permite guardar o borrar. La validación limita tamaño, cantidad de pasos, textos, índice, antigüedad y coordenadas.
 
 La guía avanza al próximo bus desde la caminata de un transbordo y detiene el GPS al cambiar de paso. El seguimiento descarta lecturas futuras o anteriores a la última aceptada y exige una lectura nueva después de un error o segundo plano. Estas comprobaciones no garantizan GPS continuo en segundo plano ni sustituyen verificar el aviso de bajada en un viaje real.
+
+## Pantalla encendida y tolerancia a fallos
+
+La guía ofrece pantalla encendida solo cuando existe `navigator.wakeLock.request`. Requiere un toque explícito; no se activa al empezar o recuperar un viaje. Minimizar conserva la solicitud. Segundo plano libera el recurso y primer plano reintenta si seguía elegido. Finalizar, cambiar la ruta o salir libera e invalida solicitudes pendientes. Los rechazos y liberaciones del sistema se informan sin cancelar la guía; el sistema puede ignorar la solicitud por ahorro de energía. `tests/pantalla-viaje.cjs` cubre cancelación y concesiones tardías además del ciclo normal. La comprobación en iPhone sigue pendiente.
+
+El service worker v36 conserva la respuesta de red aunque la caché no permita abrir, leer o escribir. Navegar ante un 5xx recurre únicamente a una copia de la misma página; conserva los 404 y no intercepta la API externa ni peticiones POST. La copia del viaje en memoria se renueva antes de intentar guardarla, evitando que un fallo de cuota asocie pasos nuevos con una ruta anterior. Sin red al iniciar se abre el panel de instrucciones; al reconectar se informa que las llegadas requieren una búsqueda nueva, sin consultas automáticas.
+
+Al compartir, los favoritos se traducen a su dirección de búsqueda. No se agregan coordenadas GPS. Un intento inválido oculta el enlace manual anterior y una operación pendiente impide dobles solicitudes de compartir.
