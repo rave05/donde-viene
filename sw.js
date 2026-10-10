@@ -1,7 +1,12 @@
 /* Cachea la interfaz y datos estáticos. Nunca guarda respuestas de la API de transporte. */
-const CACHE = "dv-shell-20261009-v32";
+const CACHE = "dv-shell-20261010-v33";
 const CORE = [
   "index.html",
+  "ayuda.html",
+  "acerca.html",
+  "privacidad.html",
+  "informacion.css",
+  "app-informacion.css",
   "metropolitano.js",
   "paradas-viaje.js",
   "direcciones.js",
@@ -112,6 +117,13 @@ self.addEventListener("fetch", (event) => {
   )
     return;
   if (request.mode === "navigate") {
+    const scope = new URL(self.registration.scope);
+    const page = new URL(request.url);
+    page.search = "";
+    page.hash = "";
+    const navigationKey = page.pathname === scope.pathname
+      ? new URL("index.html", scope).href
+      : page.href;
     event.respondWith(
       (async () => {
         const cache = await caches.open(CACHE);
@@ -119,14 +131,14 @@ self.addEventListener("fetch", (event) => {
           const response = await fetch(request);
           if (response.ok)
             await cache.put(
-              new URL("index.html", self.registration.scope).href,
+              navigationKey,
               response.clone(),
             );
           return response;
         } catch (_) {
           return (
             (await cache.match(
-              new URL("index.html", self.registration.scope).href,
+              navigationKey,
             )) || Response.error()
           );
         }
