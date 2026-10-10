@@ -92,8 +92,8 @@
       : Infinity;
     const current = gap <= 1 ? state.streak : 0;
     $("mascotaResumen").textContent = state.active
-      ? `Tu bus · ${current} ${current === 1 ? "día" : "días"} de racha`
-      : "Tu bus · una racha para jugar";
+      ? `Ruti · ${current} ${current === 1 ? "día" : "días"} de racha`
+      : "Ruti · una racha para jugar";
     $("mascotaRacha").textContent = String(current);
     $("mascotaTotal").textContent = String(state.total);
     $("mascotaRecord").textContent = String(state.best);
@@ -132,7 +132,7 @@
       save();
       render();
       message(
-        "Tu bus ya tiene la energía de hoy. Podés seguir usando la app cuando la necesites.",
+        "Ruti ya tiene la energía de hoy. Podés seguir usando la app cuando la necesites.",
       );
       return;
     }
@@ -158,7 +158,7 @@
     panel.open = false;
     window.dispatchEvent(new Event("donde-viene:mascota-pausa"));
     message(
-      "Mascota pausada. Podés volver a jugar cuando quieras; tus colores se conservan.",
+      "Ruti está en pausa. Podés volver a jugar cuando quieras; tus colores se conservan.",
     );
   });
   for (const button of panel.querySelectorAll("[data-mascota-color]"))
@@ -169,7 +169,7 @@
       state.color = color;
       save();
       render();
-      message("Color de tu bus actualizado.");
+      message("Color de Ruti actualizado.");
     });
   $("mascotaBorrar").addEventListener("click", () => {
     $("mascotaConfirmarBorrar").hidden = false;

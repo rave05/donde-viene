@@ -16,7 +16,7 @@
   button.setAttribute("aria-haspopup", "dialog");
   button.setAttribute("aria-expanded", "false");
   button.setAttribute("aria-controls", "mascotaPopup");
-  button.title = "Tocá para cuidar tu bus. Arrastrá para moverlo.";
+  button.title = "Tocá para cuidar a Ruti. Arrastrá para moverlo.";
   const art = panel.querySelector(".bus-pet-art").cloneNode(true);
   art.setAttribute("viewBox", "28 8 184 150");
   art.setAttribute("aria-hidden", "true");
@@ -31,7 +31,7 @@
   const heading = document.createElement("div");
   heading.className = "bus-pet-modal-heading";
   const title = document.createElement("strong");
-  title.textContent = "Tu bus";
+  title.textContent = "Ruti";
   const close = document.createElement("button");
   close.type = "button";
   close.id = "cerrarMascotaPopup";
