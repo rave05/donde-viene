@@ -222,6 +222,46 @@ try {
 } finally {
   quota.dom.window.close();
 }
+for (const action of ['notificar-borrado', 'cambiar', 'retomar-sin-evento', 'descartar-sin-evento', 'activa']) {
+  const tab = preparar(saved);
+  try {
+    const diferente = JSON.parse(saved);
+    diferente.recorrido.contexto.destino = 'Otro destino';
+    const serialized = JSON.stringify(diferente);
+    if (action === 'activa') {
+      tab.click('btnRetomarViajeGuardado');
+      tab.click('btnSeguirViaje');
+      const before = JSON.stringify(tab.w.guiaViaje.estado());
+      const watches = tab.stats().watches;
+      tab.w.localStorage.setItem(KEY, serialized);
+      tab.w.dispatchEvent(new tab.w.StorageEvent('storage', {key:KEY,newValue:serialized}));
+      assert.equal(JSON.stringify(tab.w.guiaViaje.estado()), before, 'Otra pestaña no reemplaza el viaje activo');
+      assert.equal(tab.stats().watches, watches);
+      assert(tab.d.querySelector('.trip-recovery').hidden);
+    } else if (action === 'notificar-borrado') {
+      tab.w.localStorage.removeItem(KEY);
+      tab.w.dispatchEvent(new tab.w.StorageEvent('storage', {key:KEY,newValue:null}));
+      assert(tab.d.querySelector('.trip-recovery').hidden, 'Finalizar en otra pestaña quita la oferta');
+      tab.click('btnRetomarViajeGuardado');
+      assert.equal(tab.stats().restored, 0);
+    } else {
+      tab.w.localStorage.setItem(KEY, serialized);
+      if (action === 'cambiar') {
+        tab.w.dispatchEvent(new tab.w.StorageEvent('storage', {key:KEY,newValue:serialized}));
+        assert.match(tab.d.getElementById('resumenViajeRecuperable').textContent, /Otro destino/);
+        assert.equal(tab.stats().restored, 0, 'Sin recuperación automática');
+      } else {
+        tab.click(action === 'retomar-sin-evento' ? 'btnRetomarViajeGuardado' : 'btnDescartarViajeGuardado');
+        assert.equal(tab.stats().restored, 0);
+        assert.equal(tab.w.localStorage.getItem(KEY), serialized, 'No descartar una copia que el usuario no vio');
+        assert.match(tab.d.getElementById('estadoRecuperacionViaje').textContent, /viaje guardado cambió/);
+      }
+      tab.click('btnRetomarViajeGuardado');
+      assert.equal(tab.stats().restored, 1);
+      assert.equal(tab.stats().watches, 0, 'Retomar desde otra pestaña no activa GPS');
+    }
+  } finally {tab.dom.window.close();}
+}
 console.log(
   "Recuperación: paso de combinación, cierre, espera de búsqueda, restauración explícita sin GPS/ETAs, fin, descarte, vencimiento, datos inválidos y almacenamiento bloqueado OK",
 );

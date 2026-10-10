@@ -14,6 +14,19 @@
   let recuperando = false,
     pendiente = null;
   const estado = panel.querySelector("#estadoRecuperacionViaje");
+  function ofrecer(value) {
+    pendiente = valida(value) ? value : null;
+    panel.hidden = !pendiente;
+    if (!pendiente) return;
+    panel.querySelector('strong').textContent = 'Tenés un viaje sin finalizar';
+    panel.querySelector('#btnRetomarViajeGuardado').hidden = false;
+    panel.querySelector('#btnDescartarViajeGuardado').textContent = 'Descartar';
+    estado.textContent = '';
+    panel.querySelector('#resumenViajeRecuperable').textContent =
+      pendiente.recorrido.contexto.origen + ' → ' + pendiente.recorrido.contexto.destino +
+      ' · Paso ' + (pendiente.guia.indice + 1) + ' de ' + pendiente.guia.pasos.length +
+      ' · Guardado ' + DV.fechaTexto(pendiente.guardado);
+  }
   function valida(value) {
     if (!value || value.version !== 1 || !Number.isFinite(value.guardado))
       return false;
@@ -61,23 +74,25 @@
     panel.hidden = true;
   }
   const saved = DV.leer(KEY, null);
-  if (valida(saved)) {
-    pendiente = saved;
-    panel.querySelector("#resumenViajeRecuperable").textContent =
-      saved.recorrido.contexto.origen +
-      " → " +
-      saved.recorrido.contexto.destino +
-      " · Paso " +
-      (saved.guia.indice + 1) +
-      " de " +
-      saved.guia.pasos.length +
-      " · Guardado " +
-      DV.fechaTexto(saved.guardado);
-    panel.hidden = false;
-  } else if (saved) DV.guardar(KEY, null);
+  ofrecer(saved);
+  if (saved && !pendiente) DV.guardar(KEY, null);
+  window.addEventListener('storage', event => {
+    if ((event.key !== KEY && event.key !== null) || recuperando || window.guiaViaje.estado()) return;
+    ofrecer(DV.leer(KEY, null));
+  });
   panel
     .querySelector("#btnRetomarViajeGuardado")
     .addEventListener("click", () => {
+      const actual = DV.leer(KEY, null);
+      if (!valida(actual)) {
+        ofrecer(null);
+        return;
+      }
+      if (JSON.stringify(actual) !== JSON.stringify(pendiente)) {
+        ofrecer(actual);
+        estado.textContent = 'El viaje guardado cambió. Revisá el recorrido y tocá “Retomar viaje” nuevamente.';
+        return;
+      }
       if (!pendiente || !valida(pendiente)) {
         descartar();
         return;
@@ -110,7 +125,15 @@
     });
   panel
     .querySelector("#btnDescartarViajeGuardado")
-    .addEventListener("click", descartar);
+    .addEventListener("click", () => {
+      const actual = DV.leer(KEY, null);
+      if (pendiente && JSON.stringify(actual) !== JSON.stringify(pendiente)) {
+        ofrecer(actual);
+        if (pendiente) estado.textContent = 'El viaje guardado cambió. Revisalo antes de descartarlo.';
+        return;
+      }
+      descartar();
+    });
   for (const nombre of [
     "donde-viene:guia-actualizada",
     "donde-viene:mapa-viaje-listo",
