@@ -78,7 +78,7 @@
     document.getElementById('mapa')?.scrollIntoView({ behavior: 'auto', block: 'start' });
     window.mapaSeguimientoViaje?.preparar();
     observar();
-    reloj = setInterval(mostrarUltima, 5000);
+    if (activo) reloj = setInterval(mostrarUltima, 5000);
   }
   function detener() {
     activo = false; ocultarAviso(); detenerWatch(); clearInterval(reloj); reloj = null; ultima = null;

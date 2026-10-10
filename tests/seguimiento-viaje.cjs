@@ -14,13 +14,14 @@ const w = dom.window,
 let now = 1700000000000,
   hidden = false,
   timer,
+  timerStarts = 0,
   updates = [],
   watches = [],
   clears = [];
 w.Date.now = () => now;
 w.setInterval = (fn) => {
   timer = fn;
-  return 1;
+  return ++timerStarts;
 };
 w.clearInterval = () => {};
 Object.defineProperty(d, "hidden", { get: () => hidden });
@@ -103,6 +104,15 @@ try {
   assert(d.getElementById("avisoBajadaViaje").hidden);
   w.seguimientoViaje.detener();
   assert(!d.body.classList.contains("trip-tracking-active"));
+  const iniciados = timerStarts;
+  w.navigator.geolocation.watchPosition = () => {throw Error('No se pudo iniciar');};
+  for (let i = 0; i < 3; i++) {
+    w.seguimientoViaje.iniciar();
+    assert(!d.body.classList.contains('trip-tracking-active'));
+    assert.equal(d.getElementById('btnSeguirViaje').disabled, false);
+    assert.match(d.getElementById('estadoSeguimientoViaje').textContent, /no pudo iniciar el GPS/);
+  }
+  assert.equal(timerStarts, iniciados, 'Un arranque fallido no deja temporizadores al reintentar');
   console.log(
     "GPS del viaje: antigüedad, futuro, orden de lecturas, error, segundo plano, reanudación y precisión de bajada OK",
   );
