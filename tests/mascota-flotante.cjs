@@ -80,6 +80,39 @@ function setup(saved, quota = false) {
   const t = setup();
   try {
     assert.equal(t.popup.open, false, "No abre ni activa el juego al cargar");
+    assert.equal(t.button.dataset.salud, "sano");
+    t.w.localStorage.setItem(
+      "donde-viene-mascota-v1",
+      JSON.stringify({
+        v: 1,
+        active: true,
+        lastDay: "2026-01-01",
+        streak: 3,
+        best: 3,
+        total: 3,
+        color: "celeste",
+      }),
+    );
+    t.w.dispatchEvent(
+      new t.w.StorageEvent("storage", { key: "donde-viene-mascota-v1" }),
+    );
+    assert.equal(
+      t.button.dataset.salud,
+      "enfermo",
+      "El bus flotante muestra la enfermedad",
+    );
+    assert.match(t.button.getAttribute("aria-label"), /enfermo/);
+    assert.equal(
+      t.button.dataset.color,
+      "celeste",
+      "Enfermar no borra el color",
+    );
+    t.d.getElementById("mascotaCuidar").click();
+    assert.equal(
+      t.button.dataset.salud,
+      "sano",
+      "Curar actualiza también el bus flotante",
+    );
     assert.equal(
       t.d.querySelector("main #mascotaBus"),
       null,

@@ -47,6 +47,25 @@
   transform-origin: 120px 68px;
   animation: bus-pet-blink 7s infinite;
 }
+.bus-pet-sick-art {
+  display: none;
+}
+[data-salud="enfermo"] .bus-pet-sick-art {
+  display: inline;
+}
+[data-salud="enfermo"] .bus-pet-smile {
+  display: none;
+}
+[data-salud="enfermo"] .bus-pet-eyes {
+  animation: none;
+  transform: scaleY(0.55);
+}
+[data-salud="enfermo"] .bus-pet-body {
+  filter: saturate(0.55);
+}
+.bus-pet[data-salud="enfermo"] #mascotaSalud {
+  color: #9c3737;
+}
 .bus-pet-stats {
   display: flex;
   justify-content: center;

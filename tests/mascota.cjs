@@ -9,7 +9,11 @@ function setup(saved, failure = false) {
       html.indexOf('<details id="mascotaBus"'),
       html.indexOf('<aside class="sponsor-card"'),
     ),
-    { url: "https://example.test/", runScripts: "outside-only" },
+    {
+      url: "https://example.test/",
+      runScripts: "outside-only",
+      pretendToBeVisual: true,
+    },
   );
   const w = dom.window,
     d = w.document;
@@ -19,6 +23,11 @@ function setup(saved, failure = false) {
     constructor(...args) {
       super(...(args.length ? args : [now]));
     }
+  };
+  let midnightCheck;
+  w.setInterval = (callback) => {
+    midnightCheck = callback;
+    return 1;
   };
   if (saved)
     w.localStorage.setItem(
@@ -40,11 +49,16 @@ function setup(saved, failure = false) {
       now = value;
       w.dispatchEvent(new w.Event("focus"));
     },
+    tick(value) {
+      now = value;
+      midnightCheck();
+    },
   };
 }
 const t = setup();
 try {
   assert.equal(t.state(), null, "No se guarda ni activa nada por abrir la app");
+  assert.equal(t.d.getElementById("mascotaBus").dataset.salud, "sano");
   assert.equal(t.d.getElementById("mascotaBus").open, false);
   t.click("mascotaJugar");
   assert.equal(
@@ -68,8 +82,48 @@ try {
   assert.equal(celeste.disabled, false);
   celeste.click();
   assert.equal(t.state().color, "celeste");
+  t.date("2026-10-13T02:59:00Z");
+  assert.equal(
+    t.d.getElementById("mascotaBus").dataset.salud,
+    "sano",
+    "No enferma mientras todavía queda tiempo para cuidar al día siguiente",
+  );
+  t.tick("2026-10-13T03:00:00Z");
+  assert.equal(
+    t.d.getElementById("mascotaBus").dataset.salud,
+    "enfermo",
+    "Enferma a medianoche tras un día entero sin tocar cuidado",
+  );
+  assert.match(t.d.getElementById("mascotaCuidar").textContent, /Curar/);
+  const missed = t.state();
+  const reopened = setup(missed);
+  try {
+    reopened.date("2026-10-13T03:00:00Z");
+    assert.equal(
+      reopened.d.getElementById("mascotaBus").dataset.salud,
+      "enfermo",
+      "Recargar y abrir la app no cura a Ruti",
+    );
+    assert.deepEqual(reopened.state(), missed);
+    reopened.click("mascotaPausar");
+    reopened.date("2026-10-20T03:00:00Z");
+    assert.equal(
+      reopened.d.getElementById("mascotaBus").dataset.salud,
+      "sano",
+      "La mascota pausada no enferma",
+    );
+  } finally {
+    reopened.dom.window.close();
+  }
   t.date("2026-10-14T03:00:00Z");
   assert.equal(t.d.getElementById("mascotaRacha").textContent, "0");
+  t.click("mascotaCuidar");
+  assert.equal(
+    t.d.getElementById("mascotaBus").dataset.salud,
+    "sano",
+    "Un cuidado cura inmediatamente",
+  );
+  assert.match(t.d.getElementById("mascotaMensaje").textContent, /se recuperó/);
   t.click("mascotaCuidar");
   assert.equal(t.state().streak, 1);
   assert.equal(t.state().best, 3);
