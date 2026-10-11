@@ -59,6 +59,11 @@ const t = setup();
 try {
   assert.equal(t.state(), null, "No se guarda ni activa nada por abrir la app");
   assert.equal(t.d.getElementById("mascotaBus").dataset.salud, "sano");
+  assert.equal(
+    t.w.getComputedStyle(t.d.querySelector(".bus-pet-sick-art")).display,
+    "none",
+    "Sin cargar CSS, la cara enferma no se superpone a la sana",
+  );
   assert.equal(t.d.getElementById("mascotaBus").open, false);
   t.click("mascotaJugar");
   assert.equal(
@@ -95,6 +100,14 @@ try {
     "Enferma a medianoche tras un día entero sin tocar cuidado",
   );
   assert.match(t.d.getElementById("mascotaCuidar").textContent, /Curar/);
+  assert.equal(
+    t.w.getComputedStyle(t.d.querySelector(".bus-pet-smile")).display,
+    "none",
+  );
+  assert.equal(
+    t.w.getComputedStyle(t.d.querySelector(".bus-pet-sick-art")).display,
+    "inline",
+  );
   const missed = t.state();
   const reopened = setup(missed);
   try {
@@ -124,6 +137,14 @@ try {
     "Un cuidado cura inmediatamente",
   );
   assert.match(t.d.getElementById("mascotaMensaje").textContent, /se recuperó/);
+  assert.equal(
+    t.w.getComputedStyle(t.d.querySelector(".bus-pet-sick-art")).display,
+    "none",
+  );
+  assert.equal(
+    t.w.getComputedStyle(t.d.querySelector(".bus-pet-smile")).display,
+    "inline",
+  );
   t.click("mascotaCuidar");
   assert.equal(t.state().streak, 1);
   assert.equal(t.state().best, 3);

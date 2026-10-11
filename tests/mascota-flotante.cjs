@@ -81,6 +81,10 @@ function setup(saved, quota = false) {
   try {
     assert.equal(t.popup.open, false, "No abre ni activa el juego al cargar");
     assert.equal(t.button.dataset.salud, "sano");
+    assert.equal(
+      t.w.getComputedStyle(t.button.querySelector(".bus-pet-sick-art")).display,
+      "none",
+    );
     t.w.localStorage.setItem(
       "donde-viene-mascota-v1",
       JSON.stringify({
@@ -103,11 +107,27 @@ function setup(saved, quota = false) {
     );
     assert.match(t.button.getAttribute("aria-label"), /enfermo/);
     assert.equal(
+      t.w.getComputedStyle(t.button.querySelector(".bus-pet-smile")).display,
+      "none",
+    );
+    assert.equal(
+      t.w.getComputedStyle(t.button.querySelector(".bus-pet-sick-art")).display,
+      "inline",
+    );
+    assert.equal(
       t.button.dataset.color,
       "celeste",
       "Enfermar no borra el color",
     );
     t.d.getElementById("mascotaCuidar").click();
+    assert.equal(
+      t.w.getComputedStyle(t.button.querySelector(".bus-pet-sick-art")).display,
+      "none",
+    );
+    assert.equal(
+      t.w.getComputedStyle(t.button.querySelector(".bus-pet-smile")).display,
+      "inline",
+    );
     assert.equal(
       t.button.dataset.salud,
       "sano",
