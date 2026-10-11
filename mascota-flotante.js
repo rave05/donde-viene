@@ -112,6 +112,13 @@
   function update() {
     button.dataset.color = panel.dataset.color;
     button.dataset.salud = panel.dataset.salud;
+    const sick = panel.dataset.salud === "enfermo";
+    art.querySelector(".bus-pet-smile").style.display = sick
+      ? "none"
+      : "inline";
+    art.querySelector(".bus-pet-sick-art").style.display = sick
+      ? "inline"
+      : "none";
     button.setAttribute(
       "aria-label",
       `${document.getElementById("mascotaResumen").textContent}. Abrir mascota`,

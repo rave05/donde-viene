@@ -93,6 +93,13 @@
     const current = gap <= 1 ? state.streak : 0;
     const sick = state.active && state.lastDay !== null && gap >= 2;
     panel.dataset.salud = sick ? "enfermo" : "sano";
+    // No dependas del CSS cacheado para mostrar una sola expresión.
+    panel.querySelector(".bus-pet-smile").style.display = sick
+      ? "none"
+      : "inline";
+    panel.querySelector(".bus-pet-sick-art").style.display = sick
+      ? "inline"
+      : "none";
     $("mascotaResumen").textContent = state.active
       ? `Ruti · ${sick ? "enfermo · " : ""}${current} ${current === 1 ? "día" : "días"} de racha`
       : "Ruti · una racha para jugar";
