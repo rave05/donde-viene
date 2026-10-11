@@ -91,17 +91,32 @@
       ? ordinal(day()) - ordinal(state.lastDay)
       : Infinity;
     const current = gap <= 1 ? state.streak : 0;
+    const sick = state.active && state.lastDay !== null && gap >= 2;
+    panel.dataset.salud = sick ? "enfermo" : "sano";
     $("mascotaResumen").textContent = state.active
-      ? `Ruti · ${current} ${current === 1 ? "día" : "días"} de racha`
+      ? `Ruti · ${sick ? "enfermo · " : ""}${current} ${current === 1 ? "día" : "días"} de racha`
       : "Ruti · una racha para jugar";
+    $("mascotaSalud").textContent = !state.active
+      ? "Cuidalo una vez al día para mantenerlo sano."
+      : sick
+        ? "Ruti está enfermo porque pasó un día sin cuidados. Tocá el botón para curarlo; tus colores se conservan."
+        : gap === 0
+          ? "Ruti está sano y ya tiene la energía de hoy."
+          : "Ruti está sano. Cargale la energía de hoy para cuidarlo.";
+    $("mascotaDibujoTitulo").textContent = sick
+      ? "Ruti, un pequeño bus enfermo con un termómetro"
+      : "Ruti, un pequeño bus sonriente";
     $("mascotaRacha").textContent = String(current);
     $("mascotaTotal").textContent = String(state.total);
     $("mascotaRecord").textContent = String(state.best);
     $("mascotaJugar").hidden = state.active;
     $("mascotaCuidar").hidden = !state.active;
     $("mascotaPausar").hidden = !state.active;
-    $("mascotaCuidar").textContent =
-      gap === 0 ? "Energía de hoy cargada ✓" : "Cargar energía de hoy";
+    $("mascotaCuidar").textContent = sick
+      ? "Curar a Ruti y cargar energía"
+      : gap === 0
+        ? "Energía de hoy cargada ✓"
+        : "Cargar energía de hoy";
     panel.dataset.color = state.color;
     for (const button of panel.querySelectorAll("[data-mascota-color]")) {
       const color = button.dataset.mascotaColor;
@@ -127,6 +142,7 @@
       );
       return;
     }
+    const recovering = state.active && gap >= 2 && Number.isFinite(gap);
     state.active = true;
     if (gap === 0) {
       save();
@@ -144,9 +160,11 @@
     render();
     window.dispatchEvent(new Event("donde-viene:mascota-cuidada"));
     message(
-      gap > 1 && Number.isFinite(gap)
-        ? "¡Bienvenido de vuelta! Empezaste una nueva racha y conservás tus colores."
-        : "¡Energía cargada! Sumaste un día de cuidado.",
+      recovering
+        ? "¡Ruti se recuperó! Empezaste una nueva racha y conservás tus colores."
+        : gap > 1 && Number.isFinite(gap)
+          ? "¡Bienvenido de vuelta! Empezaste una nueva racha y conservás tus colores."
+          : "¡Energía cargada! Sumaste un día de cuidado.",
     );
   }
   $("mascotaJugar").addEventListener("click", care);
@@ -200,10 +218,22 @@
       message("Progreso actualizado desde otra pestaña.");
     }
   });
-  window.addEventListener("focus", render);
+  function refresh() {
+    if (!memoryOnly) state = read();
+    render();
+  }
+  window.addEventListener("focus", refresh);
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) render();
+    if (!document.hidden) refresh();
   });
   panel.addEventListener("toggle", render);
+  // Actualiza el estado al pasar medianoche incluso si la app sigue abierta.
+  let renderedDay = day();
+  window.setInterval(() => {
+    if (!document.hidden && day() !== renderedDay) {
+      renderedDay = day();
+      refresh();
+    }
+  }, 60000);
   render();
 })();

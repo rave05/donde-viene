@@ -111,6 +111,7 @@
   }
   function update() {
     button.dataset.color = panel.dataset.color;
+    button.dataset.salud = panel.dataset.salud;
     button.setAttribute(
       "aria-label",
       `${document.getElementById("mascotaResumen").textContent}. Abrir mascota`,
