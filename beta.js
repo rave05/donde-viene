@@ -109,10 +109,12 @@
         }),
         signal: control.signal,
       });
-      if (!r.ok)
-        throw Error(
-          "No pudimos confirmar el envío. Podés reintentar o usar el correo.",
-        );
+      if (!r.ok) {
+        const detail = await r.json().catch(() => ({}));
+        throw Error(detail.code === "daily_limit"
+          ? "Se alcanzó el límite gratuito diario de reportes. Podés usar el correo o volver cuando se renueve la cuota."
+          : "No pudimos confirmar el envío. Podés reintentar o usar el correo.");
+      }
       const resultado = await r.json();
       if (!resultado.id) throw Error("El servidor no confirmó la recepción.");
       if (turno === revision)

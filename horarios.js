@@ -1,4 +1,6 @@
 (() => {
+  const escaparHorario = valor => String(valor ?? '').replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // Comparte también las descargas en curso; un fallo permite reintentar.
   const archivosPendientes = new Map();
   function cargarJSON(url) {
@@ -341,12 +343,12 @@
             '<span class="horario-no-vivo">No es ETA en vivo</span>' +
           '</div>' +
           '<div class="horario-principal">' +
-            '<span class="horario-hora">' + datos.time + '</span>' +
+            '<span class="horario-hora">' + escaparHorario(datos.time) + '</span>' +
             (espera ? '<span class="horario-espera">' + espera + '</span>' : '') +
           '</div>' +
           (
             datos.destination
-              ? '<div class="horario-destino">→ ' + datos.destination + '</div>'
+              ? '<div class="horario-destino">→ ' + escaparHorario(datos.destination) + '</div>'
               : ''
           ) +
           '<span class="horario-aclaracion">' +

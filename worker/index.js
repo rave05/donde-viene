@@ -6,6 +6,7 @@ import {
 } from "./validacion.js";
 import { procesarAvisos, enviarPush, prepararPush } from "./push.js";
 import { withSharedTransitCache, recursoCacheable } from "./transport-cache.js";
+import { reservarOperacion, segundosHastaRenovacion, MAX_SUSCRIPCIONES, VERSION_SEGURIDAD } from "./cuotas.js";
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url),
@@ -33,6 +34,7 @@ export default {
       });
     if (url.pathname === "/config" && request.method === "GET")
       return json({
+        securityVersion: VERSION_SEGURIDAD,
         reportes: Boolean(env.DB && env.PUBLIC_LIMIT),
         transporte: Boolean(env.TRANSPORTE && env.PUBLIC_LIMIT),
         cacheTransporte: Boolean(
@@ -65,7 +67,7 @@ export default {
         return json({ error: "No autorizado" }, 401);
       if (!env.DB) return json({ error: "Servicio no configurado" }, 503);
       const subscriptions = await env.DB.prepare("SELECT recordatorio, actualizado FROM subscriptions ORDER BY actualizado DESC LIMIT 100").all();
-      const deliveries = await env.DB.prepare("SELECT event_id, estado, creado FROM deliveries ORDER BY creado DESC LIMIT 100").all();
+      const deliveries = await env.DB.prepare("SELECT event_id, estado, creado FROM deliveries WHERE subscription_id!='__budget__' ORDER BY creado DESC LIMIT 100").all();
       let preparation = { ok: null };
       const sample = await env.DB.prepare("SELECT subscription FROM subscriptions LIMIT 1").first();
       if (sample) try { const details = prepararPush(JSON.parse(sample.subscription), {body:"diagnostico"}, env); new Request(details.endpoint, {method:details.method,headers:details.headers,body:details.body,redirect:"manual"}); preparation={ok:true,requestReady:true}; }
@@ -105,12 +107,17 @@ export default {
     if (!env.DB || !env.PUBLIC_LIMIT)
       return json({ error: "Servicio no configurado" }, 503);
     const rate = await env.PUBLIC_LIMIT.limit({
-      key: await hash(request.headers.get("CF-Connecting-IP") || "unknown"),
+      key: url.pathname + ":" + await hash(request.headers.get("CF-Connecting-IP") || "unknown"),
     });
     if (!rate.success)
       return json({ error: "Esperá antes de reintentar" }, 429, {
         "Retry-After": "60",
       });
+    async function comprobarCuota(tipo) {
+      if (await reservarOperacion(env.DB, tipo)) return null;
+      return json({ error: "Se alcanzó el límite gratuito diario de esta función. Volvé a intentar cuando se renueve la cuota.", code: "daily_limit" }, 429,
+        { "Retry-After": String(segundosHastaRenovacion()) });
+    }
     try {
       const body = await leerJSON(request);
       if (url.pathname === "/reports") {
@@ -129,6 +136,8 @@ export default {
           body.texto.length > 3000
         )
           throw Error("Reporte inválido");
+        const limite = await comprobarCuota("reports");
+        if (limite) return limite;
         const id = crypto.randomUUID();
         await env.DB.prepare(
           "INSERT INTO reports(id,categoria,texto,creado) VALUES(?,?,?,?)",
@@ -142,6 +151,8 @@ export default {
           return json({ error: "Primero activá los avisos en este dispositivo." }, 400);
         const row = await env.DB.prepare("SELECT subscription FROM subscriptions WHERE token=?").bind(body.token).first();
         if (!row) return json({ error: "La suscripción ya no está activa. Desactivá y volvé a activar los avisos." }, 404);
+        const limite = await comprobarCuota("testPush");
+        if (limite) return limite;
         let status;
         try { status = await enviarPush(JSON.parse(row.subscription), { body: "Esta es una prueba de tus avisos de ¿Dónde Viene?.", tag: "prueba-" + Date.now() }, env); }
         catch (_) { return json({ error: "No pudimos contactar al proveedor de notificaciones. Reintentá." }, 502); }
@@ -189,22 +200,26 @@ export default {
           },
           409,
         );
+      const limite = await comprobarCuota("subscriptions");
+      if (limite) return limite;
       const token =
         existente?.token ||
         (await hash(crypto.randomUUID() + crypto.randomUUID()));
-      await env.DB.prepare(
-        "INSERT INTO subscriptions(id,token,subscription,lineas,recordatorio,actualizado) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET subscription=excluded.subscription,lineas=excluded.lineas,recordatorio=excluded.recordatorio,actualizado=excluded.actualizado",
-      )
-        .bind(
-          id,
-          token,
-          JSON.stringify(subscription),
-          JSON.stringify(prefs.lineas),
-          prefs.recordatorio ? JSON.stringify(prefs.recordatorio) : null,
-          Date.now(),
-        )
-        .run();
-      return json({ token }, 201);
+      const values = [JSON.stringify(subscription), JSON.stringify(prefs.lineas),
+        prefs.recordatorio ? JSON.stringify(prefs.recordatorio) : null, Date.now()];
+      // La autorización forma parte de la escritura, no solo de una lectura anterior.
+      const written = existente
+        ? await env.DB.prepare("UPDATE subscriptions SET subscription=?,lineas=?,recordatorio=?,actualizado=? WHERE id=? AND token=? RETURNING token")
+          .bind(...values, id, body.token).first()
+        : await env.DB.prepare("INSERT INTO subscriptions(id,token,subscription,lineas,recordatorio,actualizado) SELECT ?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM subscriptions) < ? ON CONFLICT(id) DO NOTHING RETURNING token")
+          .bind(id, token, ...values, MAX_SUSCRIPCIONES).first();
+      if (!written) {
+        const current = await env.DB.prepare("SELECT token FROM subscriptions WHERE id=?").bind(id).first();
+        if (current || existente)
+          return json({ error: "La suscripción cambió durante la solicitud. Reintentá desde este dispositivo.", code: "subscription_conflict" }, 409);
+        return json({ error: "Los avisos alcanzaron su capacidad gratuita. Podés seguir consultando buses y rutas.", code: "subscription_capacity" }, 503);
+      }
+      return json({ token: written.token }, 201);
     } catch (error) {
       return json(
         {

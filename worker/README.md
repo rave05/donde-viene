@@ -4,7 +4,19 @@
 
 La configuración conserva el binding `TRANSPORTE` y habilita `CACHE_PUBLIC_TRANSIT: "true"`: para rutas públicas reconocidas, permite una caché interna aunque la API original use `no-store`. El navegador sigue recibiendo `no-store`. Se excluyen respuestas privadas, cookies y variantes por autorización. Buses y llegadas se conservan solo cinco segundos, líneas por parada cinco minutos y paradas una hora. Sin esa opción se respeta también `no-store` del origen.
 
-## Componentes
+## Protección y cuotas gratuitas
+
+La versión de seguridad `20261014-1` aplica presupuestos diarios compartidos en D1: 500 reportes, 200 altas/actualizaciones de suscripción y 200 pruebas push. Las cuotas se renuevan a las 00:00 UTC y una operación válida reserva su cupo aunque después falle; no son un contador de éxitos. Al agotarlas se devuelve HTTP 429 y `Retry-After`. Se permiten hasta 300 suscripciones activas; la capacidad se controla en la misma escritura y no impide actualizar una suscripción existente con su token. Cancelar avisos no consume presupuesto diario.
+
+`cuotas.js` guarda los contadores con el identificador reservado `__budget__` en `deliveries`; no necesita una tabla nueva ni una migración del esquema actual. El cron elimina estos registros al superar 30 días y el diagnóstico push los excluye. Los límites por IP se separan por función para que las consultas de transporte no consuman el límite de cancelación o reportes.
+
+Las altas concurrentes no actualizan una suscripción existente sin token. Las actualizaciones autorizadas incluyen el token dentro de la condición SQL. La interfaz trata nombres, destinos y campos externos como texto, incluidos popups y horarios. Las pruebas de seguridad del frontend y las del Worker forman parte de GitHub Actions.
+
+Estas medidas no impiden que alguien consuma la cuota de invocaciones de Workers: el límite gratuito del proveedor sigue pudiendo detener el servicio. No se activa ningún plan de pago ni un servicio adicional. El código original de `donde-viene-api` y los secretos reales de Cloudflare requieren una revisión independiente.
+
+Para verificar un despliegue, comprobar que `GET /config` devuelve `securityVersion: "20261014-1"`. La publicación de GitHub Pages actualiza el frontend; el Worker también debe desplegar la nueva versión desde su integración de Cloudflare o con `wrangler deploy`. Pasar las pruebas o publicar en GitHub no demuestra que Cloudflare ya esté ejecutando el código nuevo.
+
+## Componentes del servicio
 
 - `index.js`: CORS del origen autorizado, capacidades, reportes con recibo y suscripciones.
 - `transport-cache.js`: decorador del manejador existente; 5 segundos para buses/llegadas, 5 minutos para líneas por parada y 1 hora para paradas. Comparte solicitudes simultáneas dentro de un isolate; la caché edge se comparte dentro del centro de datos. No es una cola mundial ni garantiza exclusión entre isolates. Respeta `private`, cookies y autorización; el tratamiento de `no-store` depende de la opción explícita descrita arriba; nunca cachea errores, GPS, geocodificación ni rutas no reconocidas. Devuelve `Age` y `X-DV-Observed-At` y mantiene `no-store` hacia el navegador.

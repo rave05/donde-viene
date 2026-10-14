@@ -11,6 +11,7 @@ import {
 } from "../transport-cache.js";
 import { validarSuscripcion, recordatorioActual } from "../validacion.js";
 import { procesarAvisos } from "../push.js";
+import { reservarOperacion, CUOTAS_DIARIAS, MAX_SUSCRIPCIONES } from "../cuotas.js";
 function base() {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(
@@ -65,6 +66,54 @@ function req(path, body, extra = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
 }
+test("Altas concurrentes: solo una gana, no sobrescribe preferencias ni devuelve token ajeno", async () => {
+  const { DB, sqlite } = base();
+  let reads=0,release;
+  const barrier=new Promise(resolve=>{release=resolve});
+  const realPrepare=DB.prepare;
+  DB.prepare=sql=>{const stmt=realPrepare(sql);if(sql==='SELECT token FROM subscriptions WHERE id=?'){
+    const realFirst=stmt.first;stmt.first=async()=>{const row=await realFirst();if(++reads===2)release();await barrier;return row;};
+  }return stmt;};
+  const env={DB,APP_ORIGIN:origin,PUBLIC_LIMIT:{limit:async()=>({success:true})},VAPID_PUBLIC_KEY:'local-test',VAPID_PRIVATE_KEY:'local-test'};
+  const sub=subscription();
+  try {
+    const r=await Promise.all([worker.fetch(req('/subscriptions',{subscription:sub,lineas:['127']}),env,ctx),worker.fetch(req('/subscriptions',{subscription:sub,lineas:['185']}),env,ctx)]);
+    assert.deepEqual(r.map(x=>x.status).sort(),[201,409]);
+    const winner=r.findIndex(x=>x.status===201),data=await r[winner].json();
+    const row=sqlite.prepare('SELECT token,lineas FROM subscriptions').get();
+    assert.equal(row.token,data.token);
+    assert.deepEqual(JSON.parse(row.lineas),[winner===0?'127':'185']);
+  } finally {sqlite.close();}
+});
+test("Presupuesto diario atómico: admite solo el cupo, renueva por fecha UTC y separa funciones", async () => {
+  const {DB,sqlite}=base(),now=Date.parse('2026-10-14T12:00:00Z');
+  try {
+    const admitted=await Promise.all(Array.from({length:CUOTAS_DIARIAS.reports+20},()=>reservarOperacion(DB,'reports',now)));
+    assert.equal(admitted.filter(Boolean).length,CUOTAS_DIARIAS.reports);
+    assert.equal(await reservarOperacion(DB,'reports',now),false);
+    assert.equal(await reservarOperacion(DB,'reports',now+86400000),true);
+    assert.equal(await reservarOperacion(DB,'subscriptions',now),true);
+  } finally {sqlite.close();}
+});
+test("Cuota y capacidad: bloquea sin escribir ni enviar y permite cancelar avisos", async () => {
+  const {DB,sqlite}=base(),keys=webpush.generateVAPIDKeys();
+  const env={DB,APP_ORIGIN:origin,PUBLIC_LIMIT:{limit:async()=>({success:true})},VAPID_PUBLIC_KEY:keys.publicKey,VAPID_PRIVATE_KEY:keys.privateKey,VAPID_SUBJECT:'mailto:test@example.com'};
+  const day=new Date().toISOString().slice(0,10);
+  try {
+    sqlite.prepare("INSERT INTO deliveries VALUES('__budget__',?,?,?)").run(day+':reports',CUOTAS_DIARIAS.reports,Date.now());
+    const r=await worker.fetch(req('/reports',{categoria:'Horario o llegada',texto:'texto válido'}),env,ctx);
+    assert.equal(r.status,429);assert.equal((await r.json()).code,'daily_limit');assert(Number(r.headers.get('Retry-After'))>0);
+    assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM reports').get().n,0);
+    const sub=subscription(),token='a'.repeat(64);
+    for(let i=0;i<MAX_SUSCRIPCIONES;i++)sqlite.prepare('INSERT INTO subscriptions VALUES(?,?,?,?,?,?)').run('id'+i,i===0?token:'token'+i,JSON.stringify(sub),'["127"]',null,Date.now());
+    const capacity=await worker.fetch(req('/subscriptions',{subscription:subscription(),lineas:['127']}),env,ctx);
+    assert.equal(capacity.status,503);assert.equal((await capacity.json()).code,'subscription_capacity');
+    sqlite.prepare("INSERT INTO deliveries VALUES('__budget__',?,?,?)").run(day+':testPush',CUOTAS_DIARIAS.testPush,Date.now());
+    assert.equal((await worker.fetch(req('/test-push',{token}),env,ctx)).status,429);
+    assert.equal((await worker.fetch(req('/unsubscribe',{token}),env,ctx)).status,200);
+    assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM subscriptions').get().n,MAX_SUSCRIPCIONES-1);
+  } finally {sqlite.close();}
+});
 test("Caché: claves canónicas, consultas simultáneas, errores y datos privados excluidos", async () => {
   assert.equal(recursoCacheable(req("/buses?lat=-34.9&lon=-56.1")), null);
   assert.equal(

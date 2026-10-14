@@ -134,6 +134,7 @@ vm.runInNewContext(fs.readFileSync("recorridos.js", "utf8"), {
     console: { error: (e) => errores.push(e) },
   };
   vm.createContext(context);
+  vm.runInContext(html.slice(html.indexOf("    function escaparHTML("), html.indexOf("    function nombreParadaRuta(")), context);
   vm.runInContext(html.slice(inicio, fin), context);
   const seleccion = {
     sesionId: 1,

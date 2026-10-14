@@ -3723,7 +3723,7 @@
 
         boton.innerHTML = `
           <strong>
-            🚏 ${nombre || 'Parada ' + parada.busstopId}
+            🚏 ${escaparHTML(nombre || 'Parada ' + parada.busstopId)}
           </strong>
 
           <span>
@@ -3819,27 +3819,17 @@
           .join(' y ');
 
 
-        marcador.bindPopup(`
-          <strong>
-            🚏 PARADA
-          </strong>
-
-          <br><br>
-
-          ${nombre || 'Parada ' + parada.busstopId}
-
-          <br><br>
-
-          <button
-            onclick="
-              seleccionarParadaPorId(
-                ${parada.busstopId}
-              )
-            "
-          >
-            Ver líneas
-          </button>
-        `);
+        // Los nombres e IDs externos nunca se interpretan como HTML o código.
+        const popup = document.createElement('div');
+        popup.innerHTML = '<strong>🚏 PARADA</strong><br><br>';
+        popup.append(document.createTextNode(nombre || 'Parada ' + parada.busstopId));
+        popup.append(document.createElement('br'), document.createElement('br'));
+        const verLineas = document.createElement('button');
+        verLineas.type = 'button';
+        verLineas.textContent = 'Ver líneas';
+        verLineas.addEventListener('click', () => window.seleccionarParadaPorId(parada.busstopId));
+        popup.append(verLineas);
+        marcador.bindPopup(popup);
 
 
         marcadoresParadas.push(
@@ -4283,10 +4273,10 @@
 
         boton.innerHTML = `
           <span class="linea-contenido">
-            <span>${linea.line}</span>
+            <span>${escaparHTML(linea.line)}</span>
             ${
               linea.destination
-                ? `<span class="linea-destino">→ ${linea.destination}</span>`
+                ? `<span class="linea-destino">→ ${escaparHTML(linea.destination)}</span>`
                 : ''
             }
             ${
@@ -4504,9 +4494,9 @@
             : '';
 
         marcador.bindPopup(`
-          <strong>🚌 ${bus.line || seleccion?.linea || ''}</strong>
-          ${bus.busId ? `<br>Coche ${bus.busId}` : ''}
-          ${bus.destination || seleccion?.destination ? `<br>→ ${bus.destination || seleccion.destination}` : ''}
+          <strong>🚌 ${escaparHTML(bus.line || seleccion?.linea || '')}</strong>
+          ${bus.busId ? `<br>Coche ${escaparHTML(bus.busId)}` : ''}
+          ${bus.destination || seleccion?.destination ? `<br>→ ${escaparHTML(bus.destination || seleccion.destination)}` : ''}
           ${etaTexto}
           ${distanciaTexto}
         `);
@@ -4626,7 +4616,7 @@
         );
 
         proximos.innerHTML = `
-          <h3>${linea.line}${linea.destination ? ` → ${linea.destination}` : ''}</h3>
+          <h3>${escaparHTML(linea.line)}${linea.destination ? ` → ${escaparHTML(linea.destination)}` : ''}</h3>
           <div class="aviso-info">
             <strong>${linea.sentidoSinVarianteViva ? "Sin variante en vivo confirmada para este sentido." : "Sin vehículo en vivo asociado por ahora."}</strong><br>
             Esta línea aparece por su horario programado en esta parada.
@@ -4707,7 +4697,7 @@
 
       proximos.innerHTML =
         `<div class="cargando">
-          🔄 Buscando próximos ${linea.line}...
+          🔄 Buscando próximos ${escaparHTML(linea.line)}...
         </div>`;
 
 
@@ -5242,7 +5232,7 @@
 
         const destinoTexto =
           destination
-            ? ` → ${destination}`
+            ? ` → ${escaparHTML(destination)}`
             : '';
 
         if (
@@ -5252,7 +5242,7 @@
           limpiarMarcadoresBusesVivos();
 
           proximos.innerHTML = `
-            <h3>${linea}${destinoTexto}</h3>
+            <h3>${escaparHTML(linea)}${destinoTexto}</h3>
             <div class="aviso-info">
               <strong>Sin llegada estimada por ahora.</strong><br>
               No hay vehículos de esta variante reportando posición en este momento.
@@ -5273,7 +5263,7 @@
           limpiarMarcadoresBusesVivos();
 
           proximos.innerHTML = `
-            <h3>${linea}${destinoTexto}</h3>
+            <h3>${escaparHTML(linea)}${destinoTexto}</h3>
             <div class="aviso-info">
               <strong>Sin llegada estimada por ahora.</strong><br>
               ${
@@ -5297,7 +5287,7 @@
         );
 
         proximos.innerHTML = `
-          <h3>${linea}${destinoTexto}</h3>
+          <h3>${escaparHTML(linea)}${destinoTexto}</h3>
           <div class="aviso-info">
             <strong>Sin ETA oficial por ahora.</strong><br>
             Mostramos únicamente vehículos ubicados antes de esta parada y con avance confirmado sobre el recorrido.
@@ -5319,11 +5309,11 @@
             <div class="bus-principal">
               <div>
                 <div class="bus-linea">
-                  🚌 ${bus.line || linea}
+                  🚌 ${escaparHTML(bus.line || linea)}
                 </div>
                 <div class="bus-detalles">
-                  ${bus.company || bus.companyName || ''}
-                  ${bus.busId ? ' · Coche ' + bus.busId : ''}
+                  ${escaparHTML(bus.company || bus.companyName || '')}
+                  ${bus.busId ? ' · Coche ' + escaparHTML(bus.busId) : ''}
                 </div>
               </div>
               <div class="bus-eta">
@@ -5331,9 +5321,9 @@
               </div>
             </div>
             <div class="bus-detalles">
-              ${bus.origin || ''}
+              ${escaparHTML(bus.origin || '')}
               ${bus.origin || bus.destination ? ' → ' : ''}
-              ${bus.destination || destination || ''}
+              ${escaparHTML(bus.destination || destination || '')}
             </div>
             <div class="bus-distancia">
               Acercándose · distancia aproximada a la parada
@@ -5358,7 +5348,7 @@
           limpiarMarcadoresBusesVivos();
 
           proximos.innerHTML = `
-            <h3>${linea}${destination ? ` → ${destination}` : ''}</h3>
+            <h3>${escaparHTML(linea)}${destination ? ` → ${escaparHTML(destination)}` : ''}</h3>
             <div class="aviso-info">
               <strong>Sin llegada estimada por ahora.</strong><br>
               No pudimos consultar la ubicación de los vehículos en circulación.
@@ -5465,7 +5455,7 @@
 
       proximos.innerHTML =
         `<h3>
-          Próximos ${lineaMostrada}${destinoMostrado ? ` → ${destinoMostrado}` : ''}
+          Próximos ${escaparHTML(lineaMostrada)}${destinoMostrado ? ` → ${escaparHTML(destinoMostrado)}` : ''}
         </h3>`;
 
 
@@ -5496,12 +5486,12 @@
             <div>
 
               <div class="bus-linea">
-                🚌 ${bus.line || lineaMostrada}
+                🚌 ${escaparHTML(bus.line || lineaMostrada)}
               </div>
 
               <div class="bus-detalles">
-                ${bus.companyName || ''}
-                ${bus.busId ? ' · Coche ' + bus.busId : ''}
+                ${escaparHTML(bus.companyName || '')}
+                ${bus.busId ? ' · Coche ' + escaparHTML(bus.busId) : ''}
               </div>
 
             </div>
@@ -5513,19 +5503,19 @@
           </div>
 
           <div class="bus-detalles">
-            ${bus.origin || ''}
+            ${escaparHTML(bus.origin || '')}
             →
-            ${bus.destination || ''}
+            ${escaparHTML(bus.destination || '')}
           </div>
 
           <div class="bus-detalles">
-            ${bus.subline || ''}
+            ${escaparHTML(bus.subline || '')}
           </div>
 
           <div class="bus-detalles">
-            ${bus.access || 'Sin datos'}
+            ${escaparHTML(bus.access || 'Sin datos')}
             ·
-            ${bus.thermalConfort || 'Sin datos'}
+            ${escaparHTML(bus.thermalConfort || 'Sin datos')}
           </div>
 
           ${
@@ -5799,7 +5789,7 @@
 
           estado.innerHTML =
             `<div class="error">
-              ${mensaje}
+              ${escaparHTML(mensaje)}
             </div>`;
 
 
@@ -5975,7 +5965,7 @@
 
   </script>
 
-  <script src="./horarios.js?v=20261009-2"></script>
+  <script src="./horarios.js?v=20261014-seguridad-1"></script>
   <script src="./recorridos.js?v=20261009-paradas-1"></script>
 
   <dialog id="editorFavorito" class="mobile-dialog" aria-labelledby="tituloFavorito">
@@ -6030,7 +6020,7 @@
     <p id="estadoReporte" role="status"></p>
     <p class="favorite-note">Si no se abre el correo, copiá el reporte y enviálo a dondevieneadvertisement@gmail.com.</p>
   </dialog>
-  <script src="./beta.js?v=20261009-2"></script>
+  <script src="./beta.js?v=20261014-seguridad-1"></script>
   <script src="./abordaje.js?v=20261009-1"></script>
   <dialog id="alternativasAhora" class="mobile-dialog" aria-labelledby="tituloAlternativasAhora">
     <div class="mobile-dialog-heading"><h2 id="tituloAlternativasAhora">Buscar alternativas</h2><button id="cerrarAlternativasAhora" class="mobile-close" type="button" aria-label="Cerrar alternativas">×</button></div>
