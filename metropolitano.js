@@ -15,7 +15,7 @@
   });
   function cargar() {
     if (!pendiente)
-      pendiente = fetch("./metropolitano/corredor.json", {
+      pendiente = (window.DVRed ? window.DVRed.json("./metropolitano/corredor.json", {cache:"no-cache"}, 10000) : fetch("./metropolitano/corredor.json", {
         cache: "no-cache",
         signal: AbortSignal.timeout(12000),
       })
@@ -25,7 +25,7 @@
               "No pudimos cargar los horarios metropolitanos. Reintentá.",
             );
           return r.json();
-        })
+        }))
         .catch((e) => {
           pendiente = null;
           throw e;
@@ -166,7 +166,7 @@
       .sort((a, b) => a.distanciaRuta - b.distanciaRuta)
       .slice(0, 24);
   }
-  async function combinar(d, origen, destino, referencia) {
+  async function combinar(d, origen, destino, referencia, options = {}) {
     if (!window.buscarDirectasPorRed || !window.todasLasParadas?.length)
       return [];
     const saliendo = cobertura(origen);
@@ -189,11 +189,12 @@
       const key = punto.lat + ':' + punto.lon;
       if (!conexionesUrbanas.has(key)) conexionesUrbanas.set(key,
         saliendo
-          ? window.buscarDirectasPorRed(urbanaCerca(punto), destino, 800)
-          : window.buscarDirectasPorRed(origenesUrbanos, punto, 300));
+          ? window.buscarDirectasPorRed(urbanaCerca(punto), destino, 800, options)
+          : window.buscarDirectasPorRed(origenesUrbanos, punto, 300, options));
       return conexionesUrbanas.get(key);
     }
     for (const punto of puntos) {
+      if (options.signal?.aborted) throw Error("Búsqueda cancelada");
       // Ceder al navegador durante búsquedas amplias para mantener la UI activa.
       if (++puntosProcesados % 8 === 0) await new Promise(resolve=>setTimeout(resolve,0));
       if (!(await urbanasEn(punto)).length) continue;
@@ -282,12 +283,12 @@
       (ctx.fechaLlegadaLimite?'<p class="trip-note">Las opciones no están verificadas para ese límite de llegada.</p>':"");
     return {candidatos:selector.candidatos,html:advertencia+selector.html+(candidatos.length?"":'<p class="route-empty">No encontramos una opción del piloto cerca de ambos extremos ni una combinación comprobada por recorrido. Probá elegir una parada concreta.</p>')};
   }
-  async function intentar(origen, destino, ctx) {
+  async function intentar(origen, destino, ctx, options = {}) {
     if (!cobertura(origen) && !cobertura(destino)) return null;
     const d = await cargar(),
       ref = new Date(ctx.fechaSalida || Date.now());
     const directos = directas(d, origen, destino, ref);
-    const combinadas = await combinar(d, origen, destino, ref);
+    const combinadas = await combinar(d, origen, destino, ref, options);
     const unicas = new Map();
     for (const c of [...directos, ...combinadas]) {
       const k = [

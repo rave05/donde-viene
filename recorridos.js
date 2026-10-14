@@ -4,6 +4,7 @@
   function cargarJSON(url) {
     if (!archivosPendientes.has(url)) {
       const descarga = (async () => {
+        if (window.DVRed) return window.DVRed.json(url, { cache: 'no-cache' });
         const respuesta = await fetch(url, { cache: 'no-cache' });
         if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
         return respuesta.json();
@@ -732,19 +733,27 @@ redRecorridos =
     }
   };
 
+  let paradasIndexadas = null, largoIndexado = -1, indiceParadasGlobal = new Map();
   function buscarParadaGlobal(stopId) {
     const claves =
       clavesCompatiblesParada(stopId);
 
-    const encontrada =
-      Array.isArray(window.todasLasParadas)
-        ? window.todasLasParadas.find(
-            parada =>
-              claves.has(
-                String(parada?.busstopId)
-              )
-          )
-        : null;
+    const paradas = Array.isArray(window.todasLasParadas) ? window.todasLasParadas : [];
+    if (paradasIndexadas !== paradas || largoIndexado !== paradas.length) {
+      paradasIndexadas = paradas;
+      largoIndexado = paradas.length;
+      indiceParadasGlobal = new Map();
+      paradas.forEach((parada, orden) => {
+        const key = String(parada?.busstopId);
+        if (!indiceParadasGlobal.has(key)) indiceParadasGlobal.set(key, {parada, orden});
+      });
+    }
+    let primera = null;
+    for (const clave of claves) {
+      const item = indiceParadasGlobal.get(String(clave));
+      if (item && (!primera || item.orden < primera.orden)) primera = item;
+    }
+    const encontrada = primera?.parada;
 
     if (encontrada) {
       return {
@@ -997,10 +1006,45 @@ redRecorridos =
     return resultado;
   }
 
+  const destinosDirectas = new Map();
+  function destinosSiguientes(red, patronIndex, lat, lon) {
+    const key = lat + '|' + lon;
+    if (!destinosDirectas.has(key)) {
+      destinosDirectas.set(key, new Map());
+      if (destinosDirectas.size > 4) destinosDirectas.delete(destinosDirectas.keys().next().value);
+    }
+    const cache = destinosDirectas.get(key);
+    if (cache.has(patronIndex)) return cache.get(patronIndex);
+    const stops = red.patterns[patronIndex].s, siguientes = new Array(stops.length);
+    let mejor = null;
+    for (let i = stops.length - 1; i >= 0; i--) {
+      const id = String(stops[i]), coords = red.coords[id];
+      if (Array.isArray(coords) && coords.length >= 2) {
+        const distancia = distanciaMetrosCoords(Number(coords[0]), Number(coords[1]), lat, lon);
+        // En empates conserva la primera parada hacia adelante, igual que antes.
+        if (Number.isFinite(distancia) && (!mejor || distancia <= mejor.distancia))
+          mejor = {stopId:id, secuencia:i, distancia};
+      }
+      siguientes[i] = mejor;
+    }
+    cache.set(patronIndex, siguientes);
+    return siguientes;
+  }
+  let ultimaCesionBusqueda = 0;
+  async function cederBusqueda(options) {
+    if (options?.signal?.aborted) throw new Error('Búsqueda cancelada');
+    if ((window.DVRed || options?.signal) && Date.now() - ultimaCesionBusqueda >= 12) {
+      await new Promise(resolve => setTimeout(resolve, 0));
+      ultimaCesionBusqueda = Date.now();
+    }
+    if (options?.signal?.aborted) throw new Error('Búsqueda cancelada');
+  }
+
 window.buscarDirectasPorRed = async function(
     paradasOrigen,
     destinoPunto,
-    radioDestino = 800
+    radioDestino = 800,
+    options = {}
   ) {
     try {
       await cargarAliasesRecorridos();
@@ -1034,6 +1078,7 @@ window.buscarDirectasPorRed = async function(
         new Map();
 
       for (const paradaOrigen of paradasOrigen || []) {
+        await cederBusqueda(options);
         const stopIdBase =
           String(
             paradaOrigen?.gtfsStopId ||
@@ -1085,49 +1130,7 @@ window.buscarDirectasPorRed = async function(
             continue;
           }
 
-          let mejorDestino = null;
-
-          for (
-            let i = secuenciaOrigen + 1;
-            i < patron.s.length;
-            i++
-          ) {
-            const stopIdDestino =
-              String(patron.s[i]);
-
-            const coordsDestino =
-              red.coords?.[stopIdDestino];
-
-            if (
-              !Array.isArray(coordsDestino) ||
-              coordsDestino.length < 2
-            ) {
-              continue;
-            }
-
-            const distanciaDestino =
-              distanciaMetrosCoords(
-                Number(coordsDestino[0]),
-                Number(coordsDestino[1]),
-                latDestino,
-                lonDestino
-              );
-
-            if (
-              !mejorDestino ||
-              distanciaDestino <
-                mejorDestino.distancia
-            ) {
-              mejorDestino = {
-                stopId:
-                  stopIdDestino,
-                secuencia:
-                  i,
-                distancia:
-                  distanciaDestino
-              };
-            }
-          }
+          const mejorDestino = destinosSiguientes(red, patronIndex, latDestino, lonDestino)[secuenciaOrigen + 1];
 
           if (
             !mejorDestino ||
@@ -1216,7 +1219,8 @@ window.buscarCombinacionesRuta = async function(
     paradasOrigen,
     paradasDestino,
     origenPunto = null,
-    destinoPunto = null
+    destinoPunto = null,
+    options = {}
   ) {
     try {
       window.ultimoDiagnosticoCombinacion = {
@@ -1488,7 +1492,9 @@ window.buscarCombinacionesRuta = async function(
         }
       }
 
-      const candidatos = [];
+      const mejoresPorOpcion = new Map();
+      let totalCandidatos = 0;
+      const conexionesUtiles = new Map();
       const vistos = new Set();
 
       // Evitamos combinaciones demasiado cerca del punto de subida.
@@ -1498,10 +1504,12 @@ window.buscarCombinacionesRuta = async function(
       if (!indiceConexionesCaminata) indiceConexionesCaminata = crearIndiceConexionesCaminata(red);
 
       for (const origen of origenes) {
+        await cederBusqueda(options);
         const entradasOrigen =
           red.byStop?.[origen.stopId] || [];
 
         for (const entradaOrigen of entradasOrigen) {
+          await cederBusqueda(options);
           const patron1Index =
             Number(entradaOrigen?.[0]);
 
@@ -1553,9 +1561,15 @@ window.buscarCombinacionesRuta = async function(
             // Buscamos primero conexiones en la misma parada.
             // Si no alcanza, permitimos caminar hasta una parada GTFS
             // cercana (máximo 300 m) para tomar el segundo ómnibus.
-            const conexionesCercanas = indiceConexionesCaminata(
-              Number(transferCoords[0]), Number(transferCoords[1])
-            );
+            if (!conexionesUtiles.has(stopTransfer)) {
+              conexionesUtiles.set(stopTransfer, indiceConexionesCaminata(
+                Number(transferCoords[0]), Number(transferCoords[1])
+              ).map(grupo => ({...grupo, entradas:grupo.entradas.filter(conexion => {
+                const llegada = llegadaPorPatron.get(Number(conexion?.[0]));
+                return llegada && llegada.secuencia > Number(conexion?.[1]);
+              })})).filter(grupo => grupo.entradas.length));
+            }
+            const conexionesCercanas = conexionesUtiles.get(stopTransfer);
 
             for (const grupo of conexionesCercanas) {
               for (const conexion of grupo.entradas) {
@@ -1650,7 +1664,7 @@ window.buscarCombinacionesRuta = async function(
                     llegada.destino
                   );
 
-                candidatos.push({
+                const candidato = {
                   tipo: 'combinacion',
                   line1:
                     String(patron1.l || ''),
@@ -1677,56 +1691,24 @@ window.buscarCombinacionesRuta = async function(
                     grupo.caminata * 2 +
                     (i - seqOrigen) * 20 +
                     (llegada.secuencia - seqTransfer) * 20
-                });
+                };
+                const claveVisible = [candidato.line1, normalizar(candidato.destination1),
+                  candidato.line2, normalizar(candidato.destination2)].join('|');
+                const anterior = mejoresPorOpcion.get(claveVisible);
+                const orden = totalCandidatos++;
+                if (!anterior || candidato.puntaje < anterior.candidato.puntaje)
+                  mejoresPorOpcion.set(claveVisible, {candidato, orden});
               }
             }
           }
         }
       }
 
-      window.ultimoDiagnosticoCombinacion.candidatosCombinacion =
-        candidatos.length;
-
-      const mejoresPorOpcion =
-        new Map();
-
-      for (
-        const candidato of
-        candidatos.sort((a, b) =>
-          a.puntaje - b.puntaje
-        )
-      ) {
-        const claveVisible =
-          [
-            String(candidato.line1 || ''),
-            normalizar(candidato.destination1 || ''),
-            String(candidato.line2 || ''),
-            normalizar(candidato.destination2 || '')
-          ].join('|');
-
-        const anterior =
-          mejoresPorOpcion.get(
-            claveVisible
-          );
-
-        if (
-          !anterior ||
-          candidato.puntaje <
-            anterior.puntaje
-        ) {
-          mejoresPorOpcion.set(
-            claveVisible,
-            candidato
-          );
-        }
-      }
-
-      const resultado =
-        [...mejoresPorOpcion.values()]
-          .sort((a, b) =>
-            a.puntaje - b.puntaje
-          )
-          .slice(0, 6);
+      window.ultimoDiagnosticoCombinacion.candidatosCombinacion = totalCandidatos;
+      // Ordena solo la mejor opción de cada par de líneas/sentidos, no miles de duplicados.
+      const resultado = [...mejoresPorOpcion.values()]
+        .sort((a,b) => a.candidato.puntaje-b.candidato.puntaje || a.orden-b.orden)
+        .slice(0, 6).map(item => item.candidato);
 
       window.ultimoDiagnosticoCombinacion.resultadoFinal =
         resultado.length;
@@ -1920,10 +1902,25 @@ window.buscarCombinacionesRuta = async function(
         return true;
       }
 
-      await cargarAliasesRecorridos();
-
-      const datos =
-        await cargarRecorridoLinea(linea);
+      const destinoObjetivo = normalizar(destinoTexto || '');
+      if (!destinoObjetivo) return false;
+      const [, red] = await Promise.all([cargarAliasesRecorridos(), cargarRedRecorridos()]);
+      // La continuidad de paradas confirma el sentido sin descargar cada shape completo.
+      if (Array.isArray(red?.patterns) && red.byStop && red.coords) {
+        const claves = clavesCompatiblesParada(String(parada.gtfsStopId || parada.busstopId));
+        for (const clave of claves) {
+          for (const entrada of red.byStop[String(clave)] || []) {
+            const index = Number(entrada?.[0]), seq = Number(entrada?.[1]), patron = red.patterns[index];
+            if (!Number.isInteger(index) || !Number.isInteger(seq) || !Array.isArray(patron?.s) ||
+                String(patron.l) !== String(linea) || normalizar(patron.d) !== destinoObjetivo) continue;
+            const bajada = destinosSiguientes(red, index, latDestino, lonDestino)[seq + 1];
+            if (bajada && bajada.distancia <= Number(radioDestino)) return true;
+          }
+        }
+        return false;
+      }
+      // Respaldo para datasets sin índice de continuidad.
+      const datos = await cargarRecorridoLinea(linea);
 
       const patrones =
         Array.isArray(datos?.patterns)
@@ -1938,10 +1935,6 @@ window.buscarCombinacionesRuta = async function(
 
       const coordsParada =
         parada.location.coordinates;
-
-      const destinoObjetivo =
-        normalizar(destinoTexto || '');
-      if (!destinoObjetivo) return false;
 
       for (const patron of patrones) {
         if (normalizar(patron.destination) !== destinoObjetivo) continue;

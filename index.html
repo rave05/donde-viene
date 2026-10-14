@@ -1726,6 +1726,8 @@
 
   <!-- Catálogo local de lugares conocidos -->
   <script src="./lugares.js?v=20261009-metro-1"></script>
+  <script src="./red.js?v=20261014-rapidez-1"></script>
+  <script src="./lineas-parada.js?v=20261014-rapidez-1"></script>
   <script src="./app-util.js?v=20261008-2"></script>
   <script src="./direcciones.js?v=20261009-cruces-1"></script>
   <script src="./viaje.js?v=20261009-metro-ui-2"></script>
@@ -2285,19 +2287,9 @@
 
       try {
 
-        const respuesta =
-          await fetch(
-            `${API_BASE}/stops`
-          );
-
-        if (!respuesta.ok) {
-          throw new Error(
-            `HTTP ${respuesta.status}`
-          );
-        }
-
-        const datos =
-          await respuesta.json();
+        const datos = window.DVRed
+          ? await window.DVRed.json(`${API_BASE}/stops`)
+          : await (await fetch(`${API_BASE}/stops`)).json();
 
         if (!Array.isArray(datos)) {
           throw new Error(
@@ -2575,7 +2567,8 @@
     }
 
 
-    async function geocodificarRuta(texto) {
+    async function geocodificarRuta(texto, options = {}) {
+      if (options.signal?.aborted) throw Error('Búsqueda cancelada');
       const limpio = texto.trim();
       const direccionOficial = await window.DV?.direcciones?.resolver(limpio);
       if (direccionOficial) return direccionOficial;
@@ -2622,6 +2615,7 @@
           .filter(Boolean);
 
       for (let i = 0; i < consultas.length; i++) {
+        if (options.signal?.aborted) throw Error('Búsqueda cancelada');
         const consulta =
           consultas[i] + (/\b(las piedras|la paz|progreso|canelones)\b/i.test(limpio) ? ', Canelones, Uruguay' : ', Montevideo, Uruguay');
 
@@ -2635,19 +2629,9 @@
           '&viewbox=-56.45,-34.65,-55.90,-35.05' +
           '&q=' + encodeURIComponent(consulta);
 
-        const respuesta =
-          await fetch(url, {
-            headers: {
-              'Accept': 'application/json'
-            }
-          });
-
-        if (!respuesta.ok) {
-          throw new Error('No se pudo buscar la dirección.');
-        }
-
-        const datos =
-          await respuesta.json();
+        const datos = window.DVRed
+          ? await window.DVRed.json(url, {headers: {'Accept': 'application/json'}, signal:options.signal}, 6000)
+          : await (await fetch(url, {headers: {'Accept': 'application/json'}})).json();
 
         if (Array.isArray(datos) && datos.length) {
           const candidatos =
@@ -3030,6 +3014,7 @@
 
 
     async function buscarRutaSimple() {
+      if (btnBuscarRuta.disabled) return;
       const origenTexto =
         origenRuta.value.trim();
 
@@ -3065,6 +3050,11 @@
       resultadoRuta.innerHTML =
         '<div class="route-status">Buscando origen y destino...</div>';
 
+      const busqueda = window.DVRed?.iniciar() || {esperar: p => p, finalizar(){}};
+      const versionBusqueda = versionViajeElegido;
+      let opcionesPresentadas = false;
+      const alElegir = () => busqueda.cancelar?.();
+      window.addEventListener('donde-viene:viaje-elegido', alElegir);
       try {
         const usarMiUbicacion =
           ultimaUbicacionUsuario &&
@@ -3077,7 +3067,7 @@
                 ...ultimaUbicacionUsuario,
                 nombre: 'Mi ubicación'
               }
-            : await geocodificarRuta(origenTexto);
+            : await busqueda.esperar(geocodificarRuta(origenTexto, {signal:busqueda.signal}));
 
         if (!origen) {
           throw new Error('No encontramos el origen. Probá escribiéndolo de otra forma.');
@@ -3090,7 +3080,7 @@
         }
 
         const destino =
-          await geocodificarRuta(destinoTexto);
+          await busqueda.esperar(geocodificarRuta(destinoTexto, {signal:busqueda.signal}));
 
         if (!destino) {
           throw new Error('No encontramos el destino. Probá escribiéndolo de otra forma.');
@@ -3106,7 +3096,7 @@
         mostrarPuntosRuta(origen, destino);
 
         if (window.DV?.metro) {
-          const metropolitana = await window.DV.metro.intentar(origen, destino, contextoViajeActivo);
+          const metropolitana = await busqueda.esperar(window.DV.metro.intentar(origen, destino, contextoViajeActivo, {signal: busqueda.signal}));
           if (metropolitana !== null) {
             mostrarSelectorRuta('metropolitano', metropolitana.candidatos, metropolitana.html);
             return;
@@ -3395,10 +3385,10 @@
         }
 
         let candidatos =
-          await buscarCoincidenciasDirectas(
+          await busqueda.esperar(buscarCoincidenciasDirectas(
             paradasOrigen,
             paradasDestino
-          );
+          ));
 
         // Si hay paradas cerca pero ninguna comparte una línea directa,
         // ampliamos progresivamente el área de búsqueda.
@@ -3418,10 +3408,10 @@
             );
 
           candidatos =
-            await buscarCoincidenciasDirectas(
+            await busqueda.esperar(buscarCoincidenciasDirectas(
               origen1500.length ? origen1500 : paradasOrigen,
               destino1500.length ? destino1500 : paradasDestino
-            );
+            ));
 
           if (candidatos.length) {
             usoRadioExtendido = true;
@@ -3442,10 +3432,10 @@
             );
 
           candidatos =
-            await buscarCoincidenciasDirectas(
+            await busqueda.esperar(buscarCoincidenciasDirectas(
               origenAmplio.length ? origenAmplio : paradasOrigen,
               destinoAmplio.length ? destinoAmplio : paradasDestino
-            );
+            ));
 
           if (candidatos.length) {
             usoRadioExtendido = true;
@@ -3483,7 +3473,7 @@
           typeof lineaLlegaADestinoRuta === 'function'
         ) {
           const validados =
-            await Promise.all(
+            await busqueda.esperar(Promise.all(
               candidatos.map(async candidato => ({
                 candidato,
                 llega:
@@ -3495,7 +3485,7 @@
                     800
                   )
               }))
-            );
+            ));
 
           candidatos =
             validados
@@ -3512,11 +3502,11 @@
           typeof buscarDirectasPorRed === 'function'
         ) {
           const directasRed =
-            await buscarDirectasPorRed(
+            await busqueda.esperar(buscarDirectasPorRed(
               paradasOrigen,
               destino,
-              800
-            );
+              800, {signal: busqueda.signal}
+            ));
 
           if (directasRed.length) {
             const unificadas =
@@ -3563,7 +3553,7 @@
         if (!candidatos.length || fechaLlegadaLimite || preferencia === 'caminar' || preferencia === 'tiempo' || preferencia === 'proximos') {
           resultadoRuta.innerHTML = '<div class="route-status">Comparando rutas y combinaciones...</div>';
           const combinaciones = typeof window.buscarCombinacionesRuta === 'function'
-            ? await window.buscarCombinacionesRuta(paradasOrigen, paradasDestino, origen, destino)
+            ? await busqueda.esperar(window.buscarCombinacionesRuta(paradasOrigen, paradasDestino, origen, destino, {signal: busqueda.signal}))
             : [];
           opciones = [...candidatos, ...combinaciones];
         }
@@ -3571,10 +3561,28 @@
           resultadoRuta.innerHTML = '<div class="route-empty"><strong>No encontramos un viaje directo ni una combinación de dos buses.</strong><br>Probá con un lugar más preciso o una parada cercana. Tu origen y destino siguen guardados en los campos.</div>';
           return;
         }
+        function presentar(opciones, enProceso = false) {
+          if (versionBusqueda !== versionViajeElegido) return;
+          const estabaAbierto = selectorRutaOverlay.classList.contains('is-open');
+          const scroll = selectorRutaContenido.scrollTop;
+          const ordenadas = window.ordenarOpcionesViaje(opciones, preferencia);
+          const grupos = window.agruparOpcionesViaje(ordenadas).slice(0, 4);
+          const selector = window.crearSelectorViajesAgrupados(grupos, preferencia);
+          mostrarSelectorRuta('mixta', selector.candidatos, (enProceso ? '<p class="trip-note" role="status">Ya podés elegir. Estamos actualizando horarios y llegadas.</p>' : '') + selector.html);
+          selectorRutaResumen.textContent += fechaLlegadaLimite ? ' · Llegar antes de: ' + window.DV.fechaTexto(fechaLlegadaLimite) + ' (orientativo)' : '';
+          selectorRutaResumen.textContent += fechaSalida ? ' · Salida: ' + window.DV.fechaTexto(fechaSalida) : '';
+          selectorRutaResumen.textContent += preferencia === 'proximos' ? ' · Bus más próximo' : preferencia === 'caminar' ? ' · Caminar menos' : preferencia === 'tiempo' ? ' · Tiempo orientativo' : ' · Menos transbordos';
+          resultadoRuta.innerHTML = '';
+          if (opcionesPresentadas && !estabaAbierto) cerrarSelectorRuta();
+          if (opcionesPresentadas) selectorRutaContenido.scrollTop = scroll;
+          opcionesPresentadas = true;
+        }
+        if (!fechaLlegadaLimite) presentar(opciones, true);
         if (window.DV?.estimacion) {
           resultadoRuta.innerHTML = '<div class="route-status">Comparando caminatas y horarios programados...</div>';
-          opciones = await window.DV.estimacion.enriquecer(opciones, contextoViajeActivo);
+          opciones = await busqueda.esperar(window.DV.estimacion.enriquecer(opciones, contextoViajeActivo));
         }
+        if (versionBusqueda !== versionViajeElegido) return;
         if (fechaLlegadaLimite) {
           opciones = window.DV.planificador.filtrarLlegada(opciones, fechaLlegadaLimite);
           if (!opciones.length) {
@@ -3584,25 +3592,29 @@
         }
         if (window.DV?.proximosViaje && !fechaLlegadaLimite) {
           resultadoRuta.innerHTML = '<div class="route-status">Comparando próximas salidas...</div>';
-          opciones = await window.DV.proximosViaje.enriquecer(opciones, contextoViajeActivo);
+          opciones = await busqueda.esperar(window.DV.proximosViaje.enriquecer(opciones, contextoViajeActivo));
         }
-        const ordenadas = window.ordenarOpcionesViaje(opciones, preferencia);
-        const grupos = window.agruparOpcionesViaje(ordenadas).slice(0, 4);
-        const selector = window.crearSelectorViajesAgrupados(grupos, preferencia);
-        mostrarSelectorRuta('mixta', selector.candidatos, selector.html);
-        selectorRutaResumen.textContent += fechaLlegadaLimite ? ' · Llegar antes de: ' + window.DV.fechaTexto(fechaLlegadaLimite) + ' (orientativo)' : '';
-        selectorRutaResumen.textContent += fechaSalida ? ' · Salida: ' + window.DV.fechaTexto(fechaSalida) : '';
-        selectorRutaResumen.textContent += preferencia === 'proximos' ? ' · Bus más próximo' : preferencia === 'caminar' ? ' · Caminar menos' : preferencia === 'tiempo' ? ' · Tiempo orientativo' : ' · Menos transbordos';
+        presentar(opciones);
 
       } catch (error) {
+        if (versionBusqueda !== versionViajeElegido) return;
         console.error(error);
-
+        if (opcionesPresentadas) {
+          resultadoRuta.innerHTML = '';
+          const nota = document.createElement('p');
+          nota.className = 'trip-note';
+          nota.textContent = 'Las rutas están disponibles; algunos horarios o llegadas quedaron sin confirmar. Podés elegir una opción o actualizarla.';
+          selectorRutaContenido.prepend(nota);
+          return;
+        }
         resultadoRuta.innerHTML =
           '<div class="route-empty">' +
             escaparHTML(error.message || 'No se pudo buscar la ruta.') +
           '</div>';
 
       } finally {
+        window.removeEventListener('donde-viene:viaje-elegido', alElegir);
+        busqueda.finalizar();
         btnBuscarRuta.disabled = false;
         document.getElementById('preferenciaViaje').disabled = false;
         btnBuscarRuta.textContent = 'Buscar ruta';
@@ -3975,170 +3987,9 @@
 
       try {
 
-        const cache =
-          cacheLineas.get(
-            String(
-              parada.busstopId
-            )
-          );
-
-
-        let lineas;
-
-
-        if (
-          cache &&
-          Date.now() -
-          cache.timestamp <
-          CACHE_LINEAS_MS
-        ) {
-
-          lineas =
-            cache.data;
-
-        } else {
-
-          const respuesta =
-            await fetch(
-              `${API_BASE}/stops/${encodeURIComponent(parada.busstopId)}/lines`
-            );
-
-
-          if (
-            !respuesta.ok
-          ) {
-
-            throw new Error(
-              `HTTP ${respuesta.status}`
-            );
-          }
-
-
-          lineas =
-            await respuesta.json();
-
-
-          cacheLineas.set(
-            String(
-              parada.busstopId
-            ),
-            {
-              timestamp:
-                Date.now(),
-
-              data:
-                lineas
-            }
-          );
-        }
-
-
-        // Intentamos enriquecer cada variante con su destino actual.
-        // Si esta consulta falla, las líneas igual se muestran normalmente.
-        try {
-          const respuestaBuses =
-            await fetch(
-              `${API_BASE}/buses?busstopId=${encodeURIComponent(parada.busstopId)}`
-            );
-
-          if (respuestaBuses.ok) {
-            const busesParada =
-              await respuestaBuses.json();
-
-            if (Array.isArray(busesParada)) {
-              const infoPorVariante =
-                new Map();
-
-              for (const bus of busesParada) {
-                if (bus.lineVariantId != null) {
-                  infoPorVariante.set(
-                    String(bus.lineVariantId),
-                    bus
-                  );
-                }
-              }
-
-              lineas = lineas.map(linea => {
-                const info =
-                  infoPorVariante.get(
-                    String(linea.lineVariantId)
-                  );
-
-                return {
-                  ...linea,
-                  destination:
-                    linea.destination ||
-                    info?.destination ||
-                    '',
-                  origin:
-                    linea.origin ||
-                    info?.origin ||
-                    ''
-                };
-              });
-            }
-          }
-        } catch (error) {
-          console.warn(
-            'No se pudo enriquecer el destino de las líneas:',
-            error
-          );
-        }
-
-
-        // Completamos con las líneas programadas del GTFS.
-        // Esto evita que una parada aparezca vacía cuando no hay
-        // ningún coche de esa línea reportándose en vivo.
-        try {
-          if (
-            typeof obtenerLineasProgramadas ===
-              'function'
-          ) {
-            const programadas =
-              await obtenerLineasProgramadas(
-                parada.busstopId
-              );
-
-            if (Array.isArray(programadas)) {
-              const clavesExistentes =
-                new Set(
-                  lineas.map(item =>
-                    [
-                      String(item.line || ''),
-                      String(item.destination || '').trim().toUpperCase()
-                    ].join('|')
-                  )
-                );
-
-              for (const programada of programadas) {
-                const clave =
-                  [
-                    String(programada.line || ''),
-                    String(programada.destination || '').trim().toUpperCase()
-                  ].join('|');
-
-                if (
-                  programada.line &&
-                  !clavesExistentes.has(clave)
-                ) {
-                  lineas.push({
-                    ...programada,
-                    lineVariantId: null,
-                    source: 'gtfs'
-                  });
-
-                  clavesExistentes.add(clave);
-                }
-              }
-            }
-          }
-        } catch (error) {
-          console.warn(
-            'No se pudieron combinar las líneas programadas:',
-            error
-          );
-        }
-
+        const lineas = await window.obtenerLineasParadaRapido(
+          parada.busstopId, API_BASE, cacheLineas, CACHE_LINEAS_MS
+        );
 
         if (
           consultaId !==
@@ -5965,8 +5816,8 @@
 
   </script>
 
-  <script src="./horarios.js?v=20261014-seguridad-1"></script>
-  <script src="./recorridos.js?v=20261009-paradas-1"></script>
+  <script src="./horarios.js?v=20261014-rapidez-1"></script>
+  <script src="./recorridos.js?v=20261014-rapidez-1"></script>
 
   <dialog id="editorFavorito" class="mobile-dialog" aria-labelledby="tituloFavorito">
     <form id="formFavorito">
@@ -5991,7 +5842,7 @@
   <script src="./seguimiento-viaje.js?v=20261010-estabilidad-2"></script>
   <script src="./guia-viaje.js?v=20261010-estadisticas-1"></script>
   <script src="./planificador.js?v=20261009-2"></script>
-  <script src="./caminatas.js?v=20261008-1"></script>
+  <script src="./caminatas.js?v=20261014-rapidez-1"></script>
   <script src="./estimacion-viaje.js?v=20261009-2"></script>
   <script src="./proximos-viaje.js?v=20261009-2"></script>
   <script src="./actualizar-opciones.js?v=20261009-2"></script>
@@ -6035,7 +5886,7 @@
   <script src="./informacion-oficial.js?v=20261009-1"></script>
   <script src="./servicios.js?v=20261009-1"></script>
   <script src="./notificaciones.js?v=20261009-2"></script>
-  <script src="./metropolitano.js?v=20261009-corredor-3"></script>
+  <script src="./metropolitano.js?v=20261014-rapidez-1"></script>
   <script src="./paradas-viaje.js?v=20261009-1"></script>
   <script src="./viaje-en-curso.js?v=20261010-pestanas-1"></script>
 </body>

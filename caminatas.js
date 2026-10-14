@@ -62,10 +62,9 @@
     return promise;
   }
   async function paraViaje(c, ctx) {
-    const result = [];
-    for (const tramo of DV.tramosPie(c, ctx)) {
+    return Promise.all(DV.tramosPie(c, ctx).map(async tramo => {
       const calculo = await obtener(tramo.desde, tramo.hasta);
-      result.push({
+      return {
         ...tramo,
         ...(calculo || {
           tipo: "recta",
@@ -75,9 +74,8 @@
             [tramo.hasta.lat, tramo.hasta.lon],
           ],
         }),
-      });
-    }
-    return result;
+      };
+    }));
   }
   DV.caminatas = { obtener, paraViaje };
 })();

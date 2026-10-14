@@ -6,6 +6,7 @@
   function cargarJSON(url) {
     if (!archivosPendientes.has(url)) {
       const descarga = (async () => {
+        if (window.DVRed) return window.DVRed.json(url, { cache: 'no-cache' });
         const respuesta = await fetch(url, { cache: 'no-cache' });
         if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
         return respuesta.json();
