@@ -16,7 +16,8 @@
   pointer-events: auto;
 }
 .map-gadget-bar button,
-.map-location-button {
+.map-location-button,
+.map-north-button {
   width: 44px;
   height: 44px;
   min-height: 44px;
@@ -95,4 +96,27 @@
 .map-card.map-location-feedback .map-recharge-help,
 .map-card.map-gadget-feedback .map-location-help {
   display: none;
+}
+.map-north-button {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  left: 12px;
+  top: 136px;
+  pointer-events: auto;
+  padding: 3px !important;
+}
+.map-north-label {
+  position: absolute;
+  right: 3px;
+  top: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #172b46;
+}
+.map-north-button svg {
+  width: 29px;
+  height: 29px;
+  display: block;
+  margin: auto;
 }

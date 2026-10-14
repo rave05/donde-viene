@@ -202,3 +202,11 @@ Las opciones urbanas completas se muestran antes de enriquecer tiempos y llegada
 La validación urbana usa la secuencia y el sentido del índice GTFS en lugar de descargar geometrías completas por cada línea; conserva el respaldo geométrico si el índice no está disponible. El motor indexa paradas, reutiliza la mejor bajada hacia cada destino y conserva solo la mejor combinación por par de líneas/sentidos mientras calcula. No reduce el área ni descarta una línea para acelerar. La prueba local Anaya ↔ Plaza Las Piedras conservó 157/167 opciones y pasó de 8,1 a aproximadamente 4,1 segundos con el módulo de red y las cesiones de UI activos en este entorno; no es una medición en iPhone ni una promesa sobre la red real.
 
 `tests/rapidez.cjs` cubre conexiones y JSON que nunca responden, presupuesto compartido, respaldo y caché de líneas, selección antes del enriquecimiento y respuestas tardías. Falta validar el tiempo real en iPhone con el recorrido que demoró seis minutos.
+
+## Rotación manual del mapa
+
+El mapa admite giro con dos dedos, zoom y arrastre; en escritorio permite botón derecho y Shift + rueda. La brújula N vuelve a norte arriba sin cambiar búsqueda, ruta, centro o zoom. Con foco en ella, flechas izquierda/derecha giran 15° y Home restablece norte. La rotación no solicita permisos de sensores ni agrega consultas GPS; centrar o seguir el viaje conserva el ángulo elegido.
+
+Se usa Leaflet 1.9.4 y @tomickigrzegorz/leaflet-rotate 0.3.0, alojados como archivos locales versionados; ver THIRD_PARTY_NOTICES.md. La app desactiva la prevención global de gestos de la biblioteca y la aplica solo al contenedor del mapa. Adapta el umbral manual a 12° y desactiva el giro inercial para evitar que siga girando al soltar. Estas dos adaptaciones usan miembros de la versión fijada y se deben revisar antes de actualizarla. Si no carga la extensión, Leaflet conserva el mapa normal y no se muestra una brújula inutilizable.
+
+`tests/mapa-rotacion.cjs` ejecuta Leaflet y la extensión reales en un DOM simulado: transforma coordenadas, comprueba alineación de marcadores/ruta tras giro, pan y zoom, gestos de dos dedos y recuperación del arrastre, controles de brújula/teclado y preservación de gestos fuera del mapa. Falta confirmar comodidad y renderización visual en iPhone/Safari real.

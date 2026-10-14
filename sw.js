@@ -1,5 +1,5 @@
 /* Cachea la interfaz y datos estáticos. Nunca guarda respuestas de la API de transporte. */
-const CACHE = "dv-shell-20261014-v50";
+const CACHE = "dv-shell-20261014-v51";
 const CORE = [
   "index.html",
   "ayuda.html",
@@ -47,6 +47,9 @@ const CORE = [
   "mapa-layout.js",
   "mapa-gadgets.js",
   "mapa-ubicacion.js",
+  "mapa-rotacion.js",
+  "vendor/leaflet-1.9.4.js",
+  "vendor/leaflet-rotate-0.3.0.js",
   "redisenio.js",
   "redisenio.css",
   "buses-mapa-vista.js",
@@ -78,7 +81,6 @@ const CORE = [
   "datos/patrocinios.json",
 ];
 const LEAFLET = [
-  "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
 ];
 self.addEventListener("install", (event) =>
